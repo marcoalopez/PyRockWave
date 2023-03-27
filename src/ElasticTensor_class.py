@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/
+
 import numpy as np
 from dataclasses import dataclass, field, asdict
 
@@ -74,5 +78,8 @@ class ElasticTensor:
         for k, v in asdict(self).items():
             print(f"{k}: {np.around(v, decimals=3)}")
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return ('ElasticTensor class object')
+
+    def __str__(self):
+        pass
