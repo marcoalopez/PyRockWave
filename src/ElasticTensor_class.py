@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/
 
 import numpy as np
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -73,13 +73,24 @@ class ElasticTensor:
         Vs = np.sqrt(self.G_hill / self.density)
         self.isotropic_avg_vs = np.around(Vs, decimals=4)
 
-    def print_summary(self):
-        print("ElasticTensor instance summary:")
-        for k, v in asdict(self).items():
-            print(f"{k}: {np.around(v, decimals=3)}")
-
     def __repr__(self):
-        return ('ElasticTensor class object')
+        return ("ElasticTensor class object")
 
     def __str__(self):
-        pass
+        output = ""
+        output += "ElasticTensor object\n"
+        output += "\n"
+        output += f"Stiffness Tensor (Cij):\n{self.Cij}\n"
+        output += f"Density (g/cm3): {self.density:.3f}\n"
+        output += f"Bulk Modulus Voigt Average (GPa): {self.K_voigt:.3f}\n"
+        output += f"Bulk Modulus Reuss Average (GPa): {self.K_reuss:.3f}\n"
+        output += f"Bulk Modulus VRH Average (GPa): {self.K_hill:.3f}\n"
+        output += f"Shear Modulus Voigt Average (GPa): {self.G_voigt:.3f}\n"
+        output += f"Shear Modulus Reuss Average (GPa): {self.G_reuss:.3f}\n"
+        output += f"Shear Modulus VRH Average (GPa): {self.G_hill:.3f}\n"
+        output += f"Universal Elastic Anisotropy: {self.universal_anisotropy:.3f}\n"
+        output += f"Isotropic Average Poisson Ratio: {self.isotropic_poisson_ratio:.3f}\n"
+        output += f"Isotropic Average Vp (km/s): {self.isotropic_avg_vp:.3f}\n"
+        output += f"Isotropic Average Vs (km/s): {self.isotropic_avg_vs:.3f}\n"
+
+        return output
