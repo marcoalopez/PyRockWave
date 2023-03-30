@@ -28,6 +28,10 @@ class ElasticTensor:
     def __post_init__(self):
         """_summary_
         """
+        # check the symmetry of the elastic tensor
+        if not np.allclose(self.Cij, self.Cij.T):
+            raise Exception("the elastic tensor is not symmetric!")
+
         # Calculate the compliance tensor
         self.Sij = np.linalg.inv(self.Cij)
 
@@ -74,14 +78,14 @@ class ElasticTensor:
         self.isotropic_avg_vs = np.around(Vs, decimals=4)
 
     def __repr__(self):
-        return ("ElasticTensor class object")
+        return str(type(self))
 
     def __str__(self):
         output = ""
-        output += "ElasticTensor object\n"
-        output += "\n"
-        output += f"Stiffness Tensor (Cij):\n{self.Cij}\n"
         output += f"Density (g/cm3): {self.density:.3f}\n"
+        output += f"Stiffness Tensor (Cij):\n{self.Cij}\n"
+        output += "\n"
+        output += "Calculated properties:\n"
         output += f"Bulk Modulus Voigt Average (GPa): {self.K_voigt:.3f}\n"
         output += f"Bulk Modulus Reuss Average (GPa): {self.K_reuss:.3f}\n"
         output += f"Bulk Modulus VRH Average (GPa): {self.K_hill:.3f}\n"
