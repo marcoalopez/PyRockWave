@@ -24,6 +24,7 @@ class ElasticTensor:
     isotropic_poisson_ratio: float = field(init=False)
     isotropic_avg_vp: float = field(init=False)
     isotropic_avg_vs: float = field(init=False)
+    isotropic_avg_vpvs: float = field(init=False)
 
     def __post_init__(self):
         """_summary_
@@ -77,6 +78,9 @@ class ElasticTensor:
         Vs = np.sqrt(self.G_hill / self.density)
         self.isotropic_avg_vs = np.around(Vs, decimals=4)
 
+        # calculate the isotropic average Vp/Vs
+        self.isotropic_avg_vpvs = np.around(Vp / Vs, decimals=4)
+
     def __repr__(self):
         return str(type(self))
 
@@ -96,5 +100,6 @@ class ElasticTensor:
         output += f"Isotropic Average Poisson Ratio: {self.isotropic_poisson_ratio:.3f}\n"
         output += f"Isotropic Average Vp (km/s): {self.isotropic_avg_vp:.3f}\n"
         output += f"Isotropic Average Vs (km/s): {self.isotropic_avg_vs:.3f}\n"
+        output += f"Isotropic Average Vp/Vs: {self.isotropic_avg_vpvs:.3f}\n"
 
         return output
