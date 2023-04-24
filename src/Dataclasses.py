@@ -82,10 +82,8 @@ class ElasticTensor:
         self.isotropic_avg_vpvs = np.around(Vp / Vs, decimals=4)
 
     def __repr__(self):
-        return str(type(self))
-
-    def __str__(self):
-        output = ""
+        output = str(type(self)) + "\n"
+        output += "\n"
         output += f"Density (g/cm3): {self.density:.3f}\n"
         output += f"Stiffness Tensor (Cij):\n{self.Cij}\n"
         output += "\n"
