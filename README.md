@@ -1,10 +1,10 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-_This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/)_ - Last update: 2023-04-14  
+_This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/)_ - Last update: 2023-04-24  
 
 ## What is PyRockWave and how to use it?
 
-TODO
+PyRockWave is a set of Python codes for reading single-crystal elasticity databases and calculating  and plot elastic properties (e.g. elastic wave propagation, seismic anisotropy) in rocks using averaging schemes. It is in early development (pre-alpha, unfinished and untested).
 
 ## Requirements & Python installation
 
