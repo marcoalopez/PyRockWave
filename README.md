@@ -1,6 +1,6 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-_This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/)_ - Last update: 2022-04-24  
+_This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/)_ - Last update: 2023-04-24  
 
 ## What is PyRockWave and how to use it?
 
@@ -27,7 +27,7 @@ For a quick explanation see https://www.youtube.com/watch?v=R8OAwrcMlRw. Besides
 
 ---
 
-*Copyright © 2024 Marco A. Lopez-Sanchez*  
+*Copyright © 2023 Marco A. Lopez-Sanchez*  
 
 _Information presented on this website and the notebooks is provided without any express or implied warranty and may include technical inaccuracies or typing errors; the author reserve the right to modify or enhance the content of this website as well as the notebooks at any time without previous notice. This webpage and the notebooks are not liable for the content of external links. Notebook contents under [Creative Commons Attribution license CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) and codes under [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/)._
 
