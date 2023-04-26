@@ -85,7 +85,7 @@ class ElasticTensor:
         output = str(type(self)) + "\n"
         output += "\n"
         output += f"Density (g/cm3): {self.density:.3f}\n"
-        output += f"Stiffness Tensor (Cij):\n{self.Cij}\n"
+        output += f"Stiffness Tensor (Cij) in GPa:\n{self.Cij}\n"
         output += "\n"
         output += "Calculated properties:\n"
         output += f"Bulk Modulus Voigt Average (GPa): {self.K_voigt:.3f}\n"
