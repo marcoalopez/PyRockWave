@@ -89,9 +89,14 @@ class ElasticTensor:
         self.isotropic_avg_vpvs = np.around(Vp / Vs, decimals=4)
 
         # Validate crystal system
-        valid_crystal_systems = ["Cubic", "Tetragonal", "Orthorhombic",
-                                "Rhombohedral", "Trigonal", "Hexagonal",
-                                "Monoclinic", "Triclinic"]
+        valid_crystal_systems = ["Cubic", "cubic",
+                                 "Tetragonal", "tetragonal",
+                                 "Orthorhombic", "orthorhombic",
+                                 "Rhombohedral", "rhombohedral",
+                                 "Trigonal", "trigonal",
+                                 "Hexagonal", "hexagonal",
+                                 "Monoclinic", "monoclinic",
+                                 "Triclinic", "triclinic"]
         if self.crystal_system not in valid_crystal_systems:
             raise ValueError("Invalid crystal system. Please choose one of the following: "
                              "Cubic, Tetragonal, Orthorhombic, Rhombohedral, Hexagonal, "
@@ -106,6 +111,7 @@ class ElasticTensor:
         output += f"Pressure (GPa): {self.pressure:.1f}\n"
         output += f"Temperature (°C): {self.temperature:.0f}\n"
         output += f"Density (g/cm3): {self.density:.3f}\n"
+        output += "\n"
         output += f"Stiffness Tensor (Cij) in GPa:\n{self.Cij}\n"
         output += "\n"
         output += "Calculated properties:\n"
