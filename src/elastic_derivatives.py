@@ -6,9 +6,10 @@ def alpha_quartz(P=1e-5):
     Returns the corresponding elastic tensor in GPa as a
     function of pressure (in GPa) based on degree 2 polynomial
     fitting from Wang et al. (2006) data.
+    https://doi.org/10.1007/s00269-014-0711-z
 
     caveats: the fitting for the C44 term is worse constrained,
-    R-squared = 0.93. Room temperature.
+    I used a degree 3 polynomial (R-squared = 0.96). Room temperature.
 
     Parameters:
     P (numeric or array-like): pressure in GPa
@@ -27,7 +28,7 @@ def alpha_quartz(P=1e-5):
         'C12': [-0.182, 7.26, 6.1394],
         'C13': [-0.2042, 6.8847, 12.928],
         'C14': [0.2053, -3.9378, 17.139],
-        'C44': [-0.0916, 1.6144, 58.808]
+        'C44': [0.0197, -0.3973, 2.7547, 58.335]
     }
 
     # independent terms
@@ -36,7 +37,7 @@ def alpha_quartz(P=1e-5):
     C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9984
     C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9992
     C14 = np.polyval(coeffs['C14'], P)  # R-squared=0.9931
-    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9274!! see warning
+    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9583!! see warning
 
     # dependent terms
     C66 = 0.5 * (C11 - C12)
@@ -57,8 +58,9 @@ def forsterite_HT(P=1e-5):
     Returns the corresponding elastic tensor in GPa as a
     function of pressure (in GPa) based on degree 2 polynomial
     fitting from Zhang and Bass (2016) data.
+    http://dx.doi.org/10.1002/2016GL069949
 
-    caveat: Fixed temperature at
+    caveat: Fixed temperature at 1027C degrees (1300 K)
 
     Parameters:
     P (numeric or array-like): pressure in GPa
@@ -102,3 +104,99 @@ def forsterite_HT(P=1e-5):
                     [0.0, 0.0, 0.0, 0.0, 0.0, C66]])
 
     return np.around(Cij, decimals=2)
+
+
+def forsterite_MT(P=1e-5):
+    """
+    Returns the corresponding elastic tensor in GPa as a
+    function of pressure (in GPa) based on degree 2 polynomial
+    fitting from  Mao et al. (2015) data.
+    http://dx.doi.org/10.1016/j.epsl.2015.06.045
+
+    caveat: Fixed temperature at 627°C (900 K)
+
+    Parameters:
+    P (numeric or array-like): pressure in GPa
+
+    Returns:
+    numpy.ndarray: elastic tensor Cij
+    """
+
+    pass
+
+
+def forsterite_LT(P=1e-5):
+    """
+    Returns the corresponding elastic tensor in GPa as a
+    function of pressure (in GPa) based on degree 2 polynomial
+    fitting from Zhang and Bass (2016) data.
+    http://dx.doi.org/10.1002/2016GL069949
+
+    caveat: Fixed temperature at 26°C (300 K)
+
+    Parameters:
+    P (numeric or array-like): pressure in GPa
+
+    Returns:
+    numpy.ndarray: elastic tensor Cij
+    """
+
+    pass
+
+
+def omphacite(P=1e-5):
+    """
+    Returns the corresponding elastic tensor in GPa as a
+    function of pressure (in GPa) based on degree 2 polynomial
+    fitting from Hao et al. (2019) data.
+    http://dx.doi.org/10.1029/2018JB016964
+
+    caveat: Room temperature (no temperature derivative)
+
+    Parameters:
+    P (numeric or array-like): pressure in GPa
+
+    Returns:
+    numpy.ndarray: elastic tensor Cij
+    """
+
+    pass
+
+
+def diopside(P=1e-5):
+    """
+    Returns the corresponding elastic tensor in GPa as a
+    function of pressure (in GPa) based on degree 2 polynomial
+    fitting from Sang and Bass (2014) data.
+    http://dx.doi.org/10.1016/j.pepi.2013.12.011
+
+    caveat: Room temperature (no temperature derivative)
+
+    Parameters:
+    P (numeric or array-like): pressure in GPa
+
+    Returns:
+    numpy.ndarray: elastic tensor Cij
+    """
+
+    pass
+
+
+def enstatite(P=1e-5):
+    """
+    Returns the corresponding elastic tensor in GPa as a
+    function of pressure (in GPa) based on degree 2 polynomial
+    fitting from Zhang and Bass (2016) data.
+    http://dx.doi.org/10.1002/2016GL069963
+
+    caveat: Room temperature (no temperature derivative).
+    Up to 12 GPa.
+
+    Parameters:
+    P (numeric or array-like): pressure in GPa
+
+    Returns:
+    numpy.ndarray: elastic tensor Cij
+    """
+
+    pass
