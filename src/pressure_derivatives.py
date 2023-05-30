@@ -1,8 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/
+
 import numpy as np
-from numpy.polynomial.polynomial import polyval
 
 
 def alpha_quartz(P=1e-5):
@@ -47,12 +47,12 @@ def alpha_quartz(P=1e-5):
     }
 
     # elastic independent terms
-    C11 = polyval(coeffs['C11'], P)  # R-squared=0.9946
-    C33 = polyval(coeffs['C33'], P)  # R-squared=0.9975
-    C12 = polyval(coeffs['C12'], P)  # R-squared=0.9984
-    C13 = polyval(coeffs['C13'], P)  # R-squared=0.9992
-    C14 = polyval(coeffs['C14'], P)  # R-squared=0.9929
-    C44 = polyval(coeffs['C44'], P)  # R-squared=0.9579
+    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9946
+    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9975
+    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9984
+    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9992
+    C14 = np.polyval(coeffs['C14'], P)  # R-squared=0.9929
+    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9579
 
     # elastic dependent terms
     C66 = 0.5 * (C11 - C12)
@@ -115,15 +115,15 @@ def forsterite_HT(P=1e-5):
     }
 
     # elastic independent terms
-    C11 = polyval(coeffs['C11'], P)  # R-squared=0.9960
-    C22 = polyval(coeffs['C22'], P)  # R-squared=0.9969
-    C33 = polyval(coeffs['C33'], P)  # R-squared=0.9966
-    C44 = polyval(coeffs['C44'], P)  # R-squared=0.9916
-    C55 = polyval(coeffs['C55'], P)  # R-squared=0.9951
-    C66 = polyval(coeffs['C66'], P)  # R-squared=1.0
-    C12 = polyval(coeffs['C12'], P)  # R-squared=0.9982
-    C13 = polyval(coeffs['C13'], P)  # R-squared=0.9891
-    C23 = polyval(coeffs['C23'], P)  # R-squared=0.9948
+    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9960
+    C22 = np.polyval(coeffs['C22'], P)  # R-squared=0.9969
+    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9966
+    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9916
+    C55 = np.polyval(coeffs['C55'], P)  # R-squared=0.9951
+    C66 = np.polyval(coeffs['C66'], P)  # R-squared=1.0
+    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9982
+    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9891
+    C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.9948
 
     Cij = np.array([[C11, C12, C13, 0.0, 0.0, 0.0],
                     [C12, C22, C23, 0.0, 0.0, 0.0],
@@ -257,19 +257,19 @@ def omphacite(P=1e-5):
     }
 
     # elastic independent terms
-    C11 = polyval(coeffs['C11'], P)  # R-squared=0.9982
-    C22 = polyval(coeffs['C22'], P)  # R-squared=0.9972
-    C33 = polyval(coeffs['C33'], P)  # R-squared=0.9970
-    C44 = polyval(coeffs['C44'], P)  # R-squared=0.9847
-    C55 = polyval(coeffs['C55'], P)  # R-squared=0.9926
-    C66 = polyval(coeffs['C66'], P)  # R-squared=0.9955
-    C12 = polyval(coeffs['C12'], P)  # R-squared=0.9925
-    C13 = polyval(coeffs['C13'], P)  # R-squared=0.9916
-    C23 = polyval(coeffs['C23'], P)  # R-squared=0.9532
-    C15 = polyval(coeffs['C15'], P)  # R-squared=0.8325!
-    C25 = polyval(coeffs['C25'], P)  # R-squared=0.9347!
-    C35 = polyval(coeffs['C35'], P)  # R-squared=0.9908
-    C46 = polyval(coeffs['C46'], P)  # R-squared=0.9829
+    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9982
+    C22 = np.polyval(coeffs['C22'], P)  # R-squared=0.9972
+    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9970
+    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9847
+    C55 = np.polyval(coeffs['C55'], P)  # R-squared=0.9926
+    C66 = np.polyval(coeffs['C66'], P)  # R-squared=0.9955
+    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9925
+    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9916
+    C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.9532
+    C15 = np.polyval(coeffs['C15'], P)  # R-squared=0.8325!
+    C25 = np.polyval(coeffs['C25'], P)  # R-squared=0.9347!
+    C35 = np.polyval(coeffs['C35'], P)  # R-squared=0.9908
+    C46 = np.polyval(coeffs['C46'], P)  # R-squared=0.9829
 
     Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
                     [C12, C22, C23, 0.0, C25, 0.0],
@@ -332,19 +332,19 @@ def diopside(P=1e-5):
     }
 
     # elastic independent terms
-    C11 = polyval(coeffs['C11'], P)  # R-squared=0.9983
-    C22 = polyval(coeffs['C22'], P)  # R-squared=0.9964
-    C33 = polyval(coeffs['C33'], P)  # R-squared=0.9985
-    C44 = polyval(coeffs['C44'], P)  # R-squared=0.8827!
-    C55 = polyval(coeffs['C55'], P)  # R-squared=0.9773
-    C66 = polyval(coeffs['C66'], P)  # R-squared=0.9520
-    C12 = polyval(coeffs['C12'], P)  # R-squared=0.9982
-    C13 = polyval(coeffs['C13'], P)  # R-squared=0.9951
-    C23 = polyval(coeffs['C23'], P)  # R-squared=0.8563!
-    C15 = polyval(coeffs['C15'], P)  # R-squared=0.9924
-    C25 = polyval(coeffs['C25'], P)  # R-squared=0.7801!
-    C35 = polyval(coeffs['C35'], P)  # R-squared=0.9665
-    C46 = polyval(coeffs['C46'], P)  # R-squared=0.6369!
+    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9983
+    C22 = np.polyval(coeffs['C22'], P)  # R-squared=0.9964
+    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9985
+    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.8827!
+    C55 = np.polyval(coeffs['C55'], P)  # R-squared=0.9773
+    C66 = np.polyval(coeffs['C66'], P)  # R-squared=0.9520
+    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9982
+    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9951
+    C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.8563!
+    C15 = np.polyval(coeffs['C15'], P)  # R-squared=0.9924
+    C25 = np.polyval(coeffs['C25'], P)  # R-squared=0.7801!
+    C35 = np.polyval(coeffs['C35'], P)  # R-squared=0.9665
+    C46 = np.polyval(coeffs['C46'], P)  # R-squared=0.6369!
 
     Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
                     [C12, C22, C23, 0.0, C25, 0.0],
@@ -402,15 +402,15 @@ def enstatite(P=1e-5):
     }
 
     # elastic independent terms
-    C11 = polyval(coeffs['C11'], P)  # R-squared=0.9985
-    C22 = polyval(coeffs['C22'], P)  # R-squared=0.9966
-    C33 = polyval(coeffs['C33'], P)  # R-squared=0.9959
-    C44 = polyval(coeffs['C44'], P)  # R-squared=0.9928
-    C55 = polyval(coeffs['C55'], P)  # R-squared=0.9790
-    C66 = polyval(coeffs['C66'], P)  # R-squared=0.9581
-    C12 = polyval(coeffs['C12'], P)  # R-squared=0.9970
-    C13 = polyval(coeffs['C13'], P)  # R-squared=0.9912
-    C23 = polyval(coeffs['C23'], P)  # R-squared=0.9953
+    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9985
+    C22 = np.polyval(coeffs['C22'], P)  # R-squared=0.9966
+    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9959
+    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9928
+    C55 = np.polyval(coeffs['C55'], P)  # R-squared=0.9790
+    C66 = np.polyval(coeffs['C66'], P)  # R-squared=0.9581
+    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9970
+    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9912
+    C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.9953
 
     Cij = np.array([[C11, C12, C13, 0.0, 0.0, 0.0],
                     [C12, C22, C23, 0.0, 0.0, 0.0],
