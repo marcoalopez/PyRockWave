@@ -1,8 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/
-
 import numpy as np
+# from types import SimpleNamespace
 
 
 def alpha_quartz(P=1e-5):
@@ -33,8 +33,8 @@ def alpha_quartz(P=1e-5):
         numpy.ndarray: elastic tensor Cij
     """
 
-    if P > 10.2:
-        raise ValueError('The pressure is out of the safe range of the model (>10.2 GPa)')
+    if (P > 10.2) | (P <= 0):
+        raise ValueError('The pressure is out of the safe range of the model: 0 to 10.2 GPa')
 
     # Polynomial coefficients of elastic independent terms
     coeffs = {
@@ -71,7 +71,7 @@ def alpha_quartz(P=1e-5):
     return np.around(density, decimals=3), np.around(Cij, decimals=2)
 
 
-def forsterite_HT(P=1e-5):
+def forsterite_ZB2016(P=1e-5, T='HT'):
     """
     Returns the corresponding elastic tensor (GPa) and density
     (g/cm3) of forsterite as a function of pressure based on a
@@ -80,13 +80,16 @@ def forsterite_HT(P=1e-5):
 
     Caveats
     -------
-        - No temperature derivative
-        - Fixed temperature at 1027C degrees (1300 K)
+        - No temperature derivative, fixed at 1027°C (1300 K)
+        or 26°C (300 K)
 
     Parameters
     ----------
-    P : numeric or array-like, optional
-        pressure in GPa, by default 1e-5
+    P : numeric, optional
+        pressure in GPa, by default 1e-5 (RP)
+
+    T : str, optional
+        either 'LT' or 'HT', default 'HT'
 
     Example
     -------
@@ -98,21 +101,25 @@ def forsterite_HT(P=1e-5):
         numpy.ndarray: elastic tensor Cij
     """
 
-    if P > 12.8:
-        raise ValueError('The pressure is out of the safe range of the model (>12.8 GPa)')
+    if (P > 12.8) | (P <= 0):
+        raise ValueError('The pressure is out of the safe range of the model: 0 to 12.8 GPa')
 
     # Polynomial coefficients of elastic independent terms
-    coeffs = {
-        'C11': [-0.0496, 7.7691, 269],
-        'C22': [-0.1069, 5.5317, 174],
-        'C33': [0.0351, 4.3771, 201],
-        'C44': [-0.0363, 1.8989, 54],
-        'C55': [1.204, 67],
-        'C66': [-0.0219, 1.6859, 66],
-        'C12': [-0.0581, 3.3446, 67],
-        'C13': [-0.055, 2.7464, 63],
-        'C23': [-0.0486, 3.4657, 65],
-    }
+    if T == 'HT':
+        coeffs = {
+            'C11': [-0.0496, 7.7691, 269],
+            'C22': [-0.1069, 5.5317, 174],
+            'C33': [0.0351, 4.3771, 201],
+            'C44': [-0.0363, 1.8989, 54],
+            'C55': [1.204, 67],
+            'C66': [-0.0219, 1.6859, 66],
+            'C12': [-0.0581, 3.3446, 67],
+            'C13': [-0.055, 2.7464, 63],
+            'C23': [-0.0486, 3.4657, 65],
+        }
+
+    else:
+        pass  # TODO
 
     # elastic independent terms
     C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9960
@@ -138,7 +145,7 @@ def forsterite_HT(P=1e-5):
     return np.around(density, decimals=3), np.around(Cij, decimals=2)
 
 
-def forsterite_MT(P=1e-5):
+def forsterite_Mao(P=1e-5, T=627):
     """
     Returns the corresponding elastic tensor (GPa) and density
     (g/cm3) of forsterite as a function of pressure based on a
@@ -147,13 +154,15 @@ def forsterite_MT(P=1e-5):
 
     Caveats
     -------
-        - No temperature derivative
-        - Fixed temperature at 627°C (900 K)
+        - TODO
 
     Parameters
     ----------
     P : numeric or array-like, optional
         pressure in GPa, by default 1e-5
+
+    T : numeric, optional
+        pressure in °C, by default 627°C
 
     Example
     -------
@@ -165,47 +174,8 @@ def forsterite_MT(P=1e-5):
         numpy.ndarray: elastic tensor Cij
     """
 
-    if P > 13.3:
-        raise ValueError('The pressure is out of the safe range of the model (>13.3 GPa)')
-
-    # estimate density, R-squared=0.9961
-    density = 0.0228 * P + 3.2793
-
-    pass
-
-
-def forsterite_LT(P=1e-5):
-    """
-    Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) of forsterite as a function of pressure based on a
-    polynomial fit from experimental data of Zhang and Bass (2016)
-    http://dx.doi.org/10.1002/2016GL069949
-
-    Caveats
-    -------
-        - No temperature derivative
-        - Fixed temperature at 26°C degrees (300 K)
-
-    Parameters
-    ----------
-    P : numeric or array-like, optional
-        pressure in GPa, by default 1e-5
-
-    Example
-    -------
-    density, cijs = forsterite_LT(1.0)
-
-    Returns
-    -------
-        float: density
-        numpy.ndarray: elastic tensor Cij
-    """
-
-    if P > 12.8:
-        raise ValueError('The pressure is out of the safe range of the model (>12.8 GPa)')
-
-    # estimate density, R-squared=0.9976
-    density = 0.0225 * P + 3.341
+    if (P > 13.3) | (P <= 0):
+        raise ValueError('The pressure is out of the safe range of the model: 0 to 13.3 GPa')
 
     pass
 
@@ -425,20 +395,77 @@ def enstatite(P=1e-5):
     return np.around(density, decimals=3), np.around(Cij, decimals=2)
 
 
-def garnet(P=1e-5):
+def pyrope(P=1e-5, T=476.85):
     """
     Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) of garnet as a function of pressure based on a
-    polynomial fit from experimental data of
+    (g/cm3) of pyrope garnet as a function of pressure based
+    on a polynomial fit from experimental data of Lu et al.
+    (2013) https://doi.org/10.1016/j.epsl.2012.11.041
+
+    Caveats
+    -------
+        - TODO
 
     Parameters
     ----------
-    P : numeric or array-like, optional
+    P : numeric, optional
         pressure in GPa, by default 1e-5
 
+    T : numeric, optional
+        pressure in °C, by default 476.85
+
+    Example
+    -------
+    density, cijs = enstatite(1.0)
+
+    Returns
+    -------
+        float: density
+        numpy.ndarray: elastic tensor Cij
     """
 
-    if P > 20:
-        raise ValueError('The pressure is out of the safe range of the model (>20 GPa)')
+    if (P > 20) | (P <= 0):
+        raise ValueError('The pressure is out of the safe range of the model: 0 to 20 GPa')
 
-    pass
+    if (T > 477) | (T < 26):
+        raise ValueError('The temperature is out of the safe range of the model: 26 to 477°C')
+
+    # Celsius to K
+    T = T + 273.15
+
+    # elastic constant reference values (at 20 GPa and 750 K i.e. 477°C)
+    C11_ref = 393.3
+    C12_ref = 170.9
+    C44_ref = 112.1
+    P_ref = 20
+    T_ref = 750
+
+    # set P (GPa/K) and T derivatives according to Lu et al. (2013)
+    dP_C11 = 6.0
+    dP_C12 = 3.5
+    dP_C44 = 1.2
+    dT_C11 = -20.5/1000
+    dT_C12 = -16.3/1000
+    dT_C44 = -3.4/1000
+
+    # estimate elastic independent terms
+    C11 = C11_ref + (P - P_ref) * dP_C11 + (T - T_ref) * dT_C11
+    C12 = C12_ref + (P - P_ref) * dP_C12 + (T - T_ref) * dT_C12
+    C44 = C44_ref + (P - P_ref) * dP_C44 + (T - T_ref) * dT_C44
+
+    # elastic dependent terms
+    C22, C33 = C11, C11
+    C13, C23 = C12, C12
+    C55, C66 = C44, C44
+
+    Cij = np.array([[C11, C12, C13, 0.0, 0.0, 0.0],
+                    [C12, C22, C23, 0.0, 0.0, 0.0],
+                    [C13, C23, C33, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, C44, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, C55, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, C66]])
+
+    # estimate density, R-squared=1 TODO
+    # density = -0.0005 * P**2 + 0.028 * P + 3.288
+
+    return np.around(3.740, decimals=3), np.around(Cij, decimals=2)
