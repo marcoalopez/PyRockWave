@@ -11,8 +11,15 @@ class ElasticTensor:
     """A class that represents an elastic tensor and calculate, store and
     print various derived properties."""
 
-    Cij: np.ndarray  # stiffness tensor in GPa
-    density: float  # density in g/cm3
+    mineral_name: str
+    crystal_system: str
+    temperature: float  # in °C
+    pressure: float     # in GPa
+    density: float      # density in g/cm3
+    Cij: np.ndarray     # stiffness tensor in GPa
+    reference: str
+
+    # to estimate
     Sij: np.ndarray = field(init=False)  # compliance tensor
     K_voigt: float = field(init=False)
     K_reuss: float = field(init=False)
@@ -25,13 +32,6 @@ class ElasticTensor:
     isotropic_avg_vp: float = field(init=False)
     isotropic_avg_vs: float = field(init=False)
     isotropic_avg_vpvs: float = field(init=False)
-
-    # Additional attributes
-    mineral_name: str
-    reference: str
-    crystal_system: str
-    pressure: float     # in GPa
-    temperature: float  # in °C
 
     def __post_init__(self):
         """_summary_

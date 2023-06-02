@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/
 import numpy as np
-from types import SimpleNamespace
+from ElasticClass import ElasticTensor
 
 
 def alpha_quartz(P=1e-5):
@@ -14,7 +14,7 @@ def alpha_quartz(P=1e-5):
 
     Caveats
     -------
-        - C44 elastic term is less constrained than the others.
+        - C44 elastic term is worse constrained than the others.
         The fitting has an R-squared value of 0.96
         - The function does not account for temperature effects
         and assumes room temperature.
@@ -22,11 +22,11 @@ def alpha_quartz(P=1e-5):
     Parameters
     ----------
     P : numeric, optional
-        Pressure in GPa. Default value is 1e-5 GPa.
+        Pressure in GPa. Default value is 1e-5 GPa (RT).
 
     Returns
     -------
-    properties : SimpleNamespace
+    properties : ElasticTensor dataclass
         An object containing the following properties:
         - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system of alpha quartz ('Trigonal').
@@ -35,6 +35,7 @@ def alpha_quartz(P=1e-5):
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
         - reference: Reference to the source publication.
+        - Other average (seismic) properties
 
     Examples
     --------
@@ -82,14 +83,14 @@ def alpha_quartz(P=1e-5):
     # estimate density, R-squared=0.9999
     density = -0.00017 * P**2 + 0.064 * P + 2.648
 
-    properties = SimpleNamespace(
-                            name='alpha_quartz',
-                            crystal_system='Trigonal',
-                            temperature=25,
-                            pressure=P,
-                            density=np.around(density, decimals=3),
-                            cijs=np.around(Cij, decimals=2),
-                            reference='https://doi.org/10.1007/s00269-014-0711-z')
+    properties = ElasticTensor(
+        mineral_name='alpha_quartz',
+        crystal_system='Trigonal',
+        temperature=25,
+        pressure=P,
+        density=np.around(density, decimals=3),
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.1007/s00269-014-0711-z')
 
     return properties
 
@@ -128,7 +129,7 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
         raise ValueError('The pressure is out of the safe range of the model: 0 to 12.8 GPa')
 
     # Polynomial coefficients of elastic independent terms
-    if T == 'HT':
+    if type == 'HT':
         coeffs = {
             'C11': [-0.0496, 7.7691, 269],
             'C22': [-0.1069, 5.5317, 174],
@@ -141,11 +142,11 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
             'C23': [-0.0486, 3.4657, 65],
         }
 
-    elif T == 'RT':
+    elif type == 'RT':
         pass  # TODO
 
     else:
-        raise ValueError('type must be 'RT' (i.e. room T) or 'HT' (i.e. 1027°C)')
+        raise ValueError("type must be 'RT' (i.e. room T) or 'HT' (i.e. 1027°C)")
 
     # elastic independent terms
     C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9960
