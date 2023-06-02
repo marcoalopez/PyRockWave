@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/
 import numpy as np
-# from types import SimpleNamespace
+from types import SimpleNamespace
 
 
 def alpha_quartz(P=1e-5):
@@ -10,27 +10,41 @@ def alpha_quartz(P=1e-5):
     Returns the corresponding elastic tensor (GPa) and density
     (g/cm3) of forsterite as a function of pressure based on a
     polynomial fit from experimental data of Wang et al. (2006)
-    https://doi.org/10.1007/s00269-014-0711-z
+    [1]
 
     Caveats
     -------
-        - C44 elastic term is worse constrained than the others.
-        Fitting has an R-squared of 0.96
-        - No temperature derivative (at room temperature)
+        - C44 elastic term is less constrained than the others.
+        The fitting has an R-squared value of 0.96
+        - The function does not account for temperature effects
+        and assumes room temperature.
 
     Parameters
     ----------
-    P : numeric or array-like, optional
-        pressure in GPa, by default 1e-5
-
-    Example
-    -------
-    density, cijs = alpha_quartz(1.0)
+    P : numeric, optional
+        Pressure in GPa. Default value is 1e-5 GPa.
 
     Returns
     -------
-        float: density
-        numpy.ndarray: elastic tensor Cij
+    properties : SimpleNamespace
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - reference: Reference to the source publication.
+
+    Examples
+    --------
+    >>> quartz_props = alpha_quartz(1.0)
+
+    References
+    ----------
+    [1] Wang, J., Mao, Z., Jiang, F., Duffy, T.S., 2015. Elasticity of
+    single-crystal quartz to 10 GPa. Phys Chem Minerals 42, 203–212.
+    https://doi.org/10.1007/s00269-014-0711-z
     """
 
     if (P > 10.2) | (P <= 0):
@@ -68,10 +82,19 @@ def alpha_quartz(P=1e-5):
     # estimate density, R-squared=0.9999
     density = -0.00017 * P**2 + 0.064 * P + 2.648
 
-    return np.around(density, decimals=3), np.around(Cij, decimals=2)
+    properties = SimpleNamespace(
+                            name='alpha_quartz',
+                            crystal_system='Trigonal',
+                            temperature=25,
+                            pressure=P,
+                            density=np.around(density, decimals=3),
+                            cijs=np.around(Cij, decimals=2),
+                            reference='https://doi.org/10.1007/s00269-014-0711-z')
+
+    return properties
 
 
-def forsterite_ZB2016(P=1e-5, T='HT'):
+def forsterite_ZB2016(P=1e-5, type='HT'):
     """
     Returns the corresponding elastic tensor (GPa) and density
     (g/cm3) of forsterite as a function of pressure based on a
@@ -88,8 +111,8 @@ def forsterite_ZB2016(P=1e-5, T='HT'):
     P : numeric, optional
         pressure in GPa, by default 1e-5 (RP)
 
-    T : str, optional
-        either 'LT' or 'HT', default 'HT'
+    type : str, optional
+        either 'RT' or 'HT', default 'HT'
 
     Example
     -------
@@ -118,8 +141,11 @@ def forsterite_ZB2016(P=1e-5, T='HT'):
             'C23': [-0.0486, 3.4657, 65],
         }
 
-    else:
+    elif T == 'RT':
         pass  # TODO
+
+    else:
+        raise ValueError('type must be 'RT' (i.e. room T) or 'HT' (i.e. 1027°C)')
 
     # elastic independent terms
     C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9960
