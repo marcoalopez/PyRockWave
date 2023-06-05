@@ -115,14 +115,28 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
     type : str, optional
         either 'RT' or 'HT', default 'HT'
 
-    Example
-    -------
-    density, cijs = forsterite_HT(1.0)
-
     Returns
     -------
-        float: density
-        numpy.ndarray: elastic tensor Cij
+    properties : ElasticTensor dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - reference: Reference to the source publication.
+        - Other average (seismic) properties
+
+    Examples
+    --------
+    >>> olivine_props = forsterite_ZB2016(1.0)
+
+    References
+    ----------
+    [1] Zhang, J.S., Bass, J.D., 2016. Sound velocities of olivine at high
+    pressures and temperatures and the composition of Earth’s upper mantle.
+    Geophys. Res. Lett. 43, 9611–9618. https://doi.org/10.1002/2016GL069949
     """
 
     if (P > 12.8) | (P <= 0):
@@ -141,6 +155,7 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
             'C13': [-0.055, 2.7464, 63],
             'C23': [-0.0486, 3.4657, 65],
         }
+        T = 1027
 
     elif type == 'RT':
         pass  # TODO
@@ -169,7 +184,16 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
     # estimate density, R-squared=0.8772
     density = 0.0253 * P + 3.239
 
-    return np.around(density, decimals=3), np.around(Cij, decimals=2)
+    properties = ElasticTensor(
+        mineral_name='forsterite',
+        crystal_system='Orthorhombic',
+        temperature=T,
+        pressure=P,
+        density=np.around(density, decimals=3),
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.1002/2016GL069949')
+
+    return properties
 
 
 def forsterite_Mao(P=1e-5, T=627):
@@ -191,14 +215,29 @@ def forsterite_Mao(P=1e-5, T=627):
     T : numeric, optional
         pressure in °C, by default 627°C
 
-    Example
-    -------
-    density, cijs = forsterite_MT(1.0)
-
     Returns
     -------
-        float: density
-        numpy.ndarray: elastic tensor Cij
+    properties : ElasticTensor dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - reference: Reference to the source publication.
+        - Other average (seismic) properties
+
+    Examples
+    --------
+    >>> olivine_props = forsterite_Mao(1.0)
+
+    References
+    ----------
+    [1] Mao, Z., Fan, D., Lin, J.-F., Yang, J., Tkachev, S.N., Zhuravlev, K.,
+    Prakapenka, V.B., 2015. Elasticity of single-crystal olivine at high
+    pressures and temperatures. Earth and Planetary Science Letters 426,
+    204–215. https://doi.org/10.1016/j.epsl.2015.06.045
     """
 
     if (P > 13.3) | (P <= 0):
@@ -216,21 +255,38 @@ def omphacite(P=1e-5):
 
     Caveats
     -------
-        - No temperature derivative, room temperature
+        - The function does not account for temperature effects
+        and assumes room temperature.
 
     Parameters
     ----------
     P : numeric or array-like, optional
         pressure in GPa, by default 1e-5
 
-    Example
-    -------
-    density, cijs = omphacite(1.0)
-
     Returns
     -------
-        float: density
-        numpy.ndarray: elastic tensor Cij
+    properties : ElasticTensor dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - reference: Reference to the source publication.
+        - Other average (seismic) properties
+
+    Examples
+    --------
+    >>> Omph_props = omphacite(1.0)
+
+    References
+    ----------
+    [1] Hao, M., Zhang, J.S., Pierotti, C.E., Ren, Z., Zhang, D., 2019.
+    High‐Pressure Single‐Crystal Elasticity and Thermal Equation of State
+    of Omphacite and Their Implications for the Seismic Properties of
+    Eclogite in the Earth’s Interior. J. Geophys. Res. Solid Earth 124,
+    2368–2377. https://doi.org/10.1029/2018JB016964
     """
 
     if P > 18:
@@ -278,7 +334,16 @@ def omphacite(P=1e-5):
     # estimate density, R-squared=1
     density = -0.0001 * P**2 + 0.0266 * P + 3.34
 
-    return np.around(density, decimals=3), np.around(Cij, decimals=2)
+    properties = ElasticTensor(
+        mineral_name='omphacite',
+        crystal_system='Monoclinic',
+        temperature=25,
+        pressure=P,
+        density=np.around(density, decimals=3),
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.1029/2018JB016964')
+
+    return properties
 
 
 def diopside(P=1e-5):
@@ -290,7 +355,8 @@ def diopside(P=1e-5):
 
     Caveats
     -------
-        - Room temperature (no temperature derivative)
+        - The function does not account for temperature effects
+        and assumes room temperature.
         - C44, C25, C46 elastic terms with R-squared < 0.95
 
     Parameters
@@ -298,14 +364,28 @@ def diopside(P=1e-5):
     P : numeric or array-like, optional
         pressure in GPa, by default 1e-5
 
-    Example
-    -------
-    density, cijs = diopside(1.0)
-
     Returns
     -------
-        float: density
-        numpy.ndarray: elastic tensor Cij
+    properties : ElasticTensor dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - reference: Reference to the source publication.
+        - Other average (seismic) properties
+
+    Examples
+    --------
+    >>> Di_props = diopside(1.0)
+
+    References
+    ----------
+    [1] Sang, L., Bass, J.D., 2014. Single-crystal elasticity of diopside
+    to 14GPa by Brillouin scattering. Physics of the Earth and Planetary
+    Interiors 228, 75–79. https://doi.org/10.1016/j.pepi.2013.12.011
     """
 
     if P > 14:
@@ -353,7 +433,16 @@ def diopside(P=1e-5):
     # estimate density, R-squared=0.9999
     density = -0.0003 * P**2 + 0.0279 * P + 3.264
 
-    return np.around(density, decimals=3), np.around(Cij, decimals=2)
+    properties = ElasticTensor(
+        mineral_name='diopside',
+        crystal_system='Monoclinic',
+        temperature=25,
+        pressure=P,
+        density=np.around(density, decimals=3),
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.1016/j.pepi.2013.12.011')
+
+    return properties
 
 
 def enstatite(P=1e-5):
@@ -365,21 +454,36 @@ def enstatite(P=1e-5):
 
     Caveats
     -------
-        - Room temperature (no temperature derivative)
+        - The function does not account for temperature effects
+        and assumes room temperature.
 
     Parameters
     ----------
     P : numeric or array-like, optional
         pressure in GPa, by default 1e-5
 
-    Example
-    -------
-    density, cijs = enstatite(1.0)
-
     Returns
     -------
-        float: density
-        numpy.ndarray: elastic tensor Cij
+    properties : ElasticTensor dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - reference: Reference to the source publication.
+        - Other average (seismic) properties
+
+    Examples
+    --------
+    >>> Ens_props = enstatite(1.0)
+
+    References
+    ----------
+    [1] Zhang, J.S., Bass, J.D., 2016. Single‐crystal elasticity of natural
+    Fe‐bearing orthoenstatite across a high‐pressure phase transition.
+    Geophys. Res. Lett. 43, 8473–8481. https://doi.org/10.1002/2016GL069963
     """
 
     if P > 10.5:
@@ -419,7 +523,16 @@ def enstatite(P=1e-5):
     # estimate density, R-squared=1
     density = -0.0005 * P**2 + 0.028 * P + 3.288
 
-    return np.around(density, decimals=3), np.around(Cij, decimals=2)
+    properties = ElasticTensor(
+        mineral_name='enstatite',
+        crystal_system='Orthorhombic',
+        temperature=25,
+        pressure=P,
+        density=np.around(density, decimals=3),
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.1002/2016GL069963')
+
+    return properties
 
 
 def pyrope(P=1e-5, T=476.85):
@@ -441,14 +554,29 @@ def pyrope(P=1e-5, T=476.85):
     T : numeric, optional
         pressure in °C, by default 476.85
 
-    Example
-    -------
-    density, cijs = enstatite(1.0)
-
     Returns
     -------
-        float: density
-        numpy.ndarray: elastic tensor Cij
+    properties : ElasticTensor dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - reference: Reference to the source publication.
+        - Other average (seismic) properties
+
+    Examples
+    --------
+    >>> Grt_props = pyrope(1.0)
+
+    References
+    ----------
+    [1] Lu, C., Mao, Z., Lin, J.-F., Zhuravlev, K.K., Tkachev, S.N.,
+    Prakapenka, V.B., 2013. Elasticity of single-crystal iron-bearing
+    pyrope up to 20 GPa and 750 K. Earth and Planetary Science Letters
+    361, 134–142. https://doi.org/10.1016/j.epsl.2012.11.041
     """
 
     if (P > 20) | (P <= 0):
@@ -495,4 +623,78 @@ def pyrope(P=1e-5, T=476.85):
     # estimate density, R-squared=1 TODO
     # density = -0.0005 * P**2 + 0.028 * P + 3.288
 
-    return np.around(3.740, decimals=3), np.around(Cij, decimals=2)
+    properties = ElasticTensor(
+        mineral_name='pyrope',
+        crystal_system='Cubic',
+        temperature=T,
+        pressure=P,
+        density=np.around(density, decimals=3),
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.1016/j.epsl.2012.11.041')
+
+    return properties
+
+
+def zoisite():
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) of zoisite based on experimental data of Mao et al.
+    (2005) https://doi.org/10.2138/am.2007.2329
+
+    Caveats
+    -------
+        - The function does not account for temperature or
+        pressure effects and assumes room conditions
+
+    Returns
+    -------
+    properties : ElasticTensor dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - reference: Reference to the source publication.
+        - Other average (seismic) properties
+
+    Examples
+    --------
+    >>> Zo_props = zoisite(1.0)
+
+    References
+    ----------
+    [1] Mao, Z., Jiang, F., Duffy, T.S., 2007. Single-crystal elasticity
+    of zoisite Ca2Al3Si3O12 (OH) by Brillouin scattering. American
+    Mineralogist 92, 570–576. https://doi.org/10.2138/am.2007.2329
+    """
+
+    # elastic independent terms
+    C11 = 279.8
+    C22 = 249.2
+    C33 = 209.4
+    C44 = 51.8
+    C55 = 81.4
+    C66 = 66.3
+    C12 = 94.7
+    C13 = 88.7
+    C23 = 27.5
+
+    Cij = np.array([[C11, C12, C13, 0.0, 0.0, 0.0],
+                    [C12, C22, C23, 0.0, 0.0, 0.0],
+                    [C13, C23, C33, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, C44, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, C55, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, C66]])
+
+    properties = ElasticTensor(
+        mineral_name='zoisite',
+        crystal_system='Orthorhombic',
+        temperature=25,
+        pressure=1e-4,
+        density=3.343,
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.2138/am.2007.2329')
+
+    return properties
