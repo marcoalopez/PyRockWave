@@ -29,7 +29,7 @@ def alpha_quartz(P=1e-5):
     properties : ElasticTensor dataclass
         An object containing the following properties:
         - name: Name of the crystal ('alpha_quartz').
-        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
@@ -120,7 +120,7 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
     properties : ElasticTensor dataclass
         An object containing the following properties:
         - name: Name of the crystal ('alpha_quartz').
-        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
@@ -220,7 +220,7 @@ def forsterite_Mao(P=1e-5, T=627):
     properties : ElasticTensor dataclass
         An object containing the following properties:
         - name: Name of the crystal ('alpha_quartz').
-        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
@@ -268,7 +268,7 @@ def omphacite(P=1e-5):
     properties : ElasticTensor dataclass
         An object containing the following properties:
         - name: Name of the crystal ('alpha_quartz').
-        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
@@ -290,7 +290,7 @@ def omphacite(P=1e-5):
     """
 
     if P > 18:
-        raise ValueError('The pressure is out of the safe range of the model (>18 GPa)')
+        raise ValueError('The pressure is out of the safe range of the model: 0 to 18 GPa')
 
     # Polynomial coefficients of elastic independent terms
     coeffs = {
@@ -369,7 +369,7 @@ def diopside(P=1e-5):
     properties : ElasticTensor dataclass
         An object containing the following properties:
         - name: Name of the crystal ('alpha_quartz').
-        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
@@ -389,7 +389,7 @@ def diopside(P=1e-5):
     """
 
     if P > 14:
-        raise ValueError('The pressure is out of the safe range of the model (>14 GPa)')
+        raise ValueError('The pressure is out of the safe range of the model: 0 to 14 GPa')
 
     # Polynomial coefficients of elastic independent terms
     coeffs = {
@@ -467,7 +467,7 @@ def enstatite(P=1e-5):
     properties : ElasticTensor dataclass
         An object containing the following properties:
         - name: Name of the crystal ('alpha_quartz').
-        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
@@ -487,7 +487,7 @@ def enstatite(P=1e-5):
     """
 
     if P > 10.5:
-        raise ValueError('The pressure is out of the safe range of the model (>10.5 GPa)')
+        raise ValueError('The pressure is out of the safe range of the model: 0 to 10.5 GPa')
 
     # Polynomial coefficients of elastic independent terms
     coeffs = {
@@ -559,7 +559,7 @@ def pyrope(P=1e-5, T=476.85):
     properties : ElasticTensor dataclass
         An object containing the following properties:
         - name: Name of the crystal ('alpha_quartz').
-        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
@@ -651,7 +651,7 @@ def zoisite():
     properties : ElasticTensor dataclass
         An object containing the following properties:
         - name: Name of the crystal ('alpha_quartz').
-        - crystal_system: Crystal system of alpha quartz ('Trigonal').
+        - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
@@ -698,3 +698,103 @@ def zoisite():
         reference='https://doi.org/10.2138/am.2007.2329')
 
     return properties
+
+
+def chlorite(P=1e-5):
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) of chlorite as a function of pressure based on a
+    polynomial fit from first principles simulations of
+    Mookherjee and Mainprice (2014) doi:10.1002/2014GL059334
+
+
+    Caveats
+    -------
+        - The function does not account for temperature effects
+        and assumes room temperature.
+
+    Parameters
+    ----------
+    P : numeric or array-like, optional
+        pressure in GPa, by default 1e-5
+
+    Returns
+    -------
+    properties : ElasticTensor dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system.
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - reference: Reference to the source publication.
+        - Other average (seismic) properties
+
+    Examples
+    --------
+    >>> Chl_props = chlorite(1.0)
+
+    References
+    ----------
+    [1] Mookherjee, M., Mainprice, D., 2014. Unusually large shear wave
+    anisotropy for chlorite in subduction zone settings. Geophys. Res.
+    Lett. 41, 1506–1513. https://doi.org/10.1002/2014GL059334
+    """
+
+    if P > 14:
+        raise ValueError('The pressure is out of the safe range of the model: 0 to 14 GPa')
+
+    # Polynomial coefficients of elastic independent terms
+    coeffs = {
+        'C11': [0.1674, 0.4206, 197.8],
+        'C22': [],
+        'C33': [],
+        'C44': [],
+        'C55': [],
+        'C66': [],
+        'C12': [],
+        'C13': [],
+        'C23': [],
+        'C15': [],
+        'C25': [],
+        'C35': [],
+        'C46': [],
+    }
+
+    # elastic independent terms
+    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9829
+    C22 = np.polyval(coeffs['C22'], P)  # R-squared=
+    C33 = np.polyval(coeffs['C33'], P)  # R-squared=
+    C44 = np.polyval(coeffs['C44'], P)  # R-squared=
+    C55 = np.polyval(coeffs['C55'], P)  # R-squared=
+    C66 = np.polyval(coeffs['C66'], P)  # R-squared=
+    C12 = np.polyval(coeffs['C12'], P)  # R-squared=
+    C13 = np.polyval(coeffs['C13'], P)  # R-squared=
+    C23 = np.polyval(coeffs['C23'], P)  # R-squared=
+    C15 = np.polyval(coeffs['C15'], P)  # R-squared=
+    C25 = np.polyval(coeffs['C25'], P)  # R-squared=
+    C35 = np.polyval(coeffs['C35'], P)  # R-squared=
+    C46 = np.polyval(coeffs['C46'], P)  # R-squared=
+
+    Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
+                    [C12, C22, C23, 0.0, C25, 0.0],
+                    [C13, C23, C33, 0.0, C35, 0.0],
+                    [0.0, 0.0, 0.0, C44, 0.0, C46],
+                    [C15, C25, C35, 0.0, C55, 0.0],
+                    [0.0, 0.0, 0.0, C46, 0.0, C66]])
+
+    # estimate density, R-squared=0.9995
+    density = -0.0004 * P**2 + 0.0341 * P + 2.534
+
+    properties = ElasticTensor(
+        mineral_name='chlorite',
+        crystal_system='Monoclinic',
+        temperature=25,
+        pressure=P,
+        density=np.around(density, decimals=3),
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.1002/2014GL059334')
+
+    return properties
+
