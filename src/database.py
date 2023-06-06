@@ -84,7 +84,7 @@ def alpha_quartz(P=1e-5):
     density = -0.00017 * P**2 + 0.064 * P + 2.648
 
     properties = ElasticTensor(
-        mineral_name='alpha_quartz',
+        mineral_name='Alpha_quartz',
         crystal_system='Trigonal',
         temperature=25,
         pressure=P,
@@ -185,7 +185,7 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
     density = 0.0253 * P + 3.239
 
     properties = ElasticTensor(
-        mineral_name='forsterite',
+        mineral_name='Forsterite',
         crystal_system='Orthorhombic',
         temperature=T,
         pressure=P,
@@ -335,7 +335,7 @@ def omphacite(P=1e-5):
     density = -0.0001 * P**2 + 0.0266 * P + 3.34
 
     properties = ElasticTensor(
-        mineral_name='omphacite',
+        mineral_name='Omphacite',
         crystal_system='Monoclinic',
         temperature=25,
         pressure=P,
@@ -434,7 +434,7 @@ def diopside(P=1e-5):
     density = -0.0003 * P**2 + 0.0279 * P + 3.264
 
     properties = ElasticTensor(
-        mineral_name='diopside',
+        mineral_name='Diopside',
         crystal_system='Monoclinic',
         temperature=25,
         pressure=P,
@@ -524,7 +524,7 @@ def enstatite(P=1e-5):
     density = -0.0005 * P**2 + 0.028 * P + 3.288
 
     properties = ElasticTensor(
-        mineral_name='enstatite',
+        mineral_name='Enstatite',
         crystal_system='Orthorhombic',
         temperature=25,
         pressure=P,
@@ -624,7 +624,7 @@ def pyrope(P=1e-5, T=476.85):
     # density = -0.0005 * P**2 + 0.028 * P + 3.288
 
     properties = ElasticTensor(
-        mineral_name='pyrope',
+        mineral_name='Pyrope',
         crystal_system='Cubic',
         temperature=T,
         pressure=P,
@@ -689,7 +689,7 @@ def zoisite():
                     [0.0, 0.0, 0.0, 0.0, 0.0, C66]])
 
     properties = ElasticTensor(
-        mineral_name='zoisite',
+        mineral_name='Zoisite',
         crystal_system='Orthorhombic',
         temperature=25,
         pressure=1e-4,
@@ -712,6 +712,8 @@ def chlorite(P=1e-5):
     -------
         - The function does not account for temperature effects
         and assumes room temperature.
+        - The C11, C22 and c44 estimated elastic constant values
+        at 1.8 and 4.2 GPa do not follow the trend as the others.
 
     Parameters
     ----------
@@ -745,37 +747,39 @@ def chlorite(P=1e-5):
     if P > 14:
         raise ValueError('The pressure is out of the safe range of the model: 0 to 14 GPa')
 
+    np.set_printoptions(suppress=True)
+
     # Polynomial coefficients of elastic independent terms
     coeffs = {
         'C11': [0.1674, 0.4206, 197.8],
-        'C22': [],
-        'C33': [],
-        'C44': [],
-        'C55': [],
-        'C66': [],
-        'C12': [],
-        'C13': [],
-        'C23': [],
-        'C15': [],
-        'C25': [],
-        'C35': [],
-        'C46': [],
+        'C22': [0.1771, -0.5058, 202.3],
+        'C33': [-0.1655, 15.499, 135.1],
+        'C44': [0.011, -0.28, 0.4944, 24.5],
+        'C55': [0.0154, -0.2914, 0.146, 24.4],
+        'C66': [-0.0241, 0.8613, 70.3],
+        'C12': [-0.0089, 0.371, -2.2729, 60.7],
+        'C13': [-0.0346, 0.765, 0.0758, 21.1],
+        'C23': [-0.0564, 1.294, -3.8639, 34.1],
+        'C15': [0.0039, -0.0312, 0.1809, 3.3],
+        'C25': [0.0024, -0.0082, -0.0769, 0.2],
+        'C35': [0.0027, -0.0047, 0.2115, 0.4],
+        'C46': [0.004, -0.0626, 0.225, 0.1],
     }
 
     # elastic independent terms
     C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9829
-    C22 = np.polyval(coeffs['C22'], P)  # R-squared=
-    C33 = np.polyval(coeffs['C33'], P)  # R-squared=
-    C44 = np.polyval(coeffs['C44'], P)  # R-squared=
-    C55 = np.polyval(coeffs['C55'], P)  # R-squared=
-    C66 = np.polyval(coeffs['C66'], P)  # R-squared=
-    C12 = np.polyval(coeffs['C12'], P)  # R-squared=
-    C13 = np.polyval(coeffs['C13'], P)  # R-squared=
-    C23 = np.polyval(coeffs['C23'], P)  # R-squared=
-    C15 = np.polyval(coeffs['C15'], P)  # R-squared=
-    C25 = np.polyval(coeffs['C25'], P)  # R-squared=
-    C35 = np.polyval(coeffs['C35'], P)  # R-squared=
-    C46 = np.polyval(coeffs['C46'], P)  # R-squared=
+    C22 = np.polyval(coeffs['C22'], P)  # R-squared=0.9890
+    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9945
+    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9973
+    C55 = np.polyval(coeffs['C55'], P)  # R-squared=0.9998
+    C66 = np.polyval(coeffs['C66'], P)  # R-squared=0.9937
+    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9985
+    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9959
+    C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.9856
+    C15 = np.polyval(coeffs['C15'], P)  # R-squared=0.9991
+    C25 = np.polyval(coeffs['C25'], P)  # R-squared=0.9986
+    C35 = np.polyval(coeffs['C35'], P)  # R-squared=0.9996
+    C46 = np.polyval(coeffs['C46'], P)  # R-squared=0.9829
 
     Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
                     [C12, C22, C23, 0.0, C25, 0.0],
@@ -788,7 +792,7 @@ def chlorite(P=1e-5):
     density = -0.0004 * P**2 + 0.0341 * P + 2.534
 
     properties = ElasticTensor(
-        mineral_name='chlorite',
+        mineral_name='Chlorite',
         crystal_system='Monoclinic',
         temperature=25,
         pressure=P,
@@ -797,4 +801,3 @@ def chlorite(P=1e-5):
         reference='https://doi.org/10.1002/2014GL059334')
 
     return properties
-
