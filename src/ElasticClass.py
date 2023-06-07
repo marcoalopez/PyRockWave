@@ -7,9 +7,9 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class ElasticTensor:
-    """A class that represents an elastic tensor and calculate, store and
-    print various derived properties."""
+class ElasticProps:
+    """A class that encapsulates and calculates various elastic
+    properties of materials."""
 
     mineral_name: str
     crystal_system: str
@@ -34,8 +34,20 @@ class ElasticTensor:
     isotropic_avg_vpvs: float = field(init=False)
 
     def __post_init__(self):
-        """_summary_
-        """
+        # Validate crystal system
+        valid_crystal_systems = ["Cubic", "cubic",
+                                 "Tetragonal", "tetragonal",
+                                 "Orthorhombic", "orthorhombic",
+                                 "Rhombohedral", "rhombohedral",
+                                 "Trigonal", "trigonal",
+                                 "Hexagonal", "hexagonal",
+                                 "Monoclinic", "monoclinic",
+                                 "Triclinic", "triclinic"]
+        if self.crystal_system not in valid_crystal_systems:
+            raise ValueError("Invalid crystal system. Please choose one of the following: "
+                             "Cubic, Tetragonal, Orthorhombic, Rhombohedral, Hexagonal, "
+                             "Trigonal, Monoclinic, Triclinic.")
+
         # check the symmetry of the elastic tensor
         if not np.allclose(self.Cij, self.Cij.T):
             raise Exception("the elastic tensor is not symmetric!")
@@ -87,20 +99,6 @@ class ElasticTensor:
 
         # calculate the isotropic average Vp/Vs
         self.isotropic_avg_vpvs = np.around(Vp / Vs, decimals=4)
-
-        # Validate crystal system
-        valid_crystal_systems = ["Cubic", "cubic",
-                                 "Tetragonal", "tetragonal",
-                                 "Orthorhombic", "orthorhombic",
-                                 "Rhombohedral", "rhombohedral",
-                                 "Trigonal", "trigonal",
-                                 "Hexagonal", "hexagonal",
-                                 "Monoclinic", "monoclinic",
-                                 "Triclinic", "triclinic"]
-        if self.crystal_system not in valid_crystal_systems:
-            raise ValueError("Invalid crystal system. Please choose one of the following: "
-                             "Cubic, Tetragonal, Orthorhombic, Rhombohedral, Hexagonal, "
-                             "Trigonal, Monoclinic, Triclinic.")
 
     def __repr__(self):
         output = str(type(self)) + "\n"

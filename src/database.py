@@ -2,15 +2,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/
 import numpy as np
-from ElasticClass import ElasticTensor
+from ElasticClass import ElasticProps
 
 
 def alpha_quartz(P=1e-5):
     """
     Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) of forsterite as a function of pressure based on a
-    polynomial fit from experimental data of Wang et al. (2006)
-    [1]
+    (g/cm3) and other derived elastic properties of alpha quartz
+    as a function of pressure based on a polynomial fit from
+    experimental data of Wang et al. (2006) [1]
 
     Caveats
     -------
@@ -26,7 +26,7 @@ def alpha_quartz(P=1e-5):
 
     Returns
     -------
-    properties : ElasticTensor dataclass
+    properties : ElasticProps dataclass
         An object containing the following properties:
         - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system.
@@ -83,7 +83,7 @@ def alpha_quartz(P=1e-5):
     # estimate density, R-squared=0.9999
     density = -0.00017 * P**2 + 0.064 * P + 2.648
 
-    properties = ElasticTensor(
+    properties = ElasticProps(
         mineral_name='Alpha_quartz',
         crystal_system='Trigonal',
         temperature=25,
@@ -98,9 +98,9 @@ def alpha_quartz(P=1e-5):
 def forsterite_ZB2016(P=1e-5, type='HT'):
     """
     Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) of forsterite as a function of pressure based on a
-    polynomial fit from experimental data of Zhang and Bass (2016)
-    http://dx.doi.org/10.1002/2016GL069949
+    (g/cm3) and other derived elastic properties of forsterite
+    as a function of pressure based on a polynomial fit from
+    experimental data of Zhang and Bass (2016) [1]
 
     Caveats
     -------
@@ -117,11 +117,11 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
 
     Returns
     -------
-    properties : ElasticTensor dataclass
+    properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal ('alpha_quartz').
+        - name: Name of the crystal.
         - crystal_system: Crystal system.
-        - temperature: Temperature in degrees Celsius (assumed 25).
+        - temperature: Temperature in degrees Celsius (assumed 1027).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
@@ -184,7 +184,7 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
     # estimate density, R-squared=0.8772
     density = 0.0253 * P + 3.239
 
-    properties = ElasticTensor(
+    properties = ElasticProps(
         mineral_name='Forsterite',
         crystal_system='Orthorhombic',
         temperature=T,
@@ -199,9 +199,9 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
 def forsterite_Mao(P=1e-5, T=627):
     """
     Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) of forsterite as a function of pressure based on a
-    polynomial fit from experimental data of Mao et al. (2015)
-    http://dx.doi.org/10.1016/j.epsl.2015.06.045
+    (g/cm3) and other derived elastic properties of forsterite
+    as a function of pressure based on a polynomial fit from
+    experimental data of Mao et al. (2015) [1]
 
     Caveats
     -------
@@ -209,7 +209,7 @@ def forsterite_Mao(P=1e-5, T=627):
 
     Parameters
     ----------
-    P : numeric or array-like, optional
+    P : numeric, optional
         pressure in GPa, by default 1e-5
 
     T : numeric, optional
@@ -217,9 +217,9 @@ def forsterite_Mao(P=1e-5, T=627):
 
     Returns
     -------
-    properties : ElasticTensor dataclass
+    properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal ('alpha_quartz').
+        - name: Name of the crystal.
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
@@ -249,9 +249,9 @@ def forsterite_Mao(P=1e-5, T=627):
 def omphacite(P=1e-5):
     """
     Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) of omphacite as a function of pressure based on a
-    polynomial fit from experimental data of Hao et al. (2019)
-    http://dx.doi.org/10.1029/2018JB016964
+    (g/cm3) and other derived elastic properties of omphacite
+    as a function of pressure based on a polynomial fit from
+    experimental data of Hao et al. (2019) [1]
 
     Caveats
     -------
@@ -260,14 +260,14 @@ def omphacite(P=1e-5):
 
     Parameters
     ----------
-    P : numeric or array-like, optional
+    P : numeric, optional
         pressure in GPa, by default 1e-5
 
     Returns
     -------
-    properties : ElasticTensor dataclass
+    properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal ('alpha_quartz').
+        - name: Name of the crystal.
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
@@ -289,7 +289,7 @@ def omphacite(P=1e-5):
     2368–2377. https://doi.org/10.1029/2018JB016964
     """
 
-    if P > 18:
+    if (P > 18) | (P <= 0):
         raise ValueError('The pressure is out of the safe range of the model: 0 to 18 GPa')
 
     # Polynomial coefficients of elastic independent terms
@@ -334,7 +334,7 @@ def omphacite(P=1e-5):
     # estimate density, R-squared=1
     density = -0.0001 * P**2 + 0.0266 * P + 3.34
 
-    properties = ElasticTensor(
+    properties = ElasticProps(
         mineral_name='Omphacite',
         crystal_system='Monoclinic',
         temperature=25,
@@ -349,9 +349,9 @@ def omphacite(P=1e-5):
 def diopside(P=1e-5):
     """
     Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) of diopside as a function of pressure based on a
-    polynomial fit from experimental data of Sang and Bass (2014)
-    http://dx.doi.org/10.1016/j.pepi.2013.12.011
+    (g/cm3) and other derived elastic properties of diopside as
+    a function of pressure based on a polynomial fit from
+    experimental data of Sang and Bass (2014) [1]
 
     Caveats
     -------
@@ -361,14 +361,14 @@ def diopside(P=1e-5):
 
     Parameters
     ----------
-    P : numeric or array-like, optional
+    P : numeric, optional
         pressure in GPa, by default 1e-5
 
     Returns
     -------
-    properties : ElasticTensor dataclass
+    properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal ('alpha_quartz').
+        - name: Name of the crystal.
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
@@ -388,7 +388,7 @@ def diopside(P=1e-5):
     Interiors 228, 75–79. https://doi.org/10.1016/j.pepi.2013.12.011
     """
 
-    if P > 14:
+    if (P > 14) | (P <= 0):
         raise ValueError('The pressure is out of the safe range of the model: 0 to 14 GPa')
 
     # Polynomial coefficients of elastic independent terms
@@ -433,7 +433,7 @@ def diopside(P=1e-5):
     # estimate density, R-squared=0.9999
     density = -0.0003 * P**2 + 0.0279 * P + 3.264
 
-    properties = ElasticTensor(
+    properties = ElasticProps(
         mineral_name='Diopside',
         crystal_system='Monoclinic',
         temperature=25,
@@ -448,9 +448,9 @@ def diopside(P=1e-5):
 def enstatite(P=1e-5):
     """
     Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) of orthoenstatite as a function of pressure based
-    on a polynomial fit from experimental data of Zhang and
-    Bass (2016) http://dx.doi.org/10.1002/2016GL069963
+    (g/cm3) and other derived elastic properties of orthoenstatite
+    as a function of pressure based on a polynomial fit from
+    experimental data of Zhang and Bass (2016) [1]
 
     Caveats
     -------
@@ -459,14 +459,14 @@ def enstatite(P=1e-5):
 
     Parameters
     ----------
-    P : numeric or array-like, optional
+    P : numeric, optional
         pressure in GPa, by default 1e-5
 
     Returns
     -------
-    properties : ElasticTensor dataclass
+    properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal ('alpha_quartz').
+        - name: Name of the crystal.
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
@@ -486,7 +486,7 @@ def enstatite(P=1e-5):
     Geophys. Res. Lett. 43, 8473–8481. https://doi.org/10.1002/2016GL069963
     """
 
-    if P > 10.5:
+    if (P > 10.5) | (P <= 0):
         raise ValueError('The pressure is out of the safe range of the model: 0 to 10.5 GPa')
 
     # Polynomial coefficients of elastic independent terms
@@ -523,7 +523,7 @@ def enstatite(P=1e-5):
     # estimate density, R-squared=1
     density = -0.0005 * P**2 + 0.028 * P + 3.288
 
-    properties = ElasticTensor(
+    properties = ElasticProps(
         mineral_name='Enstatite',
         crystal_system='Orthorhombic',
         temperature=25,
@@ -538,9 +538,9 @@ def enstatite(P=1e-5):
 def pyrope(P=1e-5, T=476.85):
     """
     Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) of pyrope garnet as a function of pressure based
-    on a polynomial fit from experimental data of Lu et al.
-    (2013) https://doi.org/10.1016/j.epsl.2012.11.041
+    (g/cm3) and other derived elastic properties of pyrope garnet
+    as a function of pressure based on a polynomial fit from
+    experimental data of Lu et al. (2013) [1]
 
     Caveats
     -------
@@ -556,9 +556,9 @@ def pyrope(P=1e-5, T=476.85):
 
     Returns
     -------
-    properties : ElasticTensor dataclass
+    properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal ('alpha_quartz').
+        - name: Name of the crystal.
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
@@ -620,10 +620,10 @@ def pyrope(P=1e-5, T=476.85):
                     [0.0, 0.0, 0.0, 0.0, C55, 0.0],
                     [0.0, 0.0, 0.0, 0.0, 0.0, C66]])
 
-    # estimate density, R-squared=1 TODO
-    # density = -0.0005 * P**2 + 0.028 * P + 3.288
+    # estimate density TODO
+    density = 3.740
 
-    properties = ElasticTensor(
+    properties = ElasticProps(
         mineral_name='Pyrope',
         crystal_system='Cubic',
         temperature=T,
@@ -638,8 +638,8 @@ def pyrope(P=1e-5, T=476.85):
 def zoisite():
     """
     Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) of zoisite based on experimental data of Mao et al.
-    (2005) https://doi.org/10.2138/am.2007.2329
+    (g/cm3) and other derived elastic properties of zoisite
+    based on experimental data of Mao et al. (2005) [1]
 
     Caveats
     -------
@@ -648,9 +648,9 @@ def zoisite():
 
     Returns
     -------
-    properties : ElasticTensor dataclass
+    properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal ('alpha_quartz').
+        - name: Name of the crystal.
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
@@ -688,7 +688,7 @@ def zoisite():
                     [0.0, 0.0, 0.0, 0.0, C55, 0.0],
                     [0.0, 0.0, 0.0, 0.0, 0.0, C66]])
 
-    properties = ElasticTensor(
+    properties = ElasticProps(
         mineral_name='Zoisite',
         crystal_system='Orthorhombic',
         temperature=25,
@@ -703,9 +703,9 @@ def zoisite():
 def chlorite(P=1e-5):
     """
     Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) of chlorite as a function of pressure based on a
-    polynomial fit from first principles simulations of
-    Mookherjee and Mainprice (2014) doi:10.1002/2014GL059334
+    (g/cm3) and other derived elastic properties of chlorite as
+    a function of pressure based on a polynomial fit from first
+    principles simulations of Mookherjee and Mainprice (2014) [1]
 
 
     Caveats
@@ -717,14 +717,14 @@ def chlorite(P=1e-5):
 
     Parameters
     ----------
-    P : numeric or array-like, optional
+    P : numeric, optional
         pressure in GPa, by default 1e-5
 
     Returns
     -------
-    properties : ElasticTensor dataclass
+    properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal ('alpha_quartz').
+        - name: Name of the crystal.
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
@@ -735,7 +735,7 @@ def chlorite(P=1e-5):
 
     Examples
     --------
-    >>> Chl_props = chlorite(1.0)
+    >>> Chl = chlorite(1.0)
 
     References
     ----------
@@ -744,7 +744,7 @@ def chlorite(P=1e-5):
     Lett. 41, 1506–1513. https://doi.org/10.1002/2014GL059334
     """
 
-    if P > 14:
+    if (P > 14) | (P <= 0):
         raise ValueError('The pressure is out of the safe range of the model: 0 to 14 GPa')
 
     np.set_printoptions(suppress=True)
@@ -791,7 +791,7 @@ def chlorite(P=1e-5):
     # estimate density, R-squared=0.9995
     density = -0.0004 * P**2 + 0.0341 * P + 2.534
 
-    properties = ElasticTensor(
+    properties = ElasticProps(
         mineral_name='Chlorite',
         crystal_system='Monoclinic',
         temperature=25,
