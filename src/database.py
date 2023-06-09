@@ -243,6 +243,9 @@ def forsterite_Mao(P=1e-5, T=627):
     if (P > 13.3) | (P <= 0):
         raise ValueError('The pressure is out of the safe range of the model: 0 to 13.3 GPa')
 
+    if (T > 627) | (T < 26):
+        raise ValueError('The temperature is out of the safe range of the model: 26 to 627°C')
+
     pass
 
 
@@ -799,5 +802,119 @@ def chlorite(P=1e-5):
         density=np.around(density, decimals=3),
         Cij=np.around(Cij, decimals=2),
         reference='https://doi.org/10.1002/2014GL059334')
+
+    return properties
+
+
+def amphiboles(type='Hornblende'):
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) and other derived elastic properties of different
+    types of Ca-Na amphibole based on experimental data of
+    Brown and Abramson (2016) [1]
+
+    Caveats
+    -------
+        - The function does not account for temperature or
+        pressure effects and assumes room conditions
+
+    Parameters
+    ----------
+    type : str
+        the type of Ca-Na amphibole
+
+    Returns
+    -------
+    properties : ElasticProps dataclass
+        An object containing the following properties:
+        - name: Name of the crystal.
+        - crystal_system: Crystal system.
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - reference: Reference to the source publication.
+        - Other average (seismic) properties
+
+    Examples
+    --------
+    >>> Amph = amphiboles(type='Pargasite')
+
+    References
+    ----------
+    [1] Brown, J.M., Abramson, E.H., 2016. Elasticity of calcium and
+    calcium-sodium amphiboles. Physics of the Earth and Planetary Interiors
+    261, 161–171. https://doi.org/10.1016/j.pepi.2016.10.010
+    """
+
+    # elastic independent terms (in GPa) and densities in g/cm3
+    if type == 'Hornblende':  # Amph 4 in Table 1
+        C11 = 122.8
+        C22 = 189.3
+        C33 = 222.9
+        C44 = 71.5
+        C55 = 46.8
+        C66 = 46.2
+        C12 = 51.8
+        C13 = 45.9
+        C23 = 62.3
+        C15 = -0.7
+        C25 = -7.0
+        C35 = -30.0
+        C46 = 5.4
+        density = 3.293
+
+    elif type == 'Pargasite':  # Amph 8 in Table 1
+        C11 = 141.6
+        C22 = 197.8
+        C33 = 225.4
+        C44 = 75.8
+        C55 = 49.9
+        C66 = 51.7
+        C12 = 57.1
+        C13 = 49.6
+        C23 = 60.9
+        C15 = -0.2
+        C25 = -10.9
+        C35 = -31.4
+        C46 = 3.3
+        density = 3.163
+
+    elif type == 'Tremolite':  # Amph 5 in Table 1
+        C11 = 108.6
+        C22 = 191.6
+        C33 = 230.8
+        C44 = 77.0
+        C55 = 50.0
+        C66 = 48.6
+        C12 = 48.4
+        C13 = 37.7
+        C23 = 59.2
+        C15 = 1.0
+        C25 = -5.6
+        C35 = -29.6
+        C46 = 7.9
+        density = 3.038
+
+    # TODO
+
+    else:
+        raise ValueError('Type must be...')
+
+    Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
+                    [C12, C22, C23, 0.0, C25, 0.0],
+                    [C13, C23, C33, 0.0, C35, 0.0],
+                    [0.0, 0.0, 0.0, C44, 0.0, C46],
+                    [C15, C25, C35, 0.0, C55, 0.0],
+                    [0.0, 0.0, 0.0, C46, 0.0, C66]])
+
+    properties = ElasticProps(
+        mineral_name=type,
+        crystal_system='Monoclinic',
+        temperature=25,
+        pressure=1e-4,
+        density=density,
+        Cij=Cij,
+        reference='https://doi.org/10.1016/j.pepi.2016.10.010')
 
     return properties
