@@ -838,7 +838,7 @@ def amphiboles(type='Hornblende'):
 
     Examples
     --------
-    >>> Amph = amphiboles(type='Pargasite')
+    >>> amph = amphiboles(type='Pargasite')
 
     References
     ----------
@@ -892,5 +892,149 @@ def amphiboles(type='Hornblende'):
         density=density,
         Cij=Cij,
         reference='https://doi.org/10.1016/j.pepi.2016.10.010')
+
+    return properties
+
+
+def plagioclase(type='An0'):
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) and other derived elastic properties of different
+    types of plagiclase feldspar based on experimental data of
+    Brown et al. (2016) [1]
+
+    Caveats
+    -------
+        - The function does not account for temperature or
+        pressure effects and assumes room conditions
+
+    Parameters
+    ----------
+    type : str
+        the type of plagioclase, either An0, An25, An37, An48,
+        An60, An67, An78 or An96. Default An0 or albite
+
+    Returns
+    -------
+    properties : ElasticProps dataclass
+        An object containing the following properties:
+        - name: Name of the crystal.
+        - crystal_system: Crystal system.
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - reference: Reference to the source publication.
+        - Other average (seismic) properties
+
+    Examples
+    --------
+    >>> plag = plagioclase(type='An37')
+
+    References
+    ----------
+    [1] Brown, J.M., Angel, R.J., Ross, N.L., 2016. Elasticity of plagioclase
+    feldspars. JGR Solid Earth 121, 663–675. https://doi.org/10.1002/2015JB012736
+    """
+
+    # elastic independent terms (in GPa) and densities in g/cm3
+    if type == 'An0':
+        C11, C22, C33 = 68.3, 184.3, 180.0
+        C44, C55, C66 = 25.0, 26.9, 33.6
+        C12, C13, C23 = 32.2, 30.4, 5.0  # off-diagonal pure shear
+        C45, C46, C56 = -2.4, -7.2, 0.6  # off-diagonal simple shear
+        C14, C15, C16 = 4.9, -2.3, -0.9  # off-diagonal pure-simple shears
+        C24, C25, C26 = -4.4, -7.8, -6.4
+        C34, C35, C36 = -9.2, 7.5, -9.4
+        density = 2.623
+
+    elif type == 'An25':
+        C11, C22, C33 = 87.1, 174.9, 166.1
+        C44, C55, C66 = 22.9, 29.0, 35.0
+        C12, C13, C23 = 43.9, 35.4, 18.0
+        C45, C46, C56 = -1.3, -5.2, 0.8
+        C14, C15, C16 = 6.1, -0.4, -0.6
+        C24, C25, C26 = -5.9, -2.9, -6.5
+        C34, C35, C36 = -2.9, 4.6, -10.7
+        density = 2.653
+
+    elif type == 'An37':
+        C11, C22, C33 = 96.2, 189.4, 171.9
+        C44, C55, C66 = 23.6, 33.1, 35.5
+        C12, C13, C23 = 46.1, 38.4, 15.4
+        C45, C46, C56 = -1.1, -4.8, 1.4
+        C14, C15, C16 = 5.9, -0.2, -0.4
+        C24, C25, C26 = -7.0, -5.1, -6.8
+        C34, C35, C36 = 2.2, 7.2, -9.8
+        density = 2.666
+
+    elif type == 'An48':
+        C11, C22, C33 = 104.6, 201.4, 172.8
+        C44, C55, C66 = 22.9, 33.0, 35.6
+        C12, C13, C23 = 51.5, 43.9, 14.5
+        C45, C46, C56 = -1.0, -3.8, 2.1
+        C14, C15, C16 = 6.5, 0.1, -0.8
+        C24, C25, C26 = -2.4, -4.8, -9.9
+        C34, C35, C36 = -0.4, 6.9, -5.7
+        density = 2.683
+
+    elif type == 'An60':  # TODO
+        C11, C22, C33 = 68.3, 184.3, 180.0
+        C44, C55, C66 = 25.0, 26.9, 33.6
+        C12, C13, C23 = 32.2, 30.4, 5.0
+        C45, C46, C56 = -2.4, -7.2, 0.6
+        C14, C15, C16 = 4.9, -2.3, -0.9
+        C24, C25, C26 = -4.4, -7.8, -6.4
+        C34, C35, C36 = -9.2, 7.5, -9.4
+        density = 2.702
+
+    elif type == 'An67':  # TODO
+        C11, C22, C33 = 68.3, 184.3, 180.0
+        C44, C55, C66 = 25.0, 26.9, 33.6
+        C12, C13, C23 = 32.2, 30.4, 5.0
+        C45, C46, C56 = -2.4, -7.2, 0.6
+        C14, C15, C16 = 4.9, -2.3, -0.9
+        C24, C25, C26 = -4.4, -7.8, -6.4
+        C34, C35, C36 = -9.2, 7.5, -9.4
+        density = 2.721
+
+    elif type == 'An78':  # TODO
+        C11, C22, C33 = 68.3, 184.3, 180.0
+        C44, C55, C66 = 25.0, 26.9, 33.6
+        C12, C13, C23 = 32.2, 30.4, 5.0
+        C45, C46, C56 = -2.4, -7.2, 0.6
+        C14, C15, C16 = 4.9, -2.3, -0.9
+        C24, C25, C26 = -4.4, -7.8, -6.4
+        C34, C35, C36 = -9.2, 7.5, -9.4
+        density = 2.725
+
+    elif type == 'An96':  # TODO
+        C11, C22, C33 = 68.3, 184.3, 180.0
+        C44, C55, C66 = 25.0, 26.9, 33.6
+        C12, C13, C23 = 32.2, 30.4, 5.0
+        C45, C46, C56 = -2.4, -7.2, 0.6
+        C14, C15, C16 = 4.9, -2.3, -0.9
+        C24, C25, C26 = -4.4, -7.8, -6.4
+        C34, C35, C36 = -9.2, 7.5, -9.4
+        density = 2.757
+
+    else:
+        raise ValueError("Type must be: 'An0', 'An25', 'An37', 'An48', 'An60', 'An67', 'An78', or 'An96'")
+
+    Cij = np.array([[C11, C12, C13, C14, C15, C16],
+                    [C12, C22, C23, C24, C25, C26],
+                    [C13, C23, C33, C34, C35, C36],
+                    [C14, C24, C34, C44, C45, C46],
+                    [C15, C25, C35, C45, C55, C56],
+                    [C16, C26, C36, C46, C56, C66]])
+
+    properties = ElasticProps(
+        mineral_name='plagioclase_' + type,
+        crystal_system='Triclinic',
+        temperature=25,
+        pressure=1e-4,
+        density=density,
+        Cij=Cij,
+        reference='https://doi.org/10.1002/2015JB012736')
 
     return properties
