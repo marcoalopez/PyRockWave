@@ -864,6 +864,9 @@ def amphiboles(type='Hornblende'):
         C46 = 3.3
         density = 3.163
 
+    elif type == 'Pargasite#2':  # Amph 9 in Table 1
+        pass
+
     elif type == 'Tremolite':  # Amph 5 in Table 1
         C11, C22, C33 = 108.6, 191.6, 230.8
         C44, C55, C66 = 77.0, 50.0, 48.6
@@ -872,10 +875,26 @@ def amphiboles(type='Hornblende'):
         C46 = 7.9
         density = 3.038
 
-    # TODO
+    elif type == 'Richterite':  # Amph 1 in Table 1
+        pass
+
+    elif type == 'Kataphorite':  # Amph 2 in Table 1
+        pass
+
+    elif type == 'Tschermakite':  # Amph 3 in Table 1
+        pass
+
+    elif type == 'Edenite':  # Amph 6 in Table 1
+        pass
+
+    elif type == 'Edenite#2':  # Amph 7 in Table 1
+        pass
 
     else:
-        raise ValueError('Type must be...')
+        raise ValueError("Type must be: 'Hornblende', 'Pargasite'," \
+                         "'Pargasite#2','Tremolite', 'Richterite'," \
+                         "'Kataphorite', 'Tschermakite', 'Edenite'," \
+                         "or 'Edenite#2'")
 
     Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
                     [C12, C22, C23, 0.0, C25, 0.0],
@@ -938,17 +957,17 @@ def plagioclase(type='An0'):
     """
 
     # elastic independent terms (in GPa) and densities in g/cm3
-    if type == 'An0':
-        C11, C22, C33 = 68.3, 184.3, 180.0
-        C44, C55, C66 = 25.0, 26.9, 33.6
-        C12, C13, C23 = 32.2, 30.4, 5.0  # off-diagonal pure shear
-        C45, C46, C56 = -2.4, -7.2, 0.6  # off-diagonal simple shear
-        C14, C15, C16 = 4.9, -2.3, -0.9  # off-diagonal pure-simple shears
-        C24, C25, C26 = -4.4, -7.8, -6.4
-        C34, C35, C36 = -9.2, 7.5, -9.4
+    if type == ('An0'):  # albite
+        C11, C22, C33 = 68.3, 184.3, 180.0  # diagonal pure shear
+        C44, C55, C66 = 25.0, 26.9, 33.6    # diagonal simple shear
+        C12, C13, C23 = 32.2, 30.4, 5.0     # off-diagonal pure shear
+        C45, C46, C56 = -2.4, -7.2, 0.6     # off-diagonal simple shear
+        C14, C15, C16 = 4.9, -2.3, -0.9     # pure-simple shear relations 
+        C24, C25, C26 = -4.4, -7.8, -6.4    # ...
+        C34, C35, C36 = -9.2, 7.5, -9.4     # ...
         density = 2.623
 
-    elif type == 'An25':
+    elif type == 'An25':  # oligoclase
         C11, C22, C33 = 87.1, 174.9, 166.1
         C44, C55, C66 = 22.9, 29.0, 35.0
         C12, C13, C23 = 43.9, 35.4, 18.0
@@ -958,7 +977,7 @@ def plagioclase(type='An0'):
         C34, C35, C36 = -2.9, 4.6, -10.7
         density = 2.653
 
-    elif type == 'An37':
+    elif type == 'An37':  # andesine
         C11, C22, C33 = 96.2, 189.4, 171.9
         C44, C55, C66 = 23.6, 33.1, 35.5
         C12, C13, C23 = 46.1, 38.4, 15.4
@@ -968,7 +987,7 @@ def plagioclase(type='An0'):
         C34, C35, C36 = 2.2, 7.2, -9.8
         density = 2.666
 
-    elif type == 'An48':
+    elif type == 'An48':  # andesine
         C11, C22, C33 = 104.6, 201.4, 172.8
         C44, C55, C66 = 22.9, 33.0, 35.6
         C12, C13, C23 = 51.5, 43.9, 14.5
@@ -978,7 +997,7 @@ def plagioclase(type='An0'):
         C34, C35, C36 = -0.4, 6.9, -5.7
         density = 2.683
 
-    elif type == 'An60':
+    elif type == 'An60':  # labradorite
         C11, C22, C33 = 109.3, 185.5, 164.1
         C44, C55, C66 = 22.2, 33.1, 36.8
         C12, C13, C23 = 53.1, 42.1, 21.9
@@ -988,7 +1007,7 @@ def plagioclase(type='An0'):
         C34, C35, C36 = 0.2, 2.5, 0.7
         density = 2.702
 
-    elif type == 'An67':
+    elif type == 'An67':  # labradorite
         C11, C22, C33 = 120.3, 193.5, 171.9
         C44, C55, C66 = 24.0, 35.5, 37.3
         C12, C13, C23 = 54.4, 40.8, 16.1
@@ -998,7 +1017,7 @@ def plagioclase(type='An0'):
         C34, C35, C36 = -0.9, 2.2, -0.3
         density = 2.721
 
-    elif type == 'An78':
+    elif type == 'An78':  # bytownite
         C11, C22, C33 = 120.4, 191.6, 163.7
         C44, C55, C66 = 23.3, 32.8, 35.0
         C12, C13, C23 = 56.6, 49.9, 26.3
@@ -1008,7 +1027,7 @@ def plagioclase(type='An0'):
         C34, C35, C36 = 1.7, 1.7, -8.1
         density = 2.725
 
-    elif type == 'An96':
+    elif type == 'An96':  # anorthite
         C11, C22, C33 = 132.2, 200.2, 163.9
         C44, C55, C66 = 24.6, 36.6, 36.0
         C12, C13, C23 = 64.0, 55.3, 31.9
