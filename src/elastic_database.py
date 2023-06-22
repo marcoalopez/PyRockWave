@@ -892,9 +892,9 @@ def amphiboles(type='Hornblende'):
 
     else:
         raise ValueError("Type must be: 'Hornblende', 'Pargasite'," \
-                         "'Pargasite#2','Tremolite', 'Richterite'," \
-                         "'Kataphorite', 'Tschermakite', 'Edenite'," \
-                         "or 'Edenite#2'")
+                         " 'Pargasite#2','Tremolite', 'Richterite'," \
+                         " 'Kataphorite', 'Tschermakite', 'Edenite'," \
+                         " or 'Edenite#2'")
 
     Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
                     [C12, C22, C23, 0.0, C25, 0.0],

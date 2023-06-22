@@ -112,7 +112,7 @@ class ElasticProps:
         output += "\n"
         output += f"Stiffness Tensor (Cij) in GPa:\n{self.Cij}\n"
         output += "\n"
-        output += "Calculated properties:\n"
+        output += "Calculated average properties:\n"
         output += f"Bulk Modulus Voigt Average (GPa): {self.K_voigt:.3f}\n"
         output += f"Bulk Modulus Reuss Average (GPa): {self.K_reuss:.3f}\n"
         output += f"Bulk Modulus VRH Average (GPa): {self.K_hill:.3f}\n"
