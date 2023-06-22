@@ -10,18 +10,21 @@ PyRockWave is a set of Python codes for reading single-crystal elasticity databa
 
 TODO
 
-See an example of usage here https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_database.ipynb
+See an example of usage in th elink below
+https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_database.ipynb
+
+View on GitHub: https://github.com/marcoalopez/PyRockWave
 
 ## How to contribute to this project?
 
 The GitHub website hosting the project provides several options (you will need a GitHub account, it’s free!):
 
-- Open a [discussion](https://github.com/marcoalopez/strength_envelopes/discussions): This is a place to:
+- Open a [discussion](https://github.com/marcoalopez/PyRockWave/discussions): This is a place to:
   - Ask questions you are wondering about.
   - Share ideas.
   - Engage with the developers (still just me).
-- Open and [issue](https://github.com/marcoalopez/strength_envelopes/issues): This is a place to track bugs or requests for specific features on the notebooks.
-- Create a [pull request](https://github.com/marcoalopez/strength_envelopes/pulls): You modified, corrected or added a feature to one of the notebooks and send it for one of the developers to review it and add it to the main page.
+- Open and [issue](https://github.com/marcoalopez/PyRockWave/issues): This is a place to track bugs or requests for specific features on the notebooks.
+- Create a [pull request](https://github.com/marcoalopez/PyRockWave/pulls): You modified, corrected or added a feature to one of the notebooks and send it for one of the developers to review it and add it to the main page.
 
 For a quick explanation see https://www.youtube.com/watch?v=R8OAwrcMlRw. Besides, if you want to contribute to the project, you might want to glimpse at the [code of conduct](https://github.com/marcoalopez/strength_envelopes/blob/master/CODE_OF_CONDUCT.md) (TLDR: be nice to others 😉). 
 
