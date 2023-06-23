@@ -891,9 +891,9 @@ def amphiboles(type='Hornblende'):
         pass
 
     else:
-        raise ValueError("Type must be: 'Hornblende', 'Pargasite'," \
-                         " 'Pargasite#2','Tremolite', 'Richterite'," \
-                         " 'Kataphorite', 'Tschermakite', 'Edenite'," \
+        raise ValueError("Type must be: 'Hornblende', 'Pargasite',"
+                         " 'Pargasite#2','Tremolite', 'Richterite',"
+                         " 'Kataphorite', 'Tschermakite', 'Edenite',"
                          " or 'Edenite#2'")
 
     Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
@@ -962,7 +962,7 @@ def plagioclase(type='An0'):
         C44, C55, C66 = 25.0, 26.9, 33.6    # diagonal simple shear
         C12, C13, C23 = 32.2, 30.4, 5.0     # off-diagonal pure shear
         C45, C46, C56 = -2.4, -7.2, 0.6     # off-diagonal simple shear
-        C14, C15, C16 = 4.9, -2.3, -0.9     # pure-simple shear relations 
+        C14, C15, C16 = 4.9, -2.3, -0.9     # pure-simple shear relations
         C24, C25, C26 = -4.4, -7.8, -6.4    # ...
         C34, C35, C36 = -9.2, 7.5, -9.4     # ...
         density = 2.623
@@ -1055,5 +1055,100 @@ def plagioclase(type='An0'):
         density=density,
         Cij=Cij,
         reference='https://doi.org/10.1002/2015JB012736')
+
+    return properties
+
+
+def antigorite(P=1e-5):
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) and other derived elastic properties of omphacite
+    as a function of pressure based on a polynomial fit from
+    experimental data of Satta et al. (2022) [1]
+
+    Caveats
+    -------
+        - The function does not account for temperature effects
+        and assumes room temperature.
+
+    Parameters
+    ----------
+    P : numeric, optional
+        pressure in GPa, by default 1e-5
+
+    Returns
+    -------
+    properties : ElasticProps dataclass
+        An object containing the following properties:
+        - name: Name of the crystal.
+        - crystal_system: Crystal system.
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - reference: Reference to the source publication.
+        - Other average (seismic) properties
+
+    Examples
+    --------
+    >>> Atg = antigorite(1.0)
+
+    References
+    ----------
+    [1] Satta, N., Grafulha Morales, L.F., Criniti, G., Kurnosov, A.,
+    Boffa Ballaran, T., Speziale, S., Marquardt, K., Capitani, G.C.,
+    Marquardt, H., 2022. Single-Crystal Elasticity of Antigorite at
+    High Pressures and Seismic Detection of Serpentinized Slabs.
+    Geophysical Research Letters 49, e2022GL099411.
+    https://doi.org/10.1029/2022GL099411
+
+    """
+
+    if (P > 7.7) | (P <= 0):
+        raise ValueError('The pressure is out of the safe range of the model: 0 to 7.7 GPa')
+
+    # Polynomial coefficients of elastic independent terms
+    coeffs = {
+        'C11': [-1.1522, 190.6],
+        'C33': [-0.6813, 16.628, 85.4],
+        'C66': [00.87, 67.5],
+        'C12': [0.283, -3.4231, 61.3],
+        'C13': [-0.2966, 6.2252, 20.074],
+        'C23': [3.839, 19],
+    }
+
+    # elastic independent terms
+    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.7037
+    C22 = 208.2                         # mean value is a safer model
+    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9970
+    C44 = 13.5                          # mean value is a safer model
+    C55 = 20.0                          # idem
+    C66 = np.polyval(coeffs['C66'], P)  # R-squared=0.9157
+    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9310
+    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9660
+    C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.9296
+    C15 = 2.9                           # mean value is a safer model
+    C25 = -1.2                          # idem
+    C35 = 0.4                           # idem
+    C46 = -3.2                          # idem
+
+    Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
+                    [C12, C22, C23, 0.0, C25, 0.0],
+                    [C13, C23, C33, 0.0, C35, 0.0],
+                    [0.0, 0.0, 0.0, C44, 0.0, C46],
+                    [C15, C25, C35, 0.0, C55, 0.0],
+                    [0.0, 0.0, 0.0, C46, 0.0, C66]])
+
+    # estimate density, R-squared=0.9967
+    density = 0.0356 * P + 2.615
+
+    properties = ElasticProps(
+        mineral_name='Antigorite',
+        crystal_system='Monoclinic',
+        temperature=25,
+        pressure=P,
+        density=np.around(density, decimals=3),
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.1029/2022GL099411')
 
     return properties
