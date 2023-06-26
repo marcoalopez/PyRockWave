@@ -196,7 +196,7 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
     return properties
 
 
-def forsterite_Mao(P=1e-5, T=627):
+def forsterite_Mao(P=1e-5):
     """
     Returns the corresponding elastic tensor (GPa) and density
     (g/cm3) and other derived elastic properties of forsterite
@@ -205,15 +205,12 @@ def forsterite_Mao(P=1e-5, T=627):
 
     Caveats
     -------
-        - TODO
+        - Temperature fixed at 627°C (900 K)
 
     Parameters
     ----------
     P : numeric, optional
         pressure in GPa, by default 1e-5
-
-    T : numeric, optional
-        pressure in °C, by default 627°C
 
     Returns
     -------
@@ -230,7 +227,7 @@ def forsterite_Mao(P=1e-5, T=627):
 
     Examples
     --------
-    >>> olivine_props = forsterite_Mao(1.0)
+    >>> olivine = forsterite_Mao(1.0)
 
     References
     ----------
@@ -243,10 +240,50 @@ def forsterite_Mao(P=1e-5, T=627):
     if (P > 13.3) | (P <= 0):
         raise ValueError('The pressure is out of the safe range of the model: 0 to 13.3 GPa')
 
-    if (T > 627) | (T < 26):
-        raise ValueError('The temperature is out of the safe range of the model: 26 to 627°C')
+    # Polynomial coefficients of elastic independent terms
+    coeffs = {
+        'C11': [-0.137, 8.1979, 296.02],
+        'C22': [-0.0145, 5.2479, 179.72],
+        'C33': [-0.0763, 6.1763, 210.01],
+        'C44': [-0.0514, 2.2077, 56.418],
+        'C55': [-0.0455, 1.7866, 71.041],
+        'C66': [0.0037, 1.5318, 71.01],
+        'C12': [-0.3446, 9.2276, 38.36],
+        'C13': [-0.1367, 5.2602, 58.15],
+        'C23': [0.0819, 1.6695, 75.026],
+    }
 
-    pass
+    # elastic independent terms
+    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9990
+    C22 = np.polyval(coeffs['C22'], P)  # R-squared=0.9999
+    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9947
+    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9999
+    C55 = np.polyval(coeffs['C55'], P)  # R-squared=0.9968
+    C66 = np.polyval(coeffs['C66'], P)  # R-squared=0.9996
+    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9984
+    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9994
+    C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.9924
+
+    Cij = np.array([[C11, C12, C13, 0.0, 0.0, 0.0],
+                    [C12, C22, C23, 0.0, 0.0, 0.0],
+                    [C13, C23, C33, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, C44, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, C55, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, C66]])
+
+    # estimate density, R-squared=0.9999  (4.5 - 13.3 interval)
+    density = -0.0005 * P**2 + 0.0314 * P + 3.2464
+
+    properties = ElasticProps(
+        mineral_name='Forsterite',
+        crystal_system='Orthorhombic',
+        temperature=627,
+        pressure=P,
+        density=np.around(density, decimals=3),
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.1016/j.epsl.2015.06.045')
+
+    return properties
 
 
 def omphacite(P=1e-5):
@@ -1119,15 +1156,15 @@ def antigorite(P=1e-5):
 
     # elastic independent terms
     C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.7037
-    C22 = 208.2                         # mean value is a safer model
+    C22 = 208.2                         # mean value is a better model
     C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9970
-    C44 = 13.5                          # mean value is a safer model
+    C44 = 13.5                          # mean value is a better model
     C55 = 20.0                          # idem
     C66 = np.polyval(coeffs['C66'], P)  # R-squared=0.9157
     C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9310
     C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9660
     C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.9296
-    C15 = 2.9                           # mean value is a safer model
+    C15 = 2.9                           # mean value is a better model
     C25 = -1.2                          # idem
     C35 = 0.4                           # idem
     C46 = -3.2                          # idem
