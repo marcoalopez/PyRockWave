@@ -1,6 +1,6 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-06-22  
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-07-03  
 
 ## What is PyRockWave and how to use it?
 
@@ -10,8 +10,11 @@ PyRockWave is a set of Python codes for reading single-crystal elasticity databa
 
 TODO
 
-See an example of usage in th elink below
-https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_database.ipynb
+See an example of usage in the link below
+
+- [Example of database usage using a Jupyter Notebook](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_database.ipynb)
+
+- [ElasticTensor class explained](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/ElasticTensor_explained.ipynb)
 
 View on GitHub: https://github.com/marcoalopez/PyRockWave
 
