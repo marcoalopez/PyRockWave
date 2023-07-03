@@ -85,6 +85,10 @@ class ElasticProps:
         self.universal_anisotropy = (5*(self.G_voigt / self.G_reuss)
                                      + (self.K_voigt / self.K_reuss) - 6)
 
+        # Calculate the Kube's log-Euclidean anisotropy index
+        self.Kube_anisotropy = np.sqrt(np.log(self.K_voigt / self.K_reuss)**2
+                                       + 5*np.log(self.G_voigt / self.G_reuss)**2)
+
         # Calculate the isotropic average Poisson ratio
         self.isotropic_poisson_ratio = ((3*self.K_hill - 2*self.G_hill)
                                         / (6*self.K_hill + 2*self.G_hill))
@@ -119,7 +123,10 @@ class ElasticProps:
         output += f"Shear Modulus Voigt Average (GPa): {self.G_voigt:.3f}\n"
         output += f"Shear Modulus Reuss Average (GPa): {self.G_reuss:.3f}\n"
         output += f"Shear Modulus VRH Average (GPa): {self.G_hill:.3f}\n"
+        output += "\n"
         output += f"Universal Elastic Anisotropy: {self.universal_anisotropy:.3f}\n"
+        output += f"Kube's Anisotropy Index (proportional): {self.Kube_anisotropy:.3f}\n"
+        output += "\n"
         output += f"Isotropic Average Poisson Ratio: {self.isotropic_poisson_ratio:.3f}\n"
         output += f"Isotropic Average Vp (km/s): {self.isotropic_avg_vp:.3f}\n"
         output += f"Isotropic Average Vs (km/s): {self.isotropic_avg_vs:.3f}\n"
