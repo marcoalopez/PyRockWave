@@ -206,6 +206,10 @@ def forsterite_Mao(P=1e-5):
     Caveats
     -------
         - Temperature fixed at 627°C (900 K)
+        - Experimental data at 627 °C were obtained in the pressure
+        range from 4.5 to 13.3 GPa. The elastic properties at
+        pressures below 4.5 GPa have to be extrapolated from
+        the polynomial model.
 
     Parameters
     ----------
@@ -1107,6 +1111,9 @@ def antigorite(P=1e-5):
     -------
         - The function does not account for temperature effects
         and assumes room temperature.
+        - Some of the experimentally measured elastic constants
+        do not show a trend with pressure, but dispersion. In
+        these, it was decided to use the mean as the best model.
 
     Parameters
     ----------
@@ -1156,15 +1163,15 @@ def antigorite(P=1e-5):
 
     # elastic independent terms
     C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.7037
-    C22 = 208.2                         # mean value is a better model
+    C22 = 208.2                         # mean is a better model
     C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9970
-    C44 = 13.5                          # mean value is a better model
+    C44 = 13.5                          # mean is a better model
     C55 = 20.0                          # idem
     C66 = np.polyval(coeffs['C66'], P)  # R-squared=0.9157
     C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9310
     C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9660
     C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.9296
-    C15 = 2.9                           # mean value is a better model
+    C15 = 2.9                           # mean is a better model
     C25 = -1.2                          # idem
     C35 = 0.4                           # idem
     C46 = -3.2                          # idem
