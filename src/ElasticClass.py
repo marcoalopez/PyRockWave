@@ -93,6 +93,9 @@ class ElasticProps:
         self.isotropic_poisson_ratio = ((3*self.K_hill - 2*self.G_hill)
                                         / (6*self.K_hill + 2*self.G_hill))
 
+        # Pugh's ratio
+        self.pugh = self.K_hill / self.G_hill
+
         # calculate the isotropic average Vp
         Vp = np.sqrt((self.K_hill + 4/3 * self.G_hill) / self.density)
         self.isotropic_avg_vp = np.around(Vp, decimals=4)
@@ -117,17 +120,23 @@ class ElasticProps:
         output += f"Stiffness Tensor (Cij) in GPa:\n{self.Cij}\n"
         output += "\n"
         output += "Calculated average properties:\n"
-        output += f"Bulk Modulus Voigt Average (GPa): {self.K_voigt:.3f}\n"
-        output += f"Bulk Modulus Reuss Average (GPa): {self.K_reuss:.3f}\n"
-        output += f"Bulk Modulus VRH Average (GPa): {self.K_hill:.3f}\n"
-        output += f"Shear Modulus Voigt Average (GPa): {self.G_voigt:.3f}\n"
-        output += f"Shear Modulus Reuss Average (GPa): {self.G_reuss:.3f}\n"
-        output += f"Shear Modulus VRH Average (GPa): {self.G_hill:.3f}\n"
         output += "\n"
+        output += "Bulk Modulus averages (GPa)\n"
+        output += f"Voigt = {self.K_voigt:.3f}\n"
+        output += f"Hill  = {self.K_hill:.3f}\n"
+        output += f"Reuss = {self.K_reuss:.3f}\n"
+        output += "Shear Modulus averages (GPa)\n"
+        output += f"Voigt = {self.G_voigt:.3f}\n"
+        output += f"Hill  = {self.G_hill:.3f}\n"
+        output += f"Reuss = {self.G_reuss:.3f}\n"
+        output += f"Isotropic Average Poisson Ratio (Hill): {self.isotropic_poisson_ratio:.3f}\n"
+        output += f"Pugh's ratio (Hill)= {self.pugh:.3f}\n"
+        output += "\n"
+        output += "Anisotropy indexes\n"
         output += f"Universal Elastic Anisotropy: {self.universal_anisotropy:.3f}\n"
         output += f"Kube's Anisotropy Index (proportional): {self.Kube_anisotropy:.3f}\n"
         output += "\n"
-        output += f"Isotropic Average Poisson Ratio: {self.isotropic_poisson_ratio:.3f}\n"
+        output += "Seismic properties\n"
         output += f"Isotropic Average Vp (km/s): {self.isotropic_avg_vp:.3f}\n"
         output += f"Isotropic Average Vs (km/s): {self.isotropic_avg_vs:.3f}\n"
         output += f"Isotropic Average Vp/Vs: {self.isotropic_avg_vpvs:.3f}\n"
