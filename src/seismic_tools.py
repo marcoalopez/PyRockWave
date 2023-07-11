@@ -46,9 +46,11 @@ def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
     Note: Matemathically speaking, you cannot put more than 20
     (exactly) evenly spaced—some points on a sphere. However,
     there are good-enough ways to approximately position evenly
-    apaced points on a sphere. Eg. https://arxiv.org/pdf/1607.04590.pdf
+    apaced points on a sphere.
 
-    See also: https://github.com/gradywright/spherepts
+    See also:
+    https://arxiv.org/pdf/1607.04590.pdf
+    https://github.com/gradywright/spherepts
 
     Parameters
     ----------
@@ -71,21 +73,8 @@ def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
     else:
         n = (n * 2) - 2
 
-    # set epsilon values based on sample size
-    if n >= 600_000:
-        epsilon = 214
-    elif n >= 400_000:
-        epsilon = 75
-    elif n >= 11_000:
-        epsilon = 27
-    elif n >= 890:
-        epsilon = 10
-    elif n >= 177:
-        epsilon = 3.33
-    elif n >= 24:
-        epsilon = 1.33
-    else:
-        epsilon = 0.33
+    # get epsilon value based on sample size
+    epsilon = _set_epsilon(n)
 
     golden_ratio = (1 + 5**0.5)/2
     i = np.arange(0, n)
@@ -94,7 +83,7 @@ def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
     theta = 2 * np.pi * i / golden_ratio  # in degrees
     phi = np.arccos(1 - 2*(i + epsilon) / (n - 1 + 2*epsilon))  # in rad
 
-    # place a datapoint at each pole )it adds two points (removed in the start)
+    # place a datapoint at each pole, it adds two datapoints removed before
     theta = np.insert(theta, 0, 0)
     theta = np.append(theta, 0)
     phi = np.insert(phi, 0, 0)
@@ -129,8 +118,9 @@ def weak_polar_anisotropy(elastic):
     Returns
     -------
     pandas.DataFrame
-        Tabular data object containing the propagation directions and calculated
-        Vp, Vs1, and Vs2 speeds using the weak polar anisotropy Thomsen model.
+        Tabular data object containing the propagation directions
+        and calculated Vp, Vs1, and Vs2 speeds using the weak polar
+        anisotropy model.
     """
 
     # generate equispaced spherical coordinates
@@ -161,7 +151,7 @@ def weak_polar_anisotropy(elastic):
 
 
 def polar_anisotropy(elastic):
-    """ Estimate the speed of boy waves as a function
+    """ Estimate the speed of body waves as a function
     of propagation direction assuming that the material
     have a polar anisotropy using the Don L. Anderson
     approach (Anderson, 1961).
@@ -174,8 +164,9 @@ def polar_anisotropy(elastic):
     Returns
     -------
     pandas.DataFrame
-        Tabular data object containing the propagation directions and calculated
-        Vp, Vs1, and Vs2 speeds using the weak polar anisotropy Thomsen model.
+        Tabular data object containing the propagation directions
+        and calculated Vp, Vs1, and Vs2 speeds using a polar
+        anisotropy model.
     """
 
     # generate equispaced spherical coordinates
@@ -183,7 +174,7 @@ def polar_anisotropy(elastic):
 
     # unpack some elastic constants for readibility
     c11, _, c33, c44, _, c66 = np.diag(elastic.Cij)
-    c13, c14 = elastic.Cij[0, 2], elastic.Cij[0, 3]
+    c13 = elastic.Cij[0, 2]
 
     # estimate D value
     first_term = (c33 - c44)**2
@@ -206,3 +197,24 @@ def polar_anisotropy(elastic):
             'Vsh': Vsh}
 
     return pd.DataFrame(data)
+
+
+####################################################################
+def _set_epsilon(n):
+    """Internal method used by the funtion
+    equispaced_S2_grid.
+    """
+    if n >= 600_000:
+        return 214
+    elif n >= 400_000:
+        return 75
+    elif n >= 11_000:
+        return 27
+    elif n >= 890:
+        return 10
+    elif n >= 177:
+        return 3.33
+    elif n >= 24:
+        return 1.33
+    else:
+        return 0.33
