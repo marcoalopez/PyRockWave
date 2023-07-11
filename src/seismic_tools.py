@@ -35,7 +35,7 @@ def Thomsen_params(cij: np.ndarray, density: float):
     return Vp0, Vs0, epsilon, delta, gamma
 
 
-def weak_polar_anisotropy(elastic: elasticClass, mesh: int = 1):
+def weak_polar_anisotropy(elastic):
     """ Estimate the speed of body waves as a function
     of propagation direction assuming weak polar anisotropy
     using the Leon Thomsen approach (Thomsen, 1986).
@@ -44,10 +44,6 @@ def weak_polar_anisotropy(elastic: elasticClass, mesh: int = 1):
     ----------
     elastic : elasticClass
         The elastic properties of the material.
-    mesh : int, optional
-        Density for angles theta and phi, by default 1 which
-        means a density of 360 for azimuthal angle and 90 for
-        polar angle.
 
     Returns
     -------
@@ -57,8 +53,8 @@ def weak_polar_anisotropy(elastic: elasticClass, mesh: int = 1):
     """
 
     # generate spherical coordinates
-    theta = np.arccos(1 - 2 * np.linspace(0, 1, 90/mesh))
-    phi = np.linspace(0, 2*np.pi, 360/mesh)
+    theta = np.arccos(1 - 2 * np.linspace(0, 1, 90))
+    phi = np.linspace(0, 2*np.pi, 360)
 
     # extract the elastic tensor and density
     cij = elastic.Cij
@@ -89,7 +85,7 @@ def weak_polar_anisotropy(elastic: elasticClass, mesh: int = 1):
     return pd.DataFrame(data)
 
 
-def polar_anisotropy(elastic: elasticClass, mesh: int = 1):
+def polar_anisotropy(elastic):
     """ Estimate the speed of boy waves as a function
     of propagation direction assuming that the material
     have a polar anisotropy using the Don L. Anderson
@@ -99,10 +95,6 @@ def polar_anisotropy(elastic: elasticClass, mesh: int = 1):
     ----------
     elastic : elasticClass
         The elastic properties of the material.
-    mesh : int, optional
-        Density for angles theta and phi, by default 1 which
-        means a density of 360 for azimuthal angle and 90 for
-        polar angle.
 
     Returns
     -------
@@ -112,8 +104,8 @@ def polar_anisotropy(elastic: elasticClass, mesh: int = 1):
     """
 
     # generate spherical coordinates
-    theta = np.arccos(1 - 2 * np.linspace(0, 1, 90/mesh))
-    phi = np.linspace(0, 2*np.pi, 360/mesh)
+    theta = np.arccos(1 - 2 * np.linspace(0, 1, 90))
+    phi = np.linspace(0, 2*np.pi, 360)
 
     # unpack some elastic constants for readibility
     c11, _, c33, c44, _, c66 = np.diag(elastic.Cij)
