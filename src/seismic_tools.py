@@ -31,12 +31,49 @@ def Thomsen_params(cij: np.ndarray, density: float):
     Vp0 = np.sqrt(c33 / density)
     Vs0 = np.sqrt(c44 / density)
 
-    # estimate Thomsen parameters
+    # estimate Thomsen dimensionless parameters
     epsilon = (c11 - c33) / (2 * c33)
     delta = ((c13 + c44)**2 - (c33 - c44)**2) / (2 * c33 * (c33 - c44))
     gamma = (c66 - c44) / (2 * c44)
 
     return Vp0, Vs0, epsilon, delta, gamma
+
+
+def Tsvankin_params(cij: np.ndarray, density: float):
+    """Estimate the Tsvankin paramenters for
+    azimuthal orthotropic anisotropy.
+
+    Parameters
+    ----------
+    cij : numpy.ndarray
+        The elastic stiffness tensor of the material.
+    density : float
+        The density of the material.
+
+    Returns
+    -------
+    [float, float, (float, float, float, float, float, float, float)]
+        Tuple/List containing Vp0, Vs0, epsilon, delta, and gamma.
+    """
+
+    # unpack some elastic constants for readibility
+    c11, c22, c33, c44, c55, c66 = np.diag(cij)
+    c12, c13, c23 = cij[0, 1], cij[0, 2],  cij[1, 2]
+
+    # estimate polar speeds
+    Vp0 = np.sqrt(c33 / density)
+    Vs0 = np.sqrt(c55 / density)
+
+    # estimate Tsvankin dimensionless parameters
+    epsilon1 = (c22 - c33) / (2 * c33)
+    delta1 = ((c23 + c44)**2 - (c33 - c44)**2) / (2*c33 * (c33 - c44))
+    gamma1 = (c66 - c55) / (2 * c55)
+    epsilon2 = (c11 - c33) / (2 * c33)
+    delta2 = ((c13 + c55)**2 - (c33 - c55)**2) / (2*c33 * (c33 - c55))
+    gamma2 = (c66 - c44) / (2 * c44)
+    delta3 = (c12 + c66)**2 - (c11 - c66)**2 / (2*c11 * (c11 - c66))
+
+    return Vp0, Vs0, (epsilon1, delta1, gamma1, epsilon2, delta2, gamma2, delta3)
 
 
 def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
@@ -198,6 +235,18 @@ def polar_anisotropy(elastic):
             'Vsh': Vsh}
 
     return pd.DataFrame(data)
+
+
+def orthotropic_azimuthal_anisotropy(elastic):
+    """The simplest realistic case of azimuthal anisotropy is that of
+    orthorhombic anisotropy (a.k.a. orthotropic).
+
+    Parameters
+    ----------
+    elastic : _type_
+        _description_
+    """
+    pass
 
 
 ####################################################################
