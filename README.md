@@ -1,10 +1,10 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-07-03  
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-07-12  
 
 ## What is PyRockWave and how to use it?
 
-PyRockWave is a set of Python codes for reading single-crystal elasticity databases and calculating and plot elastic properties in rocks using averaging schemes (e.g. elastic wave propagation, seismic anisotropy, etc). It is in early development so there is no official release or documentation although the code is open to the public.
+PyRockWave is a set of Python codes for reading single-crystal elasticity databases and calculating and plot elastic properties in rocks using averaging schemes and different models (e.g. elastic wave propagation, seismic anisotropy, etc). It is in early development so there is no official release or documentation although the code is open to the public.
 
 ## Requirements & Python installation
 
@@ -13,6 +13,8 @@ TODO
 See an example of usage in the link below
 
 - [Example of database usage using a Jupyter Notebook](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_database.ipynb)
+
+- [Example of use of seismic property estimation tools](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_seismicTools.ipynb)
 
 - [ElasticTensor class explained](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/ElasticTensor_explained.ipynb)
 
@@ -29,7 +31,7 @@ The GitHub website hosting the project provides several options (you will need a
 - Open and [issue](https://github.com/marcoalopez/PyRockWave/issues): This is a place to track bugs or requests for specific features on the notebooks.
 - Create a [pull request](https://github.com/marcoalopez/PyRockWave/pulls): You modified, corrected or added a feature to one of the notebooks and send it for one of the developers to review it and add it to the main page.
 
-For a quick explanation see https://www.youtube.com/watch?v=R8OAwrcMlRw. Besides, if you want to contribute to the project, you might want to glimpse at the [code of conduct](https://github.com/marcoalopez/strength_envelopes/blob/master/CODE_OF_CONDUCT.md) (TLDR: be nice to others 😉). 
+Besides, if you want to contribute to the project, you might want to glimpse at the [code of conduct](https://github.com/marcoalopez/strength_envelopes/blob/master/CODE_OF_CONDUCT.md) (TLDR: be nice to others 😉). 
 
 ---
 *Copyright © 2023 Marco A. Lopez-Sanchez*  
