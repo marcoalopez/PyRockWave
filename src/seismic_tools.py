@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/
+
 import numpy as np
 import pandas as pd
 
@@ -15,8 +19,8 @@ def Thomsen_params(cij: np.ndarray, density: float):
 
     Returns
     -------
-    tuple[float, float, float, float, float]
-        Tuple containing Vp0, Vs0, epsilon, delta, and gamma.
+    [float, float, float, float, float]
+        Tuple/List containing Vp0, Vs0, epsilon, delta, and gamma.
     """
 
     # unpack some elastic constants for readibility
@@ -38,15 +42,12 @@ def Thomsen_params(cij: np.ndarray, density: float):
 def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
     """Returns an approximately equispaced spherical grid in
     spherical coordinates (azimuthal and polar angles) using
-    a modified version of the offset Fibonacci lattice method as
-    explained here:
-
-    https://extremelearning.com.au/how-to-evenly-distribute-points-on-a-sphere-more-effectively-than-the-canonical-fibonacci-lattice/
+    a modified version of the offset Fibonacci lattice algorithm
 
     Note: Matemathically speaking, you cannot put more than 20
     (exactly) evenly spaced—some points on a sphere. However,
     there are good-enough ways to approximately position evenly
-    apaced points on a sphere.
+    spaced points on a sphere.
 
     See also:
     https://arxiv.org/pdf/1607.04590.pdf
@@ -60,6 +61,11 @@ def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
     degrees : bool, optional
         whether you want angles in degrees or radians,
         by default False (=radians)
+
+    hemisphere : None, 'upper' or 'lower'
+        whether you want the grid to be distributed
+        over the entire sphere, over the upper
+        hemisphere, or over the lower hemisphere.
 
     Returns
     -------
@@ -106,9 +112,9 @@ def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
 
 
 def weak_polar_anisotropy(elastic):
-    """ Estimate the speed of body waves as a function
-    of propagation direction assuming weak polar anisotropy
-    using the Leon Thomsen approach (Thomsen, 1986).
+    """Estimate the speed of body waves in a material as a function
+    of propagation direction assuming that the material have a
+    weak polar anisotropy using the Thomsen approach (Thomsen, 1986).
 
     Parameters
     ----------
@@ -126,12 +132,8 @@ def weak_polar_anisotropy(elastic):
     # generate equispaced spherical coordinates
     azimuths, polar = equispaced_S2_grid(n=80_000, hemisphere='upper')
 
-    # extract the elastic tensor and density
-    cij = elastic.Cij
-    density = elastic.density
-
     # get Thomsen parameters
-    Vp0, Vs0, epsilon, delta, gamma = Thomsen_params(cij, density)
+    Vp0, Vs0, epsilon, delta, gamma = Thomsen_params(elastic.Cij, elastic.density)
 
     # estimate wavespeeds as a function of propagation polar angle
     sin_theta = np.sin(polar)
@@ -151,10 +153,9 @@ def weak_polar_anisotropy(elastic):
 
 
 def polar_anisotropy(elastic):
-    """ Estimate the speed of body waves as a function
-    of propagation direction assuming that the material
-    have a polar anisotropy using the Don L. Anderson
-    approach (Anderson, 1961).
+    """Estimate the speed of body waves in a material as a function
+    of propagation direction assuming that the material have a
+    polar anisotropy using the Anderson approach (Anderson, 1961).
 
     Parameters
     ----------
@@ -200,6 +201,10 @@ def polar_anisotropy(elastic):
 
 
 ####################################################################
+# The following functions are for internal use by the script only
+# and are not intended to be used directly by the user.
+####################################################################
+
 def _set_epsilon(n):
     """Internal method used by the funtion
     equispaced_S2_grid.
