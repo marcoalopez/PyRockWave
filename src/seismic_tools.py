@@ -298,9 +298,8 @@ def _rearrange_tensor(C_ij):
 
 
 def _hessian_christoffelmat(C):
-    """
-    Computes the Hessian of the Christoffel matrix.
-    hessianmat[i][j][k][l] = d^2 M_kl / dx_i dx_j (note the indices).
+    """Computes the Hessian of the Christoffel matrix.
+    hessianmat[i][j][k][L] = d^2 M_kl / dx_i dx_j.
     """
     hessianmat = np.zeros((3, 3, 3, 3))
 
