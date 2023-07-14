@@ -128,3 +128,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 src/.jupyter/desktop-workspaces/default-37a8.jupyterlab-workspace
+src/understanding_Christoffel.ipynb

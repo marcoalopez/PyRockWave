@@ -272,3 +272,42 @@ def _set_epsilon(n):
         return 1.33
     else:
         return 0.33
+
+
+def _symmetrise_tensor(tensor):
+    return 0.5 * (tensor + tensor.T)
+
+
+def _rearrange_tensor(C_ij):
+    """Turn a 6x6 elastic tensor into a 3x3x3x3 tensor
+    according to Voigt notation.
+    """
+    voigt_notation = {0: (0, 0), 11: (1, 1), 22: (2, 2),
+                      12: (1, 2), 21: (2, 1), 2: (2, 0),
+                      20: (2, 0), 1: (1, 0), 10: (1, 0)}
+
+    C_ijkl = np.zeros((3, 3, 3, 3))
+
+    for key, value in voigt_notation.items():
+        i, j = value[0], value[1]
+        for key, value in voigt_notation.items():
+            k, l = value[0], value[1]
+            C_ijkl[i, j, k, l] = C_ij[key]
+
+    return C_ijkl
+
+
+def _hessian_christoffelmat(C):
+    """
+    Computes the Hessian of the Christoffel matrix.
+    hessianmat[i][j][k][l] = d^2 M_kl / dx_i dx_j (note the indices).
+    """
+    hessianmat = np.zeros((3, 3, 3, 3))
+
+    for i in range(3):
+        for j in range(3):
+            for k in range(3):
+                for L in range(3):
+                    hessianmat[i][j][k][L] = C[k][i][j][L] + C[k][j][i][L]
+
+    return hessianmat
