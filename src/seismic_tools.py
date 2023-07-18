@@ -76,78 +76,6 @@ def Tsvankin_params(cij: np.ndarray, density: float):
     return Vp0, Vs0, (epsilon1, delta1, gamma1, epsilon2, delta2, gamma2, delta3)
 
 
-def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
-    """Returns an approximately equispaced spherical grid in
-    spherical coordinates (azimuthal and polar angles) using
-    a modified version of the offset Fibonacci lattice algorithm
-
-    Note: Matemathically speaking, you cannot put more than 20
-    (exactly) evenly spaced—some points on a sphere. However,
-    there are good-enough ways to approximately position evenly
-    spaced points on a sphere.
-
-    See also:
-    https://arxiv.org/pdf/1607.04590.pdf
-    https://github.com/gradywright/spherepts
-
-    Parameters
-    ----------
-    n : int, optional
-        the number of points, by default 20809
-
-    degrees : bool, optional
-        whether you want angles in degrees or radians,
-        by default False (=radians)
-
-    hemisphere : None, 'upper' or 'lower'
-        whether you want the grid to be distributed
-        over the entire sphere, over the upper
-        hemisphere, or over the lower hemisphere.
-
-    Returns
-    -------
-    _type_
-        _description_
-    """
-
-    # set sample size
-    if hemisphere is None:
-        n = n - 2
-    else:
-        n = (n * 2) - 2
-
-    # get epsilon value based on sample size
-    epsilon = _set_epsilon(n)
-
-    golden_ratio = (1 + 5**0.5)/2
-    i = np.arange(0, n)
-
-    # estimate polar (phi) and theta (azimutal) angles
-    theta = 2 * np.pi * i / golden_ratio  # in degrees
-    phi = np.arccos(1 - 2*(i + epsilon) / (n - 1 + 2*epsilon))  # in rad
-
-    # place a datapoint at each pole, it adds two datapoints removed before
-    theta = np.insert(theta, 0, 0)
-    theta = np.append(theta, 0)
-    phi = np.insert(phi, 0, 0)
-    phi = np.append(phi, np.pi)
-
-    if degrees is False:
-        if hemisphere == 'upper':
-            return np.deg2rad(theta[phi <= np.pi/2] % 360), phi[phi <= np.pi/2]
-        elif hemisphere == 'lower':
-            return np.deg2rad(theta[phi >= np.pi/2] % 360), phi[phi >= np.pi/2]
-        else:
-            return np.deg2rad(theta % 360), phi
-    else:
-        if hemisphere == 'upper':
-            return theta[phi <= np.pi/2] % 360, np.rad2deg(phi[phi <= np.pi/2])
-        elif hemisphere == 'lower':
-            return theta[phi >= np.pi/2] % 360, np.rad2deg(phi[phi >= np.pi/2])
-        else:
-            return theta % 360, np.rad2deg(phi)
-
-
 def weak_polar_anisotropy(elastic):
     """Estimate the speed of body waves in a material as a function
     of propagation direction assuming that the material have a
@@ -246,12 +174,191 @@ def orthotropic_azimuthal_anisotropy(elastic):
     elastic : _type_
         _description_
     """
+    # TODO
     pass
 
 
+def estimate_wave_speeds(wave_vectors, density, Cij):
+    """_summary_
+
+    Parameters
+    ----------
+    wave_vectors : _type_
+        _description_
+    density : _type_
+        _description_
+    Cij : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    scaling_factor = 1 / density
+
+    # estimate the normalized Christoffel matrix (M)
+    M = _christoffel_matrix(wave_vectors, Cij)
+    M = M * scaling_factor
+
+    # estimate the eigenvalues and polarizations of M
+    eigen_values, eigen_vectors = calc_eigen(M)
+
+    # estimate phase velocities Vp (km/s)
+    Vps = calc_phase_velocities(eigen_values)
+
+    # estimate the derivative of the Christoffel matrix (∇M)
+    # and the derivative of the eigen values of M.
+    dM = _christoffel_matrix_gradient(wave_vectors, Cij, M)
+
+    # estimate group velocities Vs, position and powerflow angles
+
+    # estimate the Hessian of the Christoffel matrix (H(M))
+    # and the Eigen values of the H(M)
+    hessian_M = _christoffel_matrix_hessian(M)
+
+    # estimate the enhancement factor
+
+    pass
+
 ####################################################################
-# The following functions are for internal use by the script only
-# and are not intended to be used directly by the user.
+# Funtions to deal with spherical and cartesian coordinates,
+# including functions to generate arrays of orientations.
+####################################################################
+
+
+def sph2cart(phi, theta, r=1):
+    """ Convert from spherical/polar (magnitude, thetha, phi) to
+    cartesian coordinates. Phi and theta angles are defined as in
+    physics (ISO 80000-2:2019) and in radians.
+
+    Parameters
+    ----------
+    phi : int, float or array with values between 0 and 2*pi
+        azimuth angle respect to the x-axis direction in radians
+    theta : int, float or array with values between 0 and pi/2,
+        polar angle respect to the zenith (z) direction in radians
+        optional
+    r : int, float or array, optional
+        radial distance (magnitud of the vector), defaults to 1
+
+    Returns
+    -------
+    numpy ndarray (1d)
+        three numpy 1d arrays with the cartesian x, y, and z coordinates
+    """
+
+    x = r * np.sin(theta) * np.cos(phi)
+    y = r * np.sin(theta) * np.sin(phi)
+    z = r * np.cos(theta)
+
+    return x, y, z
+
+
+def cart2sph(x, y, z):
+    """Converts from 3D cartesian to spherical coordinates.
+
+    Parameters
+    ----------
+    x : int, float or array
+        The x-coordinate(s) in Cartesian space.
+    y : int, float or array
+        The y-coordinate(s) in Cartesian space.
+    z : int, float or array
+        The z-coordinate(s) in Cartesian space.
+
+    Returns
+    -------
+    tuple of floats
+        A tuple containing the polar coordinates (r, theta, phi)
+        of the input Cartesian point, where r is the distance from
+        the origin to the point, theta is the polar angle from the
+        positive z-axis, and phi is the azimuthal angle from the
+        positive x-axis (ISO 80000-2:2019).
+    """
+    r = np.sqrt(x**2 + y**2 + z**2)
+    theta = np.arccos(z / r)
+    phi = np.arctan2(y, x)
+
+    return (r, phi, theta)
+
+
+def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
+    """Returns an approximately equispaced spherical grid in
+    spherical coordinates (azimuthal and polar angles) using
+    a modified version of the offset Fibonacci lattice algorithm
+
+    Note: Matemathically speaking, you cannot put more than 20
+    perfectly evenly spaced points on a sphere. However, there
+    are good-enough ways to approximately position evenly
+    spaced points on a sphere.
+
+    See also:
+    https://arxiv.org/pdf/1607.04590.pdf
+    https://github.com/gradywright/spherepts
+
+    Parameters
+    ----------
+    n : int, optional
+        the number of points, by default 20809
+
+    degrees : bool, optional
+        whether you want angles in degrees or radians,
+        by default False (=radians)
+
+    hemisphere : None, 'upper' or 'lower'
+        whether you want the grid to be distributed
+        over the entire sphere, over the upper
+        hemisphere, or over the lower hemisphere.
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+
+    # set sample size
+    if hemisphere is None:
+        n = n - 2
+    else:
+        n = (n * 2) - 2
+
+    # get epsilon value based on sample size
+    epsilon = _set_epsilon(n)
+
+    golden_ratio = (1 + 5**0.5)/2
+    i = np.arange(0, n)
+
+    # estimate polar (phi) and theta (azimutal) angles
+    theta = 2 * np.pi * i / golden_ratio  # in degrees
+    phi = np.arccos(1 - 2*(i + epsilon) / (n - 1 + 2*epsilon))  # in rad
+
+    # place a datapoint at each pole, it adds two datapoints removed before
+    theta = np.insert(theta, 0, 0)
+    theta = np.append(theta, 0)
+    phi = np.insert(phi, 0, 0)
+    phi = np.append(phi, np.pi)
+
+    if degrees is False:
+        if hemisphere == 'upper':
+            return np.deg2rad(theta[phi <= np.pi/2] % 360), phi[phi <= np.pi/2]
+        elif hemisphere == 'lower':
+            return np.deg2rad(theta[phi >= np.pi/2] % 360), phi[phi >= np.pi/2]
+        else:
+            return np.deg2rad(theta % 360), phi
+    else:
+        if hemisphere == 'upper':
+            return theta[phi <= np.pi/2] % 360, np.rad2deg(phi[phi <= np.pi/2])
+        elif hemisphere == 'lower':
+            return theta[phi >= np.pi/2] % 360, np.rad2deg(phi[phi >= np.pi/2])
+        else:
+            return theta % 360, np.rad2deg(phi)
+
+
+####################################################################
+# The following functions, starting with an underscore, are for
+# internal use only, i.e. not intended to be used directly by
+# the user.
 ####################################################################
 
 def _set_epsilon(n):
@@ -279,8 +386,10 @@ def _symmetrise_tensor(tensor):
 
 
 def _rearrange_tensor(C_ij):
-    """Turn a 6x6 elastic tensor into a 3x3x3x3 tensor
-    according to Voigt notation.
+    """Turn a 6x6 (rank 2, dimension 6) elastic tensor into a
+    3x3x3x3 (rank 4, dimension 3) elastic tensor according to
+    Voigt notation. This way the elastic tensor is optimized
+    to perform operations although difficult to visualize.
     """
     voigt_notation = {0: (0, 0), 11: (1, 1), 22: (2, 2),
                       12: (1, 2), 21: (2, 1), 2: (2, 0),
@@ -291,15 +400,66 @@ def _rearrange_tensor(C_ij):
     for key, value in voigt_notation.items():
         i, j = value[0], value[1]
         for key, value in voigt_notation.items():
-            k, l = value[0], value[1]
-            C_ijkl[i, j, k, l] = C_ij[key]
+            k, L = value[0], value[1]
+            C_ijkl[i, j, k, L] = C_ij[key]
 
     return C_ijkl
 
 
-def _hessian_christoffelmat(C):
+def _tensor_in_voigt(C_ijkl):
+    """Turn the 3x3x3x3 (rank 4, dimension 3) elastic tensor into
+    a 6x6 (rank 2, dimension 6) elastic tensor according to Voigt
+    notation."""
+    C_ij = np.zeros((6, 6))
+
+    # Divide by 2 because symmetrization will double the elastic
+    # contants in the main diagonal
+    C_ij[0, 0] = 0.5 * C_ijkl[0, 0, 0, 0]
+    C_ij[1, 1] = 0.5 * C_ijkl[1, 1, 1, 1]
+    C_ij[2, 2] = 0.5 * C_ijkl[2, 2, 2, 2]
+    C_ij[3, 3] = 0.5 * C_ijkl[1, 2, 1, 2]
+    C_ij[4, 4] = 0.5 * C_ijkl[0, 2, 0, 2]
+    C_ij[5, 5] = 0.5 * C_ijkl[0, 1, 0, 1]
+
+    C_ij[0, 1] = C_ijkl[0, 0, 1, 1]
+    C_ij[0, 2] = C_ijkl[0, 0, 2, 2]
+    C_ij[0, 3] = C_ijkl[0, 0, 1, 2]
+    C_ij[0, 4] = C_ijkl[0, 0, 0, 2]
+    C_ij[0, 5] = C_ijkl[0, 0, 0, 1]
+
+    C_ij[1, 2] = C_ijkl[1, 1, 2, 2]
+    C_ij[1, 3] = C_ijkl[1, 1, 1, 2]
+    C_ij[1, 4] = C_ijkl[1, 1, 0, 2]
+    C_ij[1, 5] = C_ijkl[1, 1, 0, 1]
+
+    C_ij[2, 3] = C_ijkl[2, 2, 1, 2]
+    C_ij[2, 4] = C_ijkl[2, 2, 0, 2]
+    C_ij[2, 5] = C_ijkl[2, 2, 0, 1]
+
+    C_ij[3, 4] = C_ijkl[1, 2, 0, 2]
+    C_ij[3, 5] = C_ijkl[1, 2, 0, 1]
+
+    C_ij[4, 5] = C_ijkl[0, 2, 0, 1]
+
+    return C_ij + C_ij.T
+
+
+def _christoffel_matrix(wave_vector, Cij):
+    return np.dot(wave_vector, np.dot(wave_vector, Cij))
+
+
+def _christoffel_matrix_gradient(wave_vector, Cij, M):
+    """Calculate the derivative of the Christoffel matrix.
+    d/dx_n M_ij = sum_k q_k * ( C_inkj + C_iknj )
+    gradmat[n, i, j] =  d/dx_n M_ij (note the indices)
+    """
+    gradmat = np.dot(wave_vector, Cij + np.transpose(Cij, (0, 2, 1, 3)))
+    return np.transpose(gradmat, (1, 0, 2))
+
+
+def _christoffel_matrix_hessian(M):
     """Computes the Hessian of the Christoffel matrix.
-    hessianmat[i][j][k][L] = d^2 M_kl / dx_i dx_j.
+    hessianmat[i, j, k, L] = d^2 M_kl / dx_i dx_j.
     """
     hessianmat = np.zeros((3, 3, 3, 3))
 
@@ -307,6 +467,25 @@ def _hessian_christoffelmat(C):
         for j in range(3):
             for k in range(3):
                 for L in range(3):
-                    hessianmat[i][j][k][L] = C[k][i][j][L] + C[k][j][i][L]
+                    hessianmat[i, j, k, L] = M[k, i, j, L] + M[k, j, i, L]
 
     return hessianmat
+
+
+def calc_eigen(M):
+    """Return the eigenvalues and eigenvectors of the Christoffel
+    matrix sorted from low to high.
+
+    Parameters
+    ----------
+    M : numpy ndarray
+        the Christoffel matrix (3x3)
+    """
+    eigen_values, eigen_vectors = np.linalg.eigh(M)
+
+    return (eigen_values[np.argsort(eigen_values)],
+            eigen_vectors.T[np.argsort(eigen_values)])
+
+
+def calc_phase_velocities(eigen_values):
+    return np.sign(eigen_values) * np.sqrt(np.absolute(eigen_values))
