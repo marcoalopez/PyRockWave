@@ -326,12 +326,12 @@ def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
     # get epsilon value based on sample size
     epsilon = _set_epsilon(n)
 
-    golden_ratio = (1 + 5**0.5)/2
+    golden_ratio = (1 + 5 ** 0.5) / 2
     i = np.arange(0, n)
 
-    # estimate polar (phi) and theta (azimutal) angles
-    theta = 2 * np.pi * i / golden_ratio  # in degrees
-    phi = np.arccos(1 - 2*(i + epsilon) / (n - 1 + 2*epsilon))  # in rad
+    # estimate polar (phi) and theta (azimutal) angles in radians
+    theta = 2 * np.pi * i / golden_ratio
+    phi = np.arccos(1 - 2 * (i + epsilon) / (n - 1 + 2 * epsilon))
 
     # place a datapoint at each pole, it adds two datapoints removed before
     theta = np.insert(theta, 0, 0)
@@ -341,18 +341,18 @@ def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
 
     if degrees is False:
         if hemisphere == 'upper':
-            return np.deg2rad(theta[phi <= np.pi/2] % 360), phi[phi <= np.pi/2]
+            return theta[phi <= np.pi/2] % (2*np.pi), phi[phi <= np.pi/2]
         elif hemisphere == 'lower':
-            return np.deg2rad(theta[phi >= np.pi/2] % 360), phi[phi >= np.pi/2]
+            return theta[phi >= np.pi/2] % (2*np.pi), phi[phi >= np.pi/2]
         else:
-            return np.deg2rad(theta % 360), phi
+            return theta % (2*np.pi), phi
     else:
         if hemisphere == 'upper':
-            return theta[phi <= np.pi/2] % 360, np.rad2deg(phi[phi <= np.pi/2])
+            return np.rad2deg(theta[phi <= np.pi/2]) % 360, np.rad2deg(phi[phi <= np.pi/2])
         elif hemisphere == 'lower':
-            return theta[phi >= np.pi/2] % 360, np.rad2deg(phi[phi >= np.pi/2])
+            return np.rad2deg(theta[phi >= np.pi/2]) % 360, np.rad2deg(phi[phi >= np.pi/2])
         else:
-            return theta % 360, np.rad2deg(phi)
+            return np.rad2deg(theta) % 360, np.rad2deg(phi)
 
 
 ####################################################################
