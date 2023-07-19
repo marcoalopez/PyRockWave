@@ -202,10 +202,10 @@ def estimate_wave_speeds(wave_vectors, density, Cij):
     M = M * scaling_factor
 
     # estimate the eigenvalues and polarizations of M
-    eigen_values, eigen_vectors = calc_eigen(M)
+    eigen_values, eigen_vectors = _calc_eigen(M)
 
     # estimate phase velocities Vp (km/s)
-    Vps = calc_phase_velocities(eigen_values)
+    Vps = calc_phase_velocities(M)
 
     # estimate the derivative of the Christoffel matrix (∇M)
     # and the derivative of the eigen values of M.
@@ -472,14 +472,25 @@ def _christoffel_matrix_hessian(M):
     return hessianmat
 
 
-def calc_eigen(M):
+def _calc_eigen(M):
     """Return the eigenvalues and eigenvectors of the Christoffel
-    matrix sorted from low to high.
+    matrix sorted from low to high. The eigenvalues are related to 
+    primary (P) and secondary (S-fast, S-slow) wave speeds. The
+    eigenvectors provide the unsigned polarization directions,
+    which are orthogonal to each other. It is assumed that the
+    Christoffel tensor provided is already normalised to the
+    density of the material.
 
     Parameters
     ----------
     M : numpy ndarray
         the Christoffel matrix (3x3)
+
+    Returns
+    -------
+    two numpy ndarrays
+        a (,3) array with the eigenvalues
+        a (3,3) array with the eigenvectors
     """
     eigen_values, eigen_vectors = np.linalg.eigh(M)
 
@@ -487,5 +498,93 @@ def calc_eigen(M):
             eigen_vectors.T[np.argsort(eigen_values)])
 
 
-def calc_phase_velocities(eigen_values):
+def _eigenvector_derivatives(eigenvectors, gradient_matrix):
+    """Calculate the derivatives of eigenvectors with respect to
+    a derivative of the original matrix.
+
+    Parameters
+    ----------
+    eigenvectors : numpy.ndarray
+        Array of shape (3, 3) representing three eigenvectors
+        of the Christoffel matrix.
+    gradient_matrix : numpy.ndarray
+        The derivative of the Christoffel matrix, which has a
+        shape of (3, 3, 3)
+
+    Returns
+    -------
+    numpy.ndarray:
+        Array of shape (3, 3, 3), where the i-th index
+        corresponds to the i-th eigenvector, and each element
+        (i, j, k) represents the derivative of the i-th
+        eigenvector with respect to the j-th component of
+        the k-th eigenvector.
+    """
+
+    eigen_derivatives = np.zeros((3, 3))
+
+    for i in range(3):
+        for j in range(3):
+            eigen_derivatives[i, j] = np.dot(eigenvectors[i], np.dot(gradient_matrix[j], eigenvectors[i]))
+
+    return eigen_derivatives
+
+
+def calc_phase_velocities(M):
+    """Estimate the material's sound velocities of a monochromatic
+    plane wave, referred to as the phase velocity, from the
+    Christoffel matrix (M). It returns three velocities,
+    one primary (P wave) and two secondary (S waves). It is
+    assumed that the Christoffel tensor provided is already
+    normalised to the density of the material.
+
+    Note: Sound waves in nature are never purely monochromatic
+    or planar. See calc_group_velocities.
+
+    Parameters
+    ----------
+    M : numpy ndarray
+        the Christoffel matrix (3x3)
+
+    Returns
+    -------
+    numpy ndarray, 1d
+        Three wave velocities [Vs2, Vs1, Vp]
+        where Vp > Vs1 > Vs2
+    """
+    eigen_values, _ = _calc_eigen(M)
+
     return np.sign(eigen_values) * np.sqrt(np.absolute(eigen_values))
+
+
+def calc_group_velocities(phase_velocities, eigenvectors, M_derivative, wavevector):
+    """_summary_
+
+    Parameters
+    ----------
+    phase_velocities : _type_
+        _description_
+    eigenvectors : _type_
+        _description_
+    dM : _type_
+        _description_
+    """
+
+    velocity_group = np.zeros((3, 3))
+    group_abs = np.zeros(3)
+    group_dir = np.zeros((3, 3))
+
+    # estimate the derivative of eigenvectors
+    eigen_derivatives = _eigenvector_derivatives(eigenvectors, M_derivative)
+
+    # estimate group velocities and...TODO
+    for i in range(3):
+        for j in range(3):
+            velocity_group[i, j] = M_derivative[i, j] / (2 * phase_velocities[i])
+        group_abs[i] = np.linalg.norm(velocity_group[i])
+        group_dir[i] = velocity_group[i] / group_abs[i]
+
+    # estimate the powerflow angle
+    powerflow_angle = np.arccos(np.dot(group_dir, wavevector))
+
+    return velocity_group, powerflow_angle
