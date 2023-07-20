@@ -11,8 +11,8 @@ class ElasticProps:
     """A class that encapsulates and calculates various elastic
     properties of materials."""
 
-    mineral_name: str
-    crystal_system: str
+    mineral_name: str | None
+    crystal_system: str | None
     temperature: float  # in °C
     pressure: float     # in GPa
     density: float      # density in g/cm3
@@ -42,11 +42,12 @@ class ElasticProps:
                                  "Trigonal", "trigonal",
                                  "Hexagonal", "hexagonal",
                                  "Monoclinic", "monoclinic",
-                                 "Triclinic", "triclinic"]
+                                 "Triclinic", "triclinic",
+                                 None]
         if self.crystal_system not in valid_crystal_systems:
             raise ValueError("Invalid crystal system. Please choose one of the following: "
                              "Cubic, Tetragonal, Orthorhombic, Rhombohedral, Hexagonal, "
-                             "Trigonal, Monoclinic, Triclinic.")
+                             "Trigonal, Monoclinic, Triclinic, or None")
 
         # check the symmetry of the elastic tensor
         if not np.allclose(self.Cij, self.Cij.T):
@@ -87,25 +88,41 @@ class ElasticProps:
 
         # Calculate the Kube's log-Euclidean anisotropy index
         self.Kube_anisotropy = np.sqrt(np.log(self.K_voigt / self.K_reuss)**2
-                                       + 5*np.log(self.G_voigt / self.G_reuss)**2)
+                                       + 5 * np.log(self.G_voigt / self.G_reuss)**2)
 
         # Calculate the isotropic average Poisson ratio
-        self.isotropic_poisson_ratio = ((3*self.K_hill - 2*self.G_hill)
-                                        / (6*self.K_hill + 2*self.G_hill))
+        self.isotropic_poisson_reuss = ((3*self.K_reuss - 2*self.G_reuss)
+                                        / (6*self.K_reuss + 2*self.G_reuss))
+        self.isotropic_poisson_hill = ((3*self.K_hill - 2*self.G_hill)
+                                       / (6*self.K_hill + 2*self.G_hill))
+        self.isotropic_poisson_voigt = ((3*self.K_voigt - 2*self.G_voigt)
+                                        / (6*self.K_voigt + 2*self.G_voigt))
 
         # Pugh's ratio
-        self.pugh = self.K_hill / self.G_hill
+        self.pugh_reuss = self.K_reuss / self.G_reuss
+        self.pugh_hill = self.K_hill / self.G_hill
+        self.pugh_voigt = self.K_voigt / self.G_voigt
 
         # calculate the isotropic average Vp
-        Vp = np.sqrt((self.K_hill + 4/3 * self.G_hill) / self.density)
-        self.isotropic_avg_vp = np.around(Vp, decimals=4)
+        Vp_reuss = np.sqrt((self.K_reuss + 4/3 * self.G_reuss) / self.density)
+        Vp_hill = np.sqrt((self.K_hill + 4/3 * self.G_hill) / self.density)
+        Vp_voigt = np.sqrt((self.K_voigt + 4/3 * self.G_voigt) / self.density)
+        self.isotropic_vp_reuss = np.around(Vp_reuss, decimals=4)
+        self.isotropic_vp_hill = np.around(Vp_hill, decimals=4)
+        self.isotropic_vp_voigt = np.around(Vp_voigt, decimals=4)
 
         # calculate the isotropic average Vs
-        Vs = np.sqrt(self.G_hill / self.density)
-        self.isotropic_avg_vs = np.around(Vs, decimals=4)
+        Vs_reuss = np.sqrt(self.G_reuss / self.density)
+        Vs_hill = np.sqrt(self.G_hill / self.density)
+        Vs_voigt = np.sqrt(self.G_voigt / self.density)
+        self.isotropic_vs_reuss = np.around(Vs_reuss, decimals=4)
+        self.isotropic_vs_hill = np.around(Vs_hill, decimals=4)
+        self.isotropic_vs_voigt = np.around(Vs_voigt, decimals=4)
 
         # calculate the isotropic average Vp/Vs
-        self.isotropic_avg_vpvs = np.around(Vp / Vs, decimals=4)
+        self.isotropic_vpvs_reuss = np.around(Vp_reuss / Vs_reuss, decimals=4)
+        self.isotropic_vpvs_hill = np.around(Vp_hill / Vs_hill, decimals=4)
+        self.isotropic_vpvs_voigt = np.around(Vp_voigt / Vs_voigt, decimals=4)
 
     def __repr__(self):
         output = str(type(self)) + "\n"
@@ -117,32 +134,28 @@ class ElasticProps:
         output += f"Temperature (°C): {self.temperature:.0f}\n"
         output += f"Density (g/cm3): {self.density:.3f}\n"
         output += "\n"
-        output += f"Stiffness Tensor (Cij) in GPa:\n{self.Cij}\n"
+        output += f"Elastic Tensor (Cij) in GPa:\n{self.Cij}\n"
         output += "\n"
         output += "Calculated average properties:\n"
-        output += "Bulk Modulus averages (GPa)\n"
-        output += f"Upper bound (Voigt) = {self.K_voigt:.3f}\n"
-        output += f"Average (Hill--VRH) = {self.K_hill:.3f}\n"
-        output += f"Lower bound (Reuss) = {self.K_reuss:.3f}\n"
+        output += "Bulk Modulus (GPa) → VRH, (Reuss, Voigt)\n"
+        output += f"{self.K_hill:.3f}, ({self.K_reuss:.3f}, {self.K_voigt:.3f})\n"
         output += "\n"
-        output += "Shear Modulus averages (GPa)\n"
-        output += f"Upper bound (Voigt) = = {self.G_voigt:.3f}\n"
-        output += f"Average (Hill--VRH)  = {self.G_hill:.3f}\n"
-        output += f"Lower bound (Reuss) = {self.G_reuss:.3f}\n"
+        output += "Shear Modulus (GPa) → VRH, (Reuss, Voigt)\n"
+        output += f"{self.G_hill:.3f}, ({self.G_reuss:.3f}, {self.G_voigt:.3f})\n"
         output += "\n"
-        output += "Isotropic Average Poisson Ratio\n"
-        output += f"Average (Hill--VRH)  = {self.isotropic_poisson_ratio:.3f}\n"
+        output += "Isotropic Poisson Ratio → VRH, (Reuss, Voigt)\n"
+        output += f"{self.isotropic_poisson_hill:.3f}, ({self.isotropic_poisson_reuss:.3f}, {self.isotropic_poisson_voigt:.3f}))\n"
         output += "\n"
-        output += "Pugh's ratio\n"
-        output += f"Average (Hill--VRH)  = {self.pugh:.3f}\n"
+        output += "Pugh's ratio → VRH, (Reuss, Voigt)\n"
+        output += f"({self.pugh_hill:.3f}, ({self.pugh_reuss:.3f}, {self.pugh_voigt:.3f})\n"
         output += "\n"
         output += "Anisotropy indexes\n"
         output += f"Universal Elastic Anisotropy: {self.universal_anisotropy:.3f}\n"
         output += f"Kube's Anisotropy Index (proportional): {self.Kube_anisotropy:.3f}\n"
         output += "\n"
-        output += "Seismic properties (Hill averages)\n"
-        output += f"Isotropic Average Vp (km/s): {self.isotropic_avg_vp:.3f}\n"
-        output += f"Isotropic Average Vs (km/s): {self.isotropic_avg_vs:.3f}\n"
-        output += f"Isotropic Average Vp/Vs: {self.isotropic_avg_vpvs:.3f}\n"
+        output += "Isotropic seismic properties → VRH, (Reuss, Voigt)\n"
+        output += f"Vp (km/s): {self.isotropic_vp_hill:.3f}, ({self.isotropic_vp_reuss:.3f}, {self.isotropic_vp_voigt:.3f})\n"
+        output += f"Vs (km/s): {self.isotropic_vs_hill:.3f}, ({self.isotropic_vs_reuss:.3f}, {self.isotropic_vs_voigt:.3f})\n"
+        output += f"Vp/Vs: {self.isotropic_vpvs_hill:.3f}, ({self.isotropic_vpvs_reuss:.3f}, {self.isotropic_vpvs_voigt:.3f})\n"
 
         return output
