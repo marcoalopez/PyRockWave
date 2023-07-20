@@ -205,11 +205,11 @@ def estimate_wave_speeds(wave_vectors, density, Cij):
     eigen_values, eigen_vectors = _calc_eigen(M)
 
     # estimate phase velocities Vp (km/s)
-    Vps = calc_phase_velocities(M)
+    Vs2, Vs1, Vp = calc_phase_velocities(M)
 
     # estimate the derivative of the Christoffel matrix (∇M)
     # and the derivative of the eigen values of M.
-    dM = _christoffel_matrix_gradient(wave_vectors, Cij, M)
+    dM = _christoffel_matrix_gradient(wave_vectors, Cij)
 
     # estimate group velocities Vs, position and powerflow angles
 
@@ -386,30 +386,89 @@ def _symmetrise_tensor(tensor):
 
 
 def _rearrange_tensor(C_ij):
-    """Turn a 6x6 (rank 2, dimension 6) elastic tensor into a
-    3x3x3x3 (rank 4, dimension 3) elastic tensor according to
-    Voigt notation. This way the elastic tensor is optimized
-    to perform operations although difficult to visualize.
+    """Rearrange a 6x6 (rank 2, dimension 6) elastic tensor into
+    a 3x3x3x3 (rank 4, dimension 3) elastic tensor according to
+    Voigt notation. This optimization improves tensor operations
+    while maintaining the original information.
+
+    Parameters
+    ----------
+    C_ij : numpy.ndarray
+        The 6x6 elastic tensor in Voigt notation.
+
+    Returns
+    -------
+    numpy.ndarray
+        The 3x3x3x3 elastic tensor corresponding to the input
+        tensor.
+
+    Raises
+    ------
+    ValueError
+        If C_ij is not a 6x6 symmetric NumPy array.
+
+    Notes
+    -----
+    The function uses a dictionary, `voigt_notation`, to map the
+    indices from the 6x6 tensor to the 3x3x3x3 tensor in Voigt
+    notation. The resulting tensor, C_ijkl, is calculated by
+    rearranging elements from the input tensor, C_ij, according to
+    the mapping.
     """
-    voigt_notation = {0: (0, 0), 11: (1, 1), 22: (2, 2),
-                      12: (1, 2), 21: (2, 1), 2: (2, 0),
-                      20: (2, 0), 1: (1, 0), 10: (1, 0)}
+
+    # Check if C_ij is a 6x6 symmetric matrix
+    if not isinstance(C_ij, np.ndarray) or C_ij.shape != (6, 6):
+        raise ValueError("C_ij should be a 6x6 NumPy array.")
+
+    if not np.allclose(C_ij, C_ij.T):
+        raise ValueError("C_ij should be symmetric.")
+
+    voigt_notation = {0: 0, 11: 1, 22: 2, 12: 3, 21: 3, 2: 4, 20: 4, 1: 5, 10: 5}
 
     C_ijkl = np.zeros((3, 3, 3, 3))
 
-    for key, value in voigt_notation.items():
-        i, j = value[0], value[1]
-        for key, value in voigt_notation.items():
-            k, L = value[0], value[1]
-            C_ijkl[i, j, k, L] = C_ij[key]
+    for l in range(3):
+        for k in range(3):
+            for j in range(3):
+                for i in range(3):
+                    C_ijkl[i, j, k, l] = C_ij[voigt_notation[10 * i + j],
+                                              voigt_notation[10 * k + l]]
 
     return C_ijkl
 
 
 def _tensor_in_voigt(C_ijkl):
-    """Turn the 3x3x3x3 (rank 4, dimension 3) elastic tensor into
-    a 6x6 (rank 2, dimension 6) elastic tensor according to Voigt
-    notation."""
+    """Convert the 3x3x3x3 (rank 4, dimension 3) elastic tensor
+    into a 6x6 (rank 2, dimension 6) elastic tensor according to
+    Voigt notation.
+
+    Parameters
+    ----------
+    C_ijkl : numpy.ndarray
+        The 3x3x3x3 elastic tensor to be converted. It should
+        be a 4D NumPy array of shape (3, 3, 3, 3).
+
+    Returns
+    -------
+    numpy.ndarray
+        The 6x6 elastic tensor in Voigt notation.
+
+    Raises
+    ------
+    ValueError
+        If C_ijkl is not a 4D NumPy array of shape (3, 3, 3, 3).
+
+    Notes
+    -----
+    The function maps the elements from the 3x3x3x3 elastic
+    tensor (C_ijkl) to the 6x6 elastic tensor (C_ij) using the Voigt
+    notation convention.
+    """
+
+    # check input
+    if not isinstance(C_ijkl, np.ndarray) or C_ijkl.shape != (3, 3, 3, 3):
+        raise ValueError("C_ijkl should be a 4D NumPy array of shape (3, 3, 3, 3).")
+
     C_ij = np.zeros((6, 6))
 
     # Divide by 2 because symmetrization will double the elastic
@@ -445,36 +504,138 @@ def _tensor_in_voigt(C_ijkl):
 
 
 def _christoffel_matrix(wave_vector, Cij):
+    """Calculate the Christoffel matrix for a given wave vector
+    and elastic tensor Cij.
+
+    Parameters
+    ----------
+    wave_vector : numpy.ndarray
+        The wave vector as a 1D NumPy array of length 3.
+
+    Cij : numpy.ndarray
+        The elastic tensor as a 4D NumPy array of shape (3, 3, 3, 3).
+
+    Returns
+    -------
+    numpy.ndarray
+        The Christoffel matrix as a 2D NumPy array of shape (3, 3).
+
+    Raises
+    ------
+    ValueError
+        If wave_vector is not a 1D NumPy array of length 3, or
+        if Cij is not a 4D NumPy array of shape (3, 3, 3, 3).
+
+    Notes
+    -----
+    The Christoffel matrix is calculated using the formula
+    M = k . Cij . k, where M is the Christoffel matrix, k is the
+    wave vector, and Cij is the elastic tensor (stiffness matrix).
+    This function performs the calculation using vectorized
+    operations to ensure efficiency.
+
+    Example
+    -------
+    >>> christoffel_matrix(wave_vector, Cij)
+    """
+
+    # Validate input parameters
+    if not isinstance(wave_vector, np.ndarray) or wave_vector.shape != (3,):
+        raise ValueError("wave_vector should be a 1D NumPy array of length 3.")
+
+    if not isinstance(Cij, np.ndarray) or Cij.shape != (3, 3, 3, 3):
+        raise ValueError("Cij should be a 4D NumPy array of shape (3, 3, 3, 3).")
+
     return np.dot(wave_vector, np.dot(wave_vector, Cij))
 
 
-def _christoffel_matrix_gradient(wave_vector, Cij, M):
-    """Calculate the derivative of the Christoffel matrix.
-    d/dx_n M_ij = sum_k q_k * ( C_inkj + C_iknj )
-    gradmat[n, i, j] =  d/dx_n M_ij (note the indices)
+def _christoffel_matrix_gradient(wave_vector, Cij):
+    """Calculate the derivative of the Christoffel matrix. The
+    derivative of the Christoffel matrix is computed using
+    the formula (e.g. Jaeken and Cottenier, 2016):
+
+    ∂M_ij / ∂q_k = ∑m (C_ikmj + C_imkj) *  q_m 
+
+    Parameters
+    ----------
+    wave_vector : numpy.ndarray
+        The wave vector as a 1D NumPy array of length 3.
+
+    Cij : numpy.ndarray
+        The elastic tensor as a 4D NumPy array of shape (3, 3, 3, 3).
+
+
+    Returns
+    -------
+    numpy.ndarray
+        The gradient matrix of the Christoffel matrix with respect
+        to x_n, reshaped as a 3D NumPy array of shape (3, 3, 3).
+
+    Notes
+    -----
+    The gradient matrix gradmat[n, i, j] is computed using the wave
+    vector and the elastic tensor Cij. The derivative of the
+    Christoffel matrix with respect a wave vector is given by the
+    summation of the products of q_k (wave vector component)
+    and the terms (C_ikmj + C_imkj). The final result is reshaped to a
+    3D matrix with shape (3, 3, 3).
     """
+
+    # Validate input parameters
+    if not isinstance(wave_vector, np.ndarray) or wave_vector.shape != (3,):
+        raise ValueError("wave_vector should be a 1D NumPy array of length 3.")
+
+    if not isinstance(Cij, np.ndarray) or Cij.shape != (3, 3, 3, 3):
+        raise ValueError("Cij should be a 4D NumPy array of shape (3, 3, 3, 3).")
+
     gradmat = np.dot(wave_vector, Cij + np.transpose(Cij, (0, 2, 1, 3)))
+
     return np.transpose(gradmat, (1, 0, 2))
 
 
-def _christoffel_matrix_hessian(M):
-    """Computes the Hessian of the Christoffel matrix.
-    hessianmat[i, j, k, L] = d^2 M_kl / dx_i dx_j.
+def _christoffel_matrix_hessian(Cij):
+    """Compute the Hessian of the Christoffel matrix. The Hessian
+    of the Christoffel matrix, denoted as hessianmat[i, j, k, L]
+    here represents the second partial derivatives of the Christoffel
+    matrix M_kl with respect to the spatial coordinates x_i and x_j
+    (i, j = 0, 1, 2). ICan be calculated using the formulas (e.g.
+    Jaeken and Cottenier, 2016):
+
+    hessianmat[i, j, k, L] = ∂^2M_ij / ∂q_k * ∂q_m
+    hessianmat[i, j, k, L] = C_ikmj + C_imkj
+
+    Parameters
+    ----------
+    Cij : numpy.ndarray
+        The elastic tensor as a 4D NumPy array of shape (3, 3, 3, 3).
+
+    Returns
+    -------
+    numpy.ndarray
+        The Hessian of the Christoffel matrix as a
+        4D NumPy array of shape (3, 3, 3, 3).
+
+    Notes
+    -----
+    The function iterates over all combinations of the indices
+    i, j, k, and L to compute the corresponding elements of the
+    Hessian matrix.
     """
+    
     hessianmat = np.zeros((3, 3, 3, 3))
 
     for i in range(3):
         for j in range(3):
             for k in range(3):
                 for L in range(3):
-                    hessianmat[i, j, k, L] = M[k, i, j, L] + M[k, j, i, L]
+                    hessianmat[i, j, k, L] = Cij[k, i, j, L] + Cij[k, j, i, L]
 
     return hessianmat
 
 
 def _calc_eigen(M):
     """Return the eigenvalues and eigenvectors of the Christoffel
-    matrix sorted from low to high. The eigenvalues are related to 
+    matrix sorted from low to high. The eigenvalues are related to
     primary (P) and secondary (S-fast, S-slow) wave speeds. The
     eigenvectors provide the unsigned polarization directions,
     which are orthogonal to each other. It is assumed that the
@@ -492,6 +653,11 @@ def _calc_eigen(M):
         a (,3) array with the eigenvalues
         a (3,3) array with the eigenvectors
     """
+
+    # Check if M is a 3x3 array
+    if not isinstance(M, np.ndarray) or M.shape != (3, 3):
+        raise ValueError("M should be a 3x3 NumPy array.")
+
     eigen_values, eigen_vectors = np.linalg.eigh(M)
 
     return (eigen_values[np.argsort(eigen_values)],
@@ -525,7 +691,9 @@ def _eigenvector_derivatives(eigenvectors, gradient_matrix):
 
     for i in range(3):
         for j in range(3):
-            eigen_derivatives[i, j] = np.dot(eigenvectors[i], np.dot(gradient_matrix[j], eigenvectors[i]))
+            eigen_derivatives[i, j] = np.dot(eigenvectors[i],
+                                             np.dot(gradient_matrix[j],
+                                                    eigenvectors[i]))
 
     return eigen_derivatives
 
@@ -533,31 +701,38 @@ def _eigenvector_derivatives(eigenvectors, gradient_matrix):
 def calc_phase_velocities(M):
     """Estimate the material's sound velocities of a monochromatic
     plane wave, referred to as the phase velocity, from the
-    Christoffel matrix (M). It returns three velocities,
+    Christoffel matrix (M) . It returns three velocities,
     one primary (P wave) and two secondary (S waves). It is
     assumed that the Christoffel tensor provided is already
     normalised to the density of the material.
 
-    Note: Sound waves in nature are never purely monochromatic
-    or planar. See calc_group_velocities.
-
     Parameters
     ----------
-    M : numpy ndarray
-        the Christoffel matrix (3x3)
+    M : numpy.ndarray
+        The Christoffel matrix as a 3x3 NumPy array.
 
     Returns
     -------
-    numpy ndarray, 1d
-        Three wave velocities [Vs2, Vs1, Vp]
-        where Vp > Vs1 > Vs2
+    numpy.ndarray
+        Three wave velocities [Vs2, Vs1, Vp], where Vp > Vs1 > Vs2.
+
+    Notes
+    -----
+    The function estimates the phase velocities of the material's
+    sound waves from the eigenvalues of the Christoffel matrix (M).
+    The eigenvalues represent the squared phase velocities, and by
+    taking the square root, the actual phase velocities are obtained.
+    The output is a 1D NumPy array containing the three velocities,
+    Vs2, Vs1, and Vp, sorted in ascending order (Vs2 < Vs1 < Vp).
+    Sound waves in nature are never purely monochromatic or planar.
+    See calc_group_velocities.
     """
     eigen_values, _ = _calc_eigen(M)
 
     return np.sign(eigen_values) * np.sqrt(np.absolute(eigen_values))
 
 
-def calc_group_velocities(phase_velocities, eigenvectors, M_derivative, wavevector):
+def calc_group_velocities(phase_velocities, eigenvectors, M_derivative, wave_vector):
     """_summary_
 
     Parameters
@@ -585,6 +760,6 @@ def calc_group_velocities(phase_velocities, eigenvectors, M_derivative, wavevect
         group_dir[i] = velocity_group[i] / group_abs[i]
 
     # estimate the powerflow angle
-    powerflow_angle = np.arccos(np.dot(group_dir, wavevector))
+    powerflow_angle = np.arccos(np.dot(group_dir, wave_vector))
 
     return velocity_group, powerflow_angle
