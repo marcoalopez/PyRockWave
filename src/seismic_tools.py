@@ -381,8 +381,30 @@ def _set_epsilon(n):
         return 0.33
 
 
-def _symmetrise_tensor(tensor):
-    return 0.5 * (tensor + tensor.T)
+def symmetrise_tensor(tensor):
+    """
+    Symmetrizes a tensor.
+
+    Parameters
+    ----------
+    tensor : numpy.ndarray
+        The input tensor of shape (n, n).
+
+    Returns
+    -------
+    numpy.ndarray
+        The symmetrized tensor.
+    """
+    if not isinstance(tensor, np.ndarray):
+        raise ValueError("Input must be a numpy array.")
+
+    if tensor.ndim != 2 or tensor.shape[0] != tensor.shape[1]:
+        raise ValueError("Input must be a 2D square matrix (n x n).")
+
+    ctensor = tensor.copy()
+    np.fill_diagonal(ctensor, 0)
+
+    return tensor + ctensor.T
 
 
 def _rearrange_tensor(C_ij):
@@ -621,7 +643,7 @@ def _christoffel_matrix_hessian(Cij):
     i, j, k, and L to compute the corresponding elements of the
     Hessian matrix.
     """
-    
+
     hessianmat = np.zeros((3, 3, 3, 3))
 
     for i in range(3):
