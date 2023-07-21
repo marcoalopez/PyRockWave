@@ -4,7 +4,7 @@ This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.githu
 
 ## What is PyRockWave and how to use it?
 
-PyRockWave is a set of Python codes for reading single-crystal elasticity databases and calculating and plot elastic properties in rocks using averaging schemes and different models (e.g. elastic wave propagation, seismic anisotropy, etc). It is in early development so there is no official release or documentation although the code is open to the public.
+PyRockWave is a set of Python codes for reading single-crystal elasticity databases and calculating and plot elastic properties (e.g. elastic wave propagation, seismic anisotropy, etc) in minerals and rocks using averaging schemes and different seismic models. It is in early development so there is no official release or documentation although the code is open to the public.
 
 ## Requirements & Python installation
 
@@ -35,6 +35,6 @@ Besides, if you want to contribute to the project, you might want to glimpse at 
 
 ---
 *Copyright © 2023 Marco A. Lopez-Sanchez*  
-_Information presented on this website and the notebooks is provided without any express or implied warranty and may include technical inaccuracies or typing errors; the author reserve the right to modify or enhance the content of this website as well as the notebooks at any time without previous notice. This webpage and the notebooks are not liable for the content of external links. Notebook contents under [Creative Commons Attribution license CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) and codes under GNU General Public License v3 (https://www.gnu.org/licenses/gpl-3.0.en.html)_
+_Information presented on this website and the notebooks is provided without any express or implied warranty and may include technical inaccuracies or typing errors; the author reserve the right to modify or enhance the content of this website as well as the notebooks at any time without previous notice. This webpage and the notebooks are not liable for the content of external links. Notebook contents under [Creative Commons Attribution license CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) and codes under GNU General Public License v3 (https://www.gnu.org/licenses/gpl-3.0.en.html) unless otherwise indicated._
 
 _Hosted on GitHub Pages — This website was created with [Typora](https://typora.io/)_
