@@ -1,36 +1,61 @@
-# -*- coding: utf-8 -*-
-#######################################################################
-# This file is part of PyRockWave Python module
+# This file is part of the Open Database License (ODbL) - version 1.0
 #
-# Filename: elastic_database.py
-# Description: TODO
+# Preamble:
+# The Mineral Elasctic Database is an open database provided by
+# the Earth materials science laboratory at University of Oviedo.
+# It is licensed under the Open Database License (ODbL) version 1.0.
 #
-# Copyright (c) 2023. 
+# License:
+# Copyright (c) 2023 Earth materials science laboratory at Uniovi.
 #
-# PyRockWave is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# You are free:
+# 1. To Share: To copy, distribute, and use the database.
+# 2. To Create: To produce works from the database.
+# 3. To Adapt: To modify, transform, and build upon the database.
 #
-# PyRockWave is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# As long as you:
+# 1. Attribute: You must attribute any public use of the database,
+# or works produced from the database, in the manner specified in
+# the attribution section below.
+# 2. Share-Alike: If you publicly use any adapted version of this
+# database or works produced from it, you must also offer that
+# adapted database under the ODbL license.
+# 3. Keep open: If you redistribute the database, you must make
+# the original data available to the public at no cost, without
+# any restrictions on the use of the database.
 #
-# You should have received a copy of the GNU General Public License
-# along with PyRockWave.  If not, see <http://www.gnu.org/licenses/>.
+# Attribution:
+# The attribution requirement under this license is satisfied by
+# including the following notice:
+# "Mineral Elastic Database by the Earth materials science laboratory
+# at University of Oviedo is licensed under the Open Database License
+# (ODbL) version 1.0."
+# If you make any changes or adaptations to this database, you must
+# indicate so and not imply that the original database is endorsed
+# by the Earth materials science laboratory at University of Oviedo.
 #
-# Author: Marco A. Lopez-Sanchez, http://orcid.org/0000-0002-0261-9267
-# Email: lopezmarco [to be found at] uniovi.es
-# Website: https://marcoalopez.github.io/PyRockWave/
-# Project Repository: https://github.com/marcoalopez/PyRockWave
-#######################################################################
+# License Text:
+# The full text of the Open Database License (ODbL) version 1.0 is
+# available at:
+# https://opendatacommons.org/licenses/odbl/1.0/
+# For the avoidance of doubt, this summary is not a license and it
+# has no legal value. You should refer to the full text of the ODbL
+# for the complete terms and conditions that apply.
+#
+# Contact:
+# If you have any questions or need further clarifications regarding
+# this license or the Mineral Elastic Database, you can contact
+# Marco A. Lopez-Sanchez at lopezmarco [to be found at] uniovi.es.
+#
+# End of License.
+
 
 # Import statements
 import numpy as np
 from ElasticClass import ElasticProps
 
 
+# Function definitions
 def alpha_quartz(P=1e-5):
     """
     Returns the corresponding elastic tensor (GPa) and density
