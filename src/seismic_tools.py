@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 
 
+# Function definitions
 def Thomsen_params(cij: np.ndarray, density: float):
     """Estimate the Thomsen paramenters for
     weak polar anisotropy.
@@ -554,12 +555,13 @@ def _tensor_in_voigt(C_ijkl):
 
 
 def _normalize_vector(vector):
-    """Normalize a 3D vector to lie on the unit sphere.
+    """Normalizes a vector in 3d cartesian space to lie
+    on the unit sphere.
 
     Parameters
     ----------
     vector : numpy.ndarray, shape (3,)
-        The input 3D vector to be normalized.
+        a vector in 3d cartesian space
 
     Returns
     -------
@@ -586,8 +588,10 @@ def _normalize_vector(vector):
         raise ValueError("Input vector must have shape (3,).")
 
     magnitude = np.linalg.norm(vector)
+
+    # Handle the zero vector case
     if magnitude == 0:
-        return vector  # Handle the zero vector case
+        return vector
 
     return vector / magnitude
 
@@ -849,3 +853,5 @@ def calc_group_velocities(phase_velocities, eigenvectors, M_derivative, wave_vec
     powerflow_angle = np.arccos(np.dot(group_dir, wave_vector))
 
     return velocity_group, powerflow_angle
+
+# End of file

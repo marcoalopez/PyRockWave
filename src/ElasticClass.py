@@ -31,6 +31,7 @@ import numpy as np
 from dataclasses import dataclass, field
 
 
+# Class definitions
 @dataclass
 class ElasticProps:
     """A class that encapsulates and calculates various elastic
@@ -184,3 +185,5 @@ class ElasticProps:
         output += f"Vp/Vs: {self.isotropic_vpvs_hill:.3f}, ({self.isotropic_vpvs_reuss:.3f}, {self.isotropic_vpvs_voigt:.3f})\n"
 
         return output
+
+# End of file
