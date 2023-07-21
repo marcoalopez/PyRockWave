@@ -178,7 +178,7 @@ def orthotropic_azimuthal_anisotropy(elastic):
     pass
 
 
-def estimate_wave_speeds(wave_vectors, density, Cij):
+def estimate_wave_speeds(wave_vectors, density, Cijkl):
     """_summary_
 
     Parameters
@@ -187,7 +187,7 @@ def estimate_wave_speeds(wave_vectors, density, Cij):
         _description_
     density : _type_
         _description_
-    Cij : _type_
+    Cijkl : _type_
         _description_
 
     Returns
@@ -197,29 +197,33 @@ def estimate_wave_speeds(wave_vectors, density, Cij):
     """
     scaling_factor = 1 / density
 
-    # estimate the normalized Christoffel matrix (M)
-    M = _christoffel_matrix(wave_vectors, Cij)
+    # estimate the normalized Christoffel matrix (M) for every
+    # wavevector
+    M = _christoffel_matrix(wave_vectors, Cijkl)
     M = M * scaling_factor
 
     # estimate the eigenvalues and polarizations of M
     eigen_values, eigen_vectors = _calc_eigen(M)
 
-    # estimate phase velocities Vp (km/s)
+    # CALCULATE PHASE VELOCITIES (km/s)
     Vs2, Vs1, Vp = calc_phase_velocities(M)
 
-    # estimate the derivative of the Christoffel matrix (∇M)
-    # and the derivative of the eigen values of M.
-    dM = _christoffel_matrix_gradient(wave_vectors, Cij)
+    # CALCULATE GROUP VELOCITIES (km/s) AND POWERFLOW ANGLES
+    # calculate the derivative of the Christoffel matrix (∇M)
+    dM = _christoffel_matrix_gradient(wave_vectors, Cijkl)
+
+    # calculate the derivative of the Christoffel matrix eigenvalues.
 
     # estimate group velocities Vs, position and powerflow angles
 
+    # CALCULATE THE ENHANCEMENT FACTOR
     # estimate the Hessian of the Christoffel matrix (H(M))
-    # and the Eigen values of the H(M)
     hessian_M = _christoffel_matrix_hessian(M)
 
-    # estimate the enhancement factor
+    # estimate the Eigenvalues of H(M)
 
     pass
+
 
 ####################################################################
 # Funtions to deal with spherical and cartesian coordinates,
@@ -381,9 +385,8 @@ def _set_epsilon(n):
         return 0.33
 
 
-def symmetrise_tensor(tensor):
-    """
-    Symmetrizes a tensor.
+def _symmetrise_tensor(tensor):
+    """Symmetrizes a tensor.
 
     Parameters
     ----------
@@ -449,12 +452,12 @@ def _rearrange_tensor(C_ij):
 
     C_ijkl = np.zeros((3, 3, 3, 3))
 
-    for l in range(3):
+    for L in range(3):
         for k in range(3):
             for j in range(3):
                 for i in range(3):
-                    C_ijkl[i, j, k, l] = C_ij[voigt_notation[10 * i + j],
-                                              voigt_notation[10 * k + l]]
+                    C_ijkl[i, j, k, L] = C_ij[voigt_notation[10 * i + j],
+                                              voigt_notation[10 * k + L]]
 
     return C_ijkl
 
@@ -525,7 +528,46 @@ def _tensor_in_voigt(C_ijkl):
     return C_ij + C_ij.T
 
 
-def _christoffel_matrix(wave_vector, Cij):
+def _normalize_vector(vector):
+    """Normalize a 3D vector to lie on the unit sphere.
+
+    Parameters
+    ----------
+    vector : numpy.ndarray, shape (3,)
+        The input 3D vector to be normalized.
+
+    Returns
+    -------
+    numpy.ndarray, shape (3,)
+        The normalized 3D vector.
+
+    Raises
+    ------
+    ValueError
+        If the input vector does not have a shape of (3,).
+
+    Notes
+    -----
+    The function normalizes the input vector by dividing each component
+    by the vector's magnitude to ensure it lies on the unit sphere.
+
+    Example
+    --------
+    >>> v = np.array([1.0, 2.0, 3.0])
+    >>> normalize_vector(v)
+    array([0.26726124, 0.53452248, 0.80178373])
+    """
+    if vector.shape != (3,):
+        raise ValueError("Input vector must have shape (3,).")
+
+    magnitude = np.linalg.norm(vector)
+    if magnitude == 0:
+        return vector  # Handle the zero vector case
+
+    return vector / magnitude
+
+
+def _christoffel_matrix(wave_vector, Cijkl):
     """Calculate the Christoffel matrix for a given wave vector
     and elastic tensor Cij.
 
@@ -534,7 +576,7 @@ def _christoffel_matrix(wave_vector, Cij):
     wave_vector : numpy.ndarray
         The wave vector as a 1D NumPy array of length 3.
 
-    Cij : numpy.ndarray
+    Cijkl : numpy.ndarray
         The elastic tensor as a 4D NumPy array of shape (3, 3, 3, 3).
 
     Returns
@@ -551,27 +593,24 @@ def _christoffel_matrix(wave_vector, Cij):
     Notes
     -----
     The Christoffel matrix is calculated using the formula
-    M = k . Cij . k, where M is the Christoffel matrix, k is the
-    wave vector, and Cij is the elastic tensor (stiffness matrix).
-    This function performs the calculation using vectorized
-    operations to ensure efficiency.
-
-    Example
-    -------
-    >>> christoffel_matrix(wave_vector, Cij)
+    M = k @ Cijkl @ k, where M is the Christoffel matrix, k is the
+    wave vector, and Cijkl is the elastic tensor (stiffness matrix).
     """
 
     # Validate input parameters
     if not isinstance(wave_vector, np.ndarray) or wave_vector.shape != (3,):
         raise ValueError("wave_vector should be a 1D NumPy array of length 3.")
 
-    if not isinstance(Cij, np.ndarray) or Cij.shape != (3, 3, 3, 3):
-        raise ValueError("Cij should be a 4D NumPy array of shape (3, 3, 3, 3).")
+    if not isinstance(Cijkl, np.ndarray) or Cijkl.shape != (3, 3, 3, 3):
+        raise ValueError("Cijkl should be a 4D NumPy array of shape (3, 3, 3, 3).")
 
-    return np.dot(wave_vector, np.dot(wave_vector, Cij))
+    # normalize wavevector to lie on unit sphere
+    wave_vector = _normalize_vector(wave_vector)
+
+    return np.dot(wave_vector, np.dot(wave_vector, Cijkl))
 
 
-def _christoffel_matrix_gradient(wave_vector, Cij):
+def _christoffel_matrix_gradient(wave_vector, Cijkl):
     """Calculate the derivative of the Christoffel matrix. The
     derivative of the Christoffel matrix is computed using
     the formula (e.g. Jaeken and Cottenier, 2016):
@@ -583,7 +622,7 @@ def _christoffel_matrix_gradient(wave_vector, Cij):
     wave_vector : numpy.ndarray
         The wave vector as a 1D NumPy array of length 3.
 
-    Cij : numpy.ndarray
+    Cijkl : numpy.ndarray
         The elastic tensor as a 4D NumPy array of shape (3, 3, 3, 3).
 
 
@@ -596,7 +635,7 @@ def _christoffel_matrix_gradient(wave_vector, Cij):
     Notes
     -----
     The gradient matrix gradmat[n, i, j] is computed using the wave
-    vector and the elastic tensor Cij. The derivative of the
+    vector and the elastic tensor Cijkl. The derivative of the
     Christoffel matrix with respect a wave vector is given by the
     summation of the products of q_k (wave vector component)
     and the terms (C_ikmj + C_imkj). The final result is reshaped to a
@@ -607,10 +646,10 @@ def _christoffel_matrix_gradient(wave_vector, Cij):
     if not isinstance(wave_vector, np.ndarray) or wave_vector.shape != (3,):
         raise ValueError("wave_vector should be a 1D NumPy array of length 3.")
 
-    if not isinstance(Cij, np.ndarray) or Cij.shape != (3, 3, 3, 3):
-        raise ValueError("Cij should be a 4D NumPy array of shape (3, 3, 3, 3).")
+    if not isinstance(Cijkl, np.ndarray) or Cijkl.shape != (3, 3, 3, 3):
+        raise ValueError("Cijkl should be a 4D NumPy array of shape (3, 3, 3, 3).")
 
-    gradmat = np.dot(wave_vector, Cij + np.transpose(Cij, (0, 2, 1, 3)))
+    gradmat = np.dot(wave_vector, Cijkl + np.transpose(Cijkl, (0, 2, 1, 3)))
 
     return np.transpose(gradmat, (1, 0, 2))
 
