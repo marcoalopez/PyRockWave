@@ -1,7 +1,7 @@
 # This file is part of the Open Database License (ODbL) - version 1.0
 #
 # Preamble:
-# The Mineral Elasctic Database is an open database provided by
+# The Mineral Elastic Database is an open database provided by
 # the Earth materials science laboratory at University of Oviedo.
 # It is licensed under the Open Database License (ODbL) version 1.0.
 #

@@ -5,7 +5,7 @@
 # Filename: seismic_tools.py
 # Description: TODO
 #
-# Copyright (c) 2023. 
+# Copyright (c) 2023 
 #
 # PyRockWave is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -299,8 +299,8 @@ def cart2sph(x, y, z):
 
     Returns
     -------
-    tuple of floats
-        A tuple containing the polar coordinates (r, theta, phi)
+    numpy ndarray (1d)
+        An array containing the polar coordinates (r, theta, phi)
         of the input Cartesian point, where r is the distance from
         the origin to the point, theta is the polar angle from the
         positive z-axis, and phi is the azimuthal angle from the
@@ -310,7 +310,7 @@ def cart2sph(x, y, z):
     theta = np.arccos(z / r)
     phi = np.arctan2(y, x)
 
-    return (r, phi, theta)
+    return r, phi, theta
 
 
 def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
@@ -683,7 +683,7 @@ def _christoffel_matrix_gradient(wave_vector, Cijkl):
     return np.transpose(gradmat, (1, 0, 2))
 
 
-def _christoffel_matrix_hessian(Cij):
+def _christoffel_matrix_hessian(Cijkl):
     """Compute the Hessian of the Christoffel matrix. The Hessian
     of the Christoffel matrix, denoted as hessianmat[i, j, k, L]
     here represents the second partial derivatives of the Christoffel
@@ -696,7 +696,7 @@ def _christoffel_matrix_hessian(Cij):
 
     Parameters
     ----------
-    Cij : numpy.ndarray
+    Cijkl : numpy.ndarray
         The elastic tensor as a 4D NumPy array of shape (3, 3, 3, 3).
 
     Returns
@@ -718,7 +718,7 @@ def _christoffel_matrix_hessian(Cij):
         for j in range(3):
             for k in range(3):
                 for L in range(3):
-                    hessianmat[i, j, k, L] = Cij[k, i, j, L] + Cij[k, j, i, L]
+                    hessianmat[i, j, k, L] = Cijkl[k, i, j, L] + Cijkl[k, j, i, L]
 
     return hessianmat
 
@@ -786,6 +786,86 @@ def _eigenvector_derivatives(eigenvectors, gradient_matrix):
                                                     eigenvectors[i]))
 
     return eigen_derivatives
+
+
+def _rotate_vector_to_plane(vector, azimuth_angle, polar_angle):
+    """
+    Rotate a 3-vector into a plane.
+
+    Parameters
+    ----------
+    vector : numpy ndarray
+        A 3-vector (cartesian coordinates)
+    azimuth_angle : float
+        Azimuth angle in radians, from coordinates x1 towards x2
+    polar_angle : float
+        Polar angle in radians, from the x1-x2 plane towards x3.
+
+    Returns
+    -------
+    rotated_vector : array
+        Vector within the x-y plane.
+
+    """
+
+    # Create rotation matrices.
+    r1 = np.array([[np.cos(azimuth_angle), np.sin(azimuth_angle), 0],
+                   [-np.sin(azimuth_angle), np.cos(azimuth_angle), 0],
+                   [0, 0, 1]])
+    r2 = np.array([[np.cos(polar_angle), 0, -np.sin(polar_angle)],
+                   [0, 1, 0],
+                   [np.sin(polar_angle), 0, np.cos(polar_angle)]])
+
+    # Rotate the vector.
+    rotated_vector = np.dot(np.dot(vector, r1), r2)
+
+    return rotated_vector
+
+
+def calculate_polarisation_angle(polar_angle,
+                                 azimuth_angle,
+                                 polarisation_vector):
+    """Calculates the projection angle of the polarisation
+    vector of the fast shear wave onto the wavefront plane.
+
+    Parameters
+    ----------
+    polar_angle : float or numpy ndarray
+        Polar angle in radians
+    azimuth_angle : float or numpy ndarray
+        Azimuth angle in radians
+    polarisation_vector : float or numpy ndarray
+        Polarisation vector of the fast shear wave.
+
+    Returns
+    -------
+    polarisation_angle : float
+        Projection angle of the polarisation vector of
+        the fast shear wave onto the wavefront plane.
+    """
+
+    # estimate the wavefront vector in cartesian coordinates
+    x, y, z = sph2cart(azimuth_angle, polar_angle)
+    wavefront_vector = _normalize_vector(np.array([x, y, z]))
+
+    # Calculate the normal vector of the wavefront and
+    # normalize to unit length
+    normal = np.cross(wavefront_vector,
+                      np.cross(wavefront_vector,
+                               polarisation_vector))
+    normal = _normalize_vector(normal)
+
+    # Rotate the normal vector of the wavefront into the x-y plane
+    # Create rotation matrices.
+    rotated_vector = _rotate_vector_to_plane(normal, azimuth_angle, polar_angle)
+
+    # Calculate the projection angle of the polarisation vector
+    # onto the wavefront plane
+    angle = np.rad2deg(np.arctan2(rotated_vector[1], rotated_vector[2]))
+    angle = angle + 180 if angle < -90 else angle
+    angle = angle - 180 if angle > 90 else angle
+
+    return angle
 
 
 def calc_phase_velocities(M):
