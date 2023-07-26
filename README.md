@@ -1,6 +1,6 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-07-21  
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-07-26  
 
 ## What is PyRockWave and how to use it?
 
@@ -17,6 +17,8 @@ See an example of usage in the link below
 - [Example of use of seismic property estimation tools](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_seismicTools.ipynb)
 
 - [ElasticTensor class explained](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/ElasticTensor_explained.ipynb)
+
+- [Demonstration of coordinates.py module](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_coordinates.ipynb)
 
 View on GitHub: https://github.com/marcoalopez/PyRockWave
 
