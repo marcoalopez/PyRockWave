@@ -2,7 +2,7 @@
 #######################################################################
 # This file is part of PyRockWave Python module                       #
 #                                                                     #
-# Filename: seismic_tools.py                                          #
+# Filename: christoffel.py                                            #
 # Description: TODO                                                   #
 #                                                                     #
 # Copyright (c) 2023                                                  #
@@ -30,38 +30,70 @@
 # Import statements
 import numpy as np
 import pandas as pd
-import coordinates as c
 
 
-####################################################################
-# The following functions, starting with an underscore, are for
-# internal use only, i.e. not intended to be used directly by
-# the user.
-####################################################################
-
-def _symmetrise_tensor(tensor: np.ndarray):
-    """Symmetrizes a tensor.
+# Function definitions
+def christoffel_wave_speeds(Cij: np.ndarray,
+                            density: float,
+                            wavevectors: np.ndarray,
+                            type='phase'):
+    """_summary_
 
     Parameters
     ----------
-    tensor : numpy.ndarray
-        The input tensor of shape (n, n).
-
-    Returns
-    -------
-    numpy.ndarray
-        The symmetrized tensor.
+    Cij : _type_
+        _description_
+    density : _type_
+        _description_
+    wavevectors : _type_
+        _description_
+    type : str, optional
+        _description_, by default 'phase'
     """
-    if not isinstance(tensor, np.ndarray):
-        raise ValueError("Input must be a numpy array.")
+    scaling_factor = 1 / density
 
-    if tensor.ndim != 2 or tensor.shape[0] != tensor.shape[1]:
-        raise ValueError("Input must be a 2D square matrix (n x n).")
+    # rearrange tensor Cij → Cijkl
+    Cijkl = _rearrange_tensor(Cij)
 
-    ctensor = tensor.copy()
-    np.fill_diagonal(ctensor, 0)
+    # estimate the normalized Christoffel matrix (M) for
+    # every wavevector
+    Mij = _christoffel_matrix(wavevectors, Cijkl)
+    norm_Mij = Mij * scaling_factor
 
-    return tensor + ctensor.T
+    # estimate the eigenvalues and eigenvectors
+    eigenvalues, eigenvectors = _calc_eigen(norm_Mij)
+
+    # CALCULATE PHASE VELOCITIES (km/s)
+    Vs2, Vs1, Vp = calc_phase_velocities(norm_Mij, eigenvalues)
+
+    if type == 'phase':
+
+        # calculate shear wave splitting
+
+        # create a dataframe with phase velocities
+
+        pass
+
+    else:
+
+        # calculate the derivative of the Christoffel matrix (∇M)
+        dMijk = _christoffel_matrix_gradient(wavevectors, Cijkl)
+
+        # calculate the derivative of the Christoffel matrix eigenvalues.
+        dλ = _eigenvector_derivatives(eigenvectors, dMijk)
+
+        # CALCULATE GROUP VELOCITIES (km/s)
+        Vs2, Vs1, Vp = calc_group_velocities(phase_velocities,
+                                             eigenvectors,
+                                             dMijk,
+                                             wavevectors)
+
+        # CALCULATE THE ENHANCEMENT FACTOR
+        H = _christoffel_matrix_hessian(Cijkl)
+        Hλ = _hessian_eigen(H, dλ)
+        A = _calc_enhancement_factor(Hλ)
+
+        pass
 
 
 def _rearrange_tensor(C_ij: np.ndarray):
@@ -116,72 +148,6 @@ def _rearrange_tensor(C_ij: np.ndarray):
     return C_ijkl
 
 
-def _tensor_in_voigt(C_ijkl: np.ndarray):
-    """Convert the 3x3x3x3 (rank 4, dimension 3) elastic tensor
-    into a 6x6 (rank 2, dimension 6) elastic tensor according to
-    Voigt notation.
-
-    Parameters
-    ----------
-    C_ijkl : numpy.ndarray
-        The 3x3x3x3 elastic tensor to be converted. It should
-        be a 4D NumPy array of shape (3, 3, 3, 3).
-
-    Returns
-    -------
-    numpy.ndarray
-        The 6x6 elastic tensor in Voigt notation.
-
-    Raises
-    ------
-    ValueError
-        If C_ijkl is not a 4D NumPy array of shape (3, 3, 3, 3).
-
-    Notes
-    -----
-    The function maps the elements from the 3x3x3x3 elastic
-    tensor (C_ijkl) to the 6x6 elastic tensor (C_ij) using the Voigt
-    notation convention.
-    """
-
-    # check input
-    if not isinstance(C_ijkl, np.ndarray) or C_ijkl.shape != (3, 3, 3, 3):
-        raise ValueError("C_ijkl should be a 4D NumPy array of shape (3, 3, 3, 3).")
-
-    C_ij = np.zeros((6, 6))
-
-    # Divide by 2 because symmetrization will double the elastic
-    # contants in the main diagonal
-    C_ij[0, 0] = 0.5 * C_ijkl[0, 0, 0, 0]
-    C_ij[1, 1] = 0.5 * C_ijkl[1, 1, 1, 1]
-    C_ij[2, 2] = 0.5 * C_ijkl[2, 2, 2, 2]
-    C_ij[3, 3] = 0.5 * C_ijkl[1, 2, 1, 2]
-    C_ij[4, 4] = 0.5 * C_ijkl[0, 2, 0, 2]
-    C_ij[5, 5] = 0.5 * C_ijkl[0, 1, 0, 1]
-
-    C_ij[0, 1] = C_ijkl[0, 0, 1, 1]
-    C_ij[0, 2] = C_ijkl[0, 0, 2, 2]
-    C_ij[0, 3] = C_ijkl[0, 0, 1, 2]
-    C_ij[0, 4] = C_ijkl[0, 0, 0, 2]
-    C_ij[0, 5] = C_ijkl[0, 0, 0, 1]
-
-    C_ij[1, 2] = C_ijkl[1, 1, 2, 2]
-    C_ij[1, 3] = C_ijkl[1, 1, 1, 2]
-    C_ij[1, 4] = C_ijkl[1, 1, 0, 2]
-    C_ij[1, 5] = C_ijkl[1, 1, 0, 1]
-
-    C_ij[2, 3] = C_ijkl[2, 2, 1, 2]
-    C_ij[2, 4] = C_ijkl[2, 2, 0, 2]
-    C_ij[2, 5] = C_ijkl[2, 2, 0, 1]
-
-    C_ij[3, 4] = C_ijkl[1, 2, 0, 2]
-    C_ij[3, 5] = C_ijkl[1, 2, 0, 1]
-
-    C_ij[4, 5] = C_ijkl[0, 2, 0, 1]
-
-    return C_ij + C_ij.T
-
-
 def _normalize_vector(vector: np.ndarray):
     """Normalizes a vector in 3d cartesian space to lie
     on the unit sphere.
@@ -224,7 +190,7 @@ def _normalize_vector(vector: np.ndarray):
     return vector / magnitude
 
 
-def _christoffel_matrix(wave_vector: np.ndarray, Cijkl: np.ndarray):
+def _christoffel_matrix(wavevector: np.ndarray, Cijkl: np.ndarray):
     """Calculate the Christoffel matrix for a given wave vector
     and elastic tensor Cij.
 
@@ -255,19 +221,88 @@ def _christoffel_matrix(wave_vector: np.ndarray, Cijkl: np.ndarray):
     """
 
     # Validate input parameters
-    if not isinstance(wave_vector, np.ndarray) or wave_vector.shape != (3,):
+    if not isinstance(wavevector, np.ndarray) or wavevector.shape != (3,):
         raise ValueError("wave_vector should be a 1D NumPy array of length 3.")
 
     if not isinstance(Cijkl, np.ndarray) or Cijkl.shape != (3, 3, 3, 3):
         raise ValueError("Cijkl should be a 4D NumPy array of shape (3, 3, 3, 3).")
 
     # normalize wavevector to lie on unit sphere
-    wave_vector = _normalize_vector(wave_vector)
+    wave_vector = _normalize_vector(wavevector)
 
     return np.dot(wave_vector, np.dot(wave_vector, Cijkl))
 
 
-def _christoffel_matrix_gradient(wave_vector: np.ndarray, Cijkl: np.ndarray):
+def _calc_eigen(Mij: np.ndarray):
+    """Return the eigenvalues and eigenvectors of the Christoffel
+    matrix sorted from low to high. The eigenvalues are related to
+    primary (P) and secondary (S-fast, S-slow) wave speeds. The
+    eigenvectors provide the unsigned polarization directions,
+    which are orthogonal to each other. It is assumed that the
+    Christoffel tensor provided is already normalised to the
+    density of the material.
+
+    Parameters
+    ----------
+    Mij : numpy ndarray
+        the Christoffel matrix (3x3)
+
+    Returns
+    -------
+    two numpy ndarrays
+        a (,3) array with the eigenvalues
+        a (3,3) array with the eigenvectors
+    """
+
+    # Check if M is a 3x3 array
+    if not isinstance(Mij, np.ndarray) or Mij.shape != (3, 3):
+        raise ValueError("M should be a 3x3 NumPy array.")
+
+    eigen_values, eigen_vectors = np.linalg.eigh(Mij)
+
+    return (eigen_values[np.argsort(eigen_values)],
+            eigen_vectors.T[np.argsort(eigen_values)])
+
+
+def calc_phase_velocities(eigenvalues: np.ndarray):
+    """Estimate the material's sound velocities of a monochromatic
+    plane wave, referred to as the phase velocity, as a function of
+    crystal/aggreagte orientation from the Christoffel matrix (M).
+    It returns three velocities, one primary (P wave) and two
+    secondary (S waves). It is assumed that the Christoffel tensor
+    provided is already normalised to the density of the material.
+
+    Parameters
+    ----------
+    eigenvalues : numpy.ndarray
+        The eigenvalues of the normalized Christoffel matrix
+
+    Returns
+    -------
+    numpy.ndarray
+        Three wave velocities [Vs2, Vs1, Vp], where Vs2 < Vs1 < Vp.
+
+    Notes
+    -----
+    The function estimates the phase velocities of the material's
+    sound waves from the eigenvalues of the Christoffel matrix (M).
+    The eigenvalues represent the squared phase velocities, and by
+    taking the square root, the actual phase velocities are obtained.
+    The output is a 1D NumPy array containing the three velocities,
+    Vs2, Vs1, and Vp, sorted in ascending order (Vs2 < Vs1 < Vp).
+    Sound waves in nature are never purely monochromatic or planar.
+    See calc_group_velocities.
+    """
+
+    # Check if eigenvalues is a 3x1 array
+    if not isinstance(eigenvalues, np.ndarray) or eigenvalues.shape != (3,):
+        raise ValueError("eigenvalues should be a 3x3 NumPy array.")
+
+    return np.sign(eigenvalues) * np.sqrt(np.absolute(eigenvalues))
+
+
+def _christoffel_matrix_gradient(wavevector: np.ndarray,
+                                 Cijkl: np.ndarray):
     """Calculate the derivative of the Christoffel matrix. The
     derivative of the Christoffel matrix is computed using
     the formula (e.g. Jaeken and Cottenier, 2016):
@@ -300,15 +335,86 @@ def _christoffel_matrix_gradient(wave_vector: np.ndarray, Cijkl: np.ndarray):
     """
 
     # Validate input parameters
-    if not isinstance(wave_vector, np.ndarray) or wave_vector.shape != (3,):
+    if not isinstance(wavevector, np.ndarray) or wavevector.shape != (3,):
         raise ValueError("wave_vector should be a 1D NumPy array of length 3.")
 
     if not isinstance(Cijkl, np.ndarray) or Cijkl.shape != (3, 3, 3, 3):
         raise ValueError("Cijkl should be a 4D NumPy array of shape (3, 3, 3, 3).")
 
-    gradmat = np.dot(wave_vector, Cijkl + np.transpose(Cijkl, (0, 2, 1, 3)))
+    gradmat = np.dot(wavevector, Cijkl + np.transpose(Cijkl, (0, 2, 1, 3)))
 
     return np.transpose(gradmat, (1, 0, 2))
+
+
+def _eigenvector_derivatives(eigenvectors: np.ndarray,
+                             gradient_matrix: np.ndarray):
+    """Calculate the derivatives of eigenvectors with respect to
+    the gradient matrix.
+
+    Parameters
+    ----------
+    eigenvectors : numpy.ndarray
+        Array of shape (3, 3) representing three eigenvectors
+        of the Christoffel matrix.
+    gradient_matrix : numpy.ndarray
+        The derivative of the Christoffel matrix, which has a
+        shape of (3, 3, 3)
+
+    Returns
+    -------
+    numpy.ndarray:
+        Array of shape (3, 3, 3), where the i-th index
+        corresponds to the i-th eigenvector, and each element
+        (i, j, k) represents the derivative of the i-th
+        eigenvector with respect to the j-th component of
+        the k-th eigenvector.
+    """
+
+    eigen_derivatives = np.zeros((3, 3))
+
+    for i in range(3):
+        for j in range(3):
+            eigen_derivatives[i, j] = np.dot(eigenvectors[i],
+                                             np.dot(gradient_matrix[j],
+                                                    eigenvectors[i]))
+
+    return eigen_derivatives
+
+
+def calc_group_velocities(phase_velocities,
+                          eigenvectors,
+                          M_derivative,
+                          wave_vector):
+    """_summary_
+
+    Parameters
+    ----------
+    phase_velocities : _type_
+        _description_
+    eigenvectors : _type_
+        _description_
+    dM : _type_
+        _description_
+    """
+
+    velocity_group = np.zeros((3, 3))
+    group_abs = np.zeros(3)
+    group_dir = np.zeros((3, 3))
+
+    # estimate the derivative of eigenvectors
+    eigen_derivatives = _eigenvector_derivatives(eigenvectors, M_derivative)
+
+    # estimate group velocities and...TODO
+    for i in range(3):
+        for j in range(3):
+            velocity_group[i, j] = M_derivative[i, j] / (2 * phase_velocities[i])
+        group_abs[i] = np.linalg.norm(velocity_group[i])
+        group_dir[i] = velocity_group[i] / group_abs[i]
+
+    # estimate the powerflow angle
+    powerflow_angle = np.arccos(np.dot(group_dir, wave_vector))
+
+    return velocity_group, powerflow_angle
 
 
 def _christoffel_matrix_hessian(Cijkl: np.ndarray):
@@ -351,150 +457,11 @@ def _christoffel_matrix_hessian(Cijkl: np.ndarray):
     return hessianmat
 
 
-def _calc_eigen(M: np.ndarray):
-    """Return the eigenvalues and eigenvectors of the Christoffel
-    matrix sorted from low to high. The eigenvalues are related to
-    primary (P) and secondary (S-fast, S-slow) wave speeds. The
-    eigenvectors provide the unsigned polarization directions,
-    which are orthogonal to each other. It is assumed that the
-    Christoffel tensor provided is already normalised to the
-    density of the material.
-
-    Parameters
-    ----------
-    M : numpy ndarray
-        the Christoffel matrix (3x3)
-
-    Returns
-    -------
-    two numpy ndarrays
-        a (,3) array with the eigenvalues
-        a (3,3) array with the eigenvectors
-    """
-
-    # Check if M is a 3x3 array
-    if not isinstance(M, np.ndarray) or M.shape != (3, 3):
-        raise ValueError("M should be a 3x3 NumPy array.")
-
-    eigen_values, eigen_vectors = np.linalg.eigh(M)
-
-    return (eigen_values[np.argsort(eigen_values)],
-            eigen_vectors.T[np.argsort(eigen_values)])
+def _hessian_eigen():
+    pass
 
 
-def _eigenvector_derivatives(eigenvectors: np.ndarray,
-                             gradient_matrix: np.ndarray):
-    """Calculate the derivatives of eigenvectors with respect to
-    the gradient matrix.
-
-    Parameters
-    ----------
-    eigenvectors : numpy.ndarray
-        Array of shape (3, 3) representing three eigenvectors
-        of the Christoffel matrix.
-    gradient_matrix : numpy.ndarray
-        The derivative of the Christoffel matrix, which has a
-        shape of (3, 3, 3)
-
-    Returns
-    -------
-    numpy.ndarray:
-        Array of shape (3, 3, 3), where the i-th index
-        corresponds to the i-th eigenvector, and each element
-        (i, j, k) represents the derivative of the i-th
-        eigenvector with respect to the j-th component of
-        the k-th eigenvector.
-    """
-
-    eigen_derivatives = np.zeros((3, 3))
-
-    for i in range(3):
-        for j in range(3):
-            eigen_derivatives[i, j] = np.dot(eigenvectors[i],
-                                             np.dot(gradient_matrix[j],
-                                                    eigenvectors[i]))
-
-    return eigen_derivatives
-
-
-def _rotate_vector_to_plane(vector: np.ndarray,
-                            azimuth_angle,
-                            polar_angle):
-    """Rotate a 3-vector into a plane.
-
-    Parameters
-    ----------
-    vector : numpy ndarray
-        A 3-vector (cartesian coordinates)
-    azimuth_angle : float
-        Azimuth angle in radians, from coordinates x1 towards x2
-    polar_angle : float
-        Polar angle in radians, from the x1-x2 plane towards x3.
-
-    Returns
-    -------
-    rotated_vector : array
-        Vector within the x-y plane.
-
-    """
-
-    # Create rotation matrices.
-    r1 = np.array([[np.cos(azimuth_angle), np.sin(azimuth_angle), 0],
-                   [-np.sin(azimuth_angle), np.cos(azimuth_angle), 0],
-                   [0, 0, 1]])
-    r2 = np.array([[np.cos(polar_angle), 0, -np.sin(polar_angle)],
-                   [0, 1, 0],
-                   [np.sin(polar_angle), 0, np.cos(polar_angle)]])
-
-    # Rotate the vector.
-    rotated_vector = np.dot(np.dot(vector, r1), r2)
-
-    return rotated_vector
-
-
-def polarisation_angle(polar_angle,
-                       azimuth_angle,
-                       polarisation_vector):
-    """Calculates the projection angle of the polarisation
-    vector of the fast shear wave onto the wavefront plane.
-
-    Parameters
-    ----------
-    polar_angle : float or numpy ndarray
-        Polar angle in radians
-    azimuth_angle : float or numpy ndarray
-        Azimuth angle in radians
-    polarisation_vector : float or numpy ndarray
-        Polarisation vector of the fast shear wave.
-
-    Returns
-    -------
-    polarisation_angle : float
-        Projection angle of the polarisation vector of
-        the fast shear wave onto the wavefront plane.
-    """
-
-    # estimate the wavefront vector in cartesian coordinates
-    x, y, z = c.sph2cart(azimuth_angle, polar_angle)
-    wavefront_vector = _normalize_vector(np.array([x, y, z]))
-
-    # Calculate the normal vector of the wavefront and
-    # normalize to unit length
-    normal = np.cross(wavefront_vector,
-                      np.cross(wavefront_vector,
-                               polarisation_vector))
-    normal = _normalize_vector(normal)
-
-    # Rotate the normal vector of the wavefront into the x-y plane
-    # Create rotation matrices.
-    rotated_vector = _rotate_vector_to_plane(normal, azimuth_angle, polar_angle)
-
-    # Calculate the projection angle of the polarisation vector
-    # onto the wavefront plane
-    angle = np.rad2deg(np.arctan2(rotated_vector[1], rotated_vector[2]))
-    angle = angle + 180 if angle < -90 else angle
-    angle = angle - 180 if angle > 90 else angle
-
-    return angle
+def _calc_enhancement_factor(Hλ):
+    pass
 
 # End of file
