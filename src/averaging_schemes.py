@@ -32,7 +32,7 @@ import numpy as np
 
 
 # Function definitions
-def voigt_average(Cijs, volume_fractions):
+def voigt_average(stiffness_tensors, volume_fractions):
     """
     Calculates the Voigt average of a set of material
     phases, described by their elastic tensors and
@@ -41,11 +41,11 @@ def voigt_average(Cijs, volume_fractions):
     The Voigt average is defined as the weighted arithmetic
     mean of elastic tensors, that is:
 
-    Cij_voigt = f1 * Cij_1 + f2 * Cij_2 + ... + fn * Cij_n
+    Cjk_voigt = f1 * Cij_1 + f2 * Cij_2 + ... + fn * Cij_n
 
     Parameters
     ----------
-    Cijs : numpy array, shape(n, 6, 6)
+    stiffness_tensors : numpy array, shape(n, 6, 6)
         Stiffness tensors of constitutive phases for
         which to calculate the Voigt average.
     volume_fractions : numpy array, shape(n,)
@@ -63,9 +63,14 @@ def voigt_average(Cijs, volume_fractions):
     if not np.isclose(np.sum(volume_fractions), 1):
         volume_fractions = volume_fractions / np.sum(volume_fractions)
 
-    # Calculate the Voigt average using einsum
-    voigt_average_tensor = np.einsum('i, ijk -> jk', volume_fractions, Cijs)
+    # Calculate the Voigt average using Einstein summation (mp.einsum)
+    # Notation 'n, nij -> ij':
+    # 'n' represents the array with the volume fractions
+    # 'nij' represents the stiffness_tensors 3-d array
+    # 'ij' represents the output array, which will be a 2-d array
+    # So that: C_ij = Σ_n (F_n * C_nij)
+    Cij_voigt = np.einsum('n, nij -> ij', volume_fractions, stiffness_tensors)
 
-    return voigt_average_tensor
+    return Cij_voigt
 
 # End of file
