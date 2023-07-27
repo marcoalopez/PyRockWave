@@ -32,21 +32,26 @@ import numpy as np
 
 
 # Function definitions
-def voigt_average(stiffness_tensors, volume_fractions):
-    """
-    Calculates the Voigt average of a set of material
+def voigt_average(elastic_tensors, volume_fractions):
+    """Calculates the Voigt average of a set of mineral
     phases, described by their elastic tensors and
     volume fractions.
 
     The Voigt average is defined as the weighted arithmetic
     mean of elastic tensors, that is:
 
-    Cjk_voigt = f1 * Cij_1 + f2 * Cij_2 + ... + fn * Cij_n
+    C_ij_voigt = Σ_n (F_n * C_nij)
+
+    This can be calculated using Einstein summation (np.einsum)
+    using the notation 'n, nij -> ij' where:
+    'n' represents the array with the volume fractions, F_n
+    'nij' represents the elastic tensors 3-d array, C_nij
+    'ij' represents the output array, 2-d array
 
     Parameters
     ----------
-    stiffness_tensors : numpy array, shape(n, 6, 6)
-        Stiffness tensors of constitutive phases for
+    elastic_tensors : numpy array, shape(n, 6, 6)
+        elastic tensors of constitutive phases for
         which to calculate the Voigt average.
     volume_fractions : numpy array, shape(n,)
         Fraction of each constitutive phase in the
@@ -63,13 +68,8 @@ def voigt_average(stiffness_tensors, volume_fractions):
     if not np.isclose(np.sum(volume_fractions), 1):
         volume_fractions = volume_fractions / np.sum(volume_fractions)
 
-    # Calculate the Voigt average using Einstein summation (mp.einsum)
-    # Notation 'n, nij -> ij':
-    # 'n' represents the array with the volume fractions
-    # 'nij' represents the stiffness_tensors 3-d array
-    # 'ij' represents the output array, which will be a 2-d array
-    # So that: C_ij = Σ_n (F_n * C_nij)
-    Cij_voigt = np.einsum('n, nij -> ij', volume_fractions, stiffness_tensors)
+    # Calculate the Voigt average
+    Cij_voigt = np.einsum('n, nij -> ij', volume_fractions, elastic_tensors)
 
     return Cij_voigt
 
