@@ -70,16 +70,47 @@ def Tsvankin_params(cij: np.ndarray, density: float):
     return Vp0, Vs0, (epsilon1, delta1, gamma1, epsilon2, delta2, gamma2, delta3)
 
 
-def orthotropic_azimuthal_anisotropy(elastic):
+def orthotropic_azimuthal_anisotropy(elastic, wavevectors):
     """The simplest realistic case of azimuthal anisotropy is that of
     orthorhombic anisotropy (a.k.a. orthotropic).
 
     Parameters
     ----------
-    elastic : _type_
-        _description_
+    elastic : elasticClass
+        The elastic properties of the material.
+
+    wavevectors : numpy.ndarray
+        The wave vectors in spherical coordinates
+
+    Returns
+    -------
+    pandas.DataFrame
+        Tabular data object containing the propagation directions
+        and calculated Vp, Vs1, and Vs2 speeds using the weak polar
+        anisotropy model.
     """
+    # extract azimuths and polar angles
+    azimuths, polar = wavevectors
+
+    # get Thomsen parameters
+    Vp0, Vs0, *params = Tsvankin_params(elastic.Cij, elastic.density)
+    epsilon1, delta1, gamma1, epsilon2, delta2, gamma2, delta3 = params
+
+    # estimate phase wavespeeds as a function of propagation polar angle
+    sin_theta = np.sin(polar)
+    cos_theta = np.cos(polar)
+    Vp = Vp0 * (1 + delta2 * sin_theta**2 * cos_theta**2 + epsilon2 * sin_theta**4)
     # TODO
-    pass
+    # Vsv = Vs0 * (1 + (Vp0 / Vs0)**2 * (epsilon - delta) * sin_theta**2 * cos_theta**2)
+    # Vsh = Vs0 * (1 + gamma * sin_theta**2)
+
+    # reshape and store arrays
+    data = {'polar_ang': polar,
+            'azimuthal_ang': azimuths,
+            'Vp': Vp,
+            'Vsv': Vsv,
+            'Vsh': Vsh}
+
+    return pd.DataFrame(data)
 
 # End of file
