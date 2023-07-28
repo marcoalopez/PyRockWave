@@ -130,4 +130,63 @@ def reuss_volume_weighted_average(elastic_tensors: np.ndarray,
 
     return Sij_reuss
 
+
+def voigt_CPO_weighted_average(elastic_tensor: np.ndarray,
+                               ODF: np.ndarray):
+    """Calculates the elastic tensor Voigt average of a
+    mineral phase considering the crystallographic
+    preferred orientation of the aggregate
+
+    The Voigt average is defined as the weighted arithmetic
+    mean of elastic tensors, that is:
+
+    C_ij_voigt = Σ_n (ODF_n * C_nij)
+
+    This can be calculated using Einstein summation (np.einsum)
+    using the notation 'n, nij -> ij' where:
+    'n' represents the array with the orientation weights
+    'nij' represents the elastic tensors 3-d array, C_nij
+    'ij' represents the output array, 2-d array
+
+    Parameters
+    ----------
+    elastic_tensor : numpy array, shape(6, 6)
+        elastic tensor of the mineral phase
+    ODF : numpy array
+        Orientation Distribution Function
+
+    Returns
+    -------
+    Cij_voigt : numpy array, shape(6, 6)
+        Voigt average elastic tensor for the aggregate
+    """
+    pass
+
+
+def reuss_CPO_weighted_average(compliance_tensor: np.ndarray,
+                               ODF: np.ndarray):
+    """Calculates the compliance tensor Reuss average of a
+    mineral phase considering the crystallographic
+    preferred orientation of the aggregate
+
+    The Reuss average is defined as the weighted arithmetic
+    mean of elastic tensors, that is:
+
+    TODO
+
+    Parameters
+    ----------
+    compliance_tensor : numpy array, shape(6, 6)
+        compliance tensor of the mineral phase
+    ODF : numpy array
+        Orientation Distribution Function
+
+    Returns
+    -------
+    Cij_reuss : numpy array, shape(6, 6)
+        Reuss average elastic tensor for the aggregate
+        material.
+    """
+    pass
+
 # End of file
