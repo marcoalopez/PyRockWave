@@ -70,7 +70,7 @@ def christoffel_wave_speeds(Cij: np.ndarray,
 
         # calculate shear wave splitting
 
-        # create a dataframe with phase velocities
+        # return a dataframe with phase velocities
 
         pass
 
@@ -92,6 +92,8 @@ def christoffel_wave_speeds(Cij: np.ndarray,
         H = _christoffel_matrix_hessian(Cijkl)
         Hλ = _hessian_eigen(H, dλ)
         A = _calc_enhancement_factor(Hλ)
+
+        # return a dataframe with group velocities
 
         pass
 
