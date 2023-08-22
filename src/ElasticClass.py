@@ -25,11 +25,14 @@
 # Email: lopezmarco [to be found at] uniovi.es                        #
 # Website: https://marcoalopez.github.io/PyRockWave/                  #
 # Project Repository: https://github.com/marcoalopez/PyRockWave       #
+#                                                                     #
 #######################################################################
 
 # Import statements
 import numpy as np
+import pandas as pd
 from dataclasses import dataclass, field
+from typing import Optional
 
 
 # Class definitions
@@ -38,15 +41,16 @@ class ElasticProps:
     """A class that encapsulates and calculates various elastic
     properties of materials."""
 
-    mineral_name: str | None
-    crystal_system: str | None
     temperature: float  # in °C
     pressure: float     # in GPa
     density: float      # density in g/cm3
     Cij: np.ndarray     # stiffness tensor in GPa
-    reference: str
+    mineral_name: Optional[str] = None
+    rock_type: Optional[str] = None
+    crystal_system: Optional[str] = None
+    reference: Optional[str] = None
 
-    # to estimate
+    # fields to estimate
     Sij: np.ndarray = field(init=False)  # compliance tensor
     K_voigt: float = field(init=False)
     K_reuss: float = field(init=False)
