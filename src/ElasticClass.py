@@ -84,12 +84,12 @@ class ElasticProps:
                                  "Trigonal", "trigonal",
                                  "Hexagonal", "hexagonal",
                                  "Monoclinic", "monoclinic",
-                                 "Triclinic", "triclinic",
-                                 None]
-        if self.crystal_system not in valid_crystal_systems:
-            raise ValueError("Invalid crystal system. Please choose one of the following: "
-                             "Cubic, Tetragonal, Orthorhombic, Rhombohedral, Hexagonal, "
-                             "Trigonal, Monoclinic, Triclinic, or None")
+                                 "Triclinic", "triclinic"]
+        if self.crystal_system is not None:
+            if self.crystal_system not in valid_crystal_systems:
+                raise ValueError("Invalid crystal system. Please choose one of the following: "
+                                 "Cubic, Tetragonal, Orthorhombic, Rhombohedral, Hexagonal, "
+                                 "Trigonal, Monoclinic, or Triclinic")
 
         # check the symmetry of the elastic tensor
         if not np.allclose(self.Cij, self.Cij.T):
@@ -104,24 +104,16 @@ class ElasticProps:
         c12, c13, c23 = self.Cij[0, 1], self.Cij[0, 2], self.Cij[1, 2]
         s12, s13, s23 = self.Sij[0, 1], self.Sij[0, 2], self.Sij[1, 2]
 
-        # Calculate the bulk modulus Voigt average
-        self.K_voigt = 1/9 * ((c11 + c22 + c33) + 2*(c12 + c23 + c13))
+        # Calculate the bulk modulus
+        self.K_voigt = 1/9 * ((c11 + c22 + c33) + 2*(c12 + c23 + c13)) # Voigt average
+        self.K_reuss = 1 / ((s11 + s22 + s33) + 2*(s12 + s23 + s13))   # Reuss average
+        self.K_hill = (self.K_voigt + self.K_reuss) / 2                # Hill average
 
-        # Calculate the bulk modulus Reuss average
-        self.K_reuss = 1 / ((s11 + s22 + s33) + 2*(s12 + s23 + s13))
-
-        # Calculate bulk modulus VRH average
-        self.K_hill = (self.K_voigt + self.K_reuss) / 2
-
-        # Calculate the shear modulus Voigt average
+        # Calculate the shear modulus
         self.G_voigt = 1/15 * ((c11 + c22 + c33) - (c12 + c23 + c13)
                                + 3*(c44 + c55 + c66))
-
-        # Calculate the shear modulus Reuss average
         self.G_reuss = 15 / (4*(s11 + s22 + s33) - 4*(s12 + s23 + s13)
                              + 3*(s44 + s55 + s66))
-
-        # Calculate shear modulus VRH average
         self.G_hill = (self.G_voigt + self.G_reuss) / 2
 
         # Calculate the Universal elastic anisotropy
@@ -139,11 +131,6 @@ class ElasticProps:
                                        / (6*self.K_hill + 2*self.G_hill))
         self.isotropic_poisson_voigt = ((3*self.K_voigt - 2*self.G_voigt)
                                         / (6*self.K_voigt + 2*self.G_voigt))
-
-        # # Pugh's ratio
-        # self.pugh_reuss = self.K_reuss / self.G_reuss
-        # self.pugh_hill = self.K_hill / self.G_hill
-        # self.pugh_voigt = self.K_voigt / self.G_voigt
 
         # calculate the isotropic average Vp
         Vp_reuss = np.sqrt((self.K_reuss + 4/3 * self.G_reuss) / self.density)
@@ -166,7 +153,7 @@ class ElasticProps:
         self.isotropic_vpvs_hill = np.around(Vp_hill / Vs_hill, decimals=4)
         self.isotropic_vpvs_voigt = np.around(Vp_voigt / Vs_voigt, decimals=4)
 
-        # summary of average elastic properties
+        # table with average elastic properties
         self.elastic = pd.DataFrame({'Unit:GPa': ['Voigt', 'Hill', 'Reuss'],
                                      'Bulk_modulus': [self.K_voigt,
                                                       self.K_hill,
@@ -178,7 +165,7 @@ class ElasticProps:
                                                        self.isotropic_poisson_hill,
                                                        self.isotropic_poisson_reuss]})
 
-        # summary of isotropic wavespeeds and ratios
+        # table with isotropic wavespeeds and ratios
         self.wavespeeds = pd.DataFrame({'Unit:km/s': ['Voigt', 'Hill', 'Reuss'],
                                         'Vp': [Vp_voigt, Vp_hill, Vp_reuss],
                                         'Vs': [Vs_voigt, Vs_hill, Vs_reuss],
