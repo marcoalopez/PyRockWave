@@ -46,8 +46,8 @@ class ElasticProps:
     density: float      # density in g/cm3
     Cij: np.ndarray     # stiffness tensor in GPa
     mineral_name: Optional[str] = None
-    rock_type: Optional[str] = None
     crystal_system: Optional[str] = None
+    rock_type: Optional[str] = None
     reference: Optional[str] = None
 
     # fields to estimate
@@ -59,10 +59,21 @@ class ElasticProps:
     G_reuss: float = field(init=False)
     G_hill: float = field(init=False)
     universal_anisotropy: float = field(init=False)
-    isotropic_poisson_ratio: float = field(init=False)
-    isotropic_avg_vp: float = field(init=False)
-    isotropic_avg_vs: float = field(init=False)
-    isotropic_avg_vpvs: float = field(init=False)
+    Kube_anisotropy: float = field(init=False)
+    isotropic_poisson_voigt: float = field(init=False)
+    isotropic_poisson_reuss: float = field(init=False)
+    isotropic_poisson_hill: float = field(init=False)
+    isotropic_vp_voigt: float = field(init=False)
+    isotropic_vp_reuss: float = field(init=False)
+    isotropic_vp_hill: float = field(init=False)
+    isotropic_vs_voigt: float = field(init=False)
+    isotropic_vs_reuss: float = field(init=False)
+    isotropic_vs_hill: float = field(init=False)
+    isotropic_vpvs_voigt: float = field(init=False)
+    isotropic_vpvs_reuss: float = field(init=False)
+    isotropic_vpvs_hill: float = field(init=False)
+    elastic: pd.DataFrame = field(init=False)
+    wavespeeds: pd.DataFrame = field(init=False)
 
     def __post_init__(self):
         # Validate crystal system
@@ -129,10 +140,10 @@ class ElasticProps:
         self.isotropic_poisson_voigt = ((3*self.K_voigt - 2*self.G_voigt)
                                         / (6*self.K_voigt + 2*self.G_voigt))
 
-        # Pugh's ratio
-        self.pugh_reuss = self.K_reuss / self.G_reuss
-        self.pugh_hill = self.K_hill / self.G_hill
-        self.pugh_voigt = self.K_voigt / self.G_voigt
+        # # Pugh's ratio
+        # self.pugh_reuss = self.K_reuss / self.G_reuss
+        # self.pugh_hill = self.K_hill / self.G_hill
+        # self.pugh_voigt = self.K_voigt / self.G_voigt
 
         # calculate the isotropic average Vp
         Vp_reuss = np.sqrt((self.K_reuss + 4/3 * self.G_reuss) / self.density)
@@ -155,10 +166,33 @@ class ElasticProps:
         self.isotropic_vpvs_hill = np.around(Vp_hill / Vs_hill, decimals=4)
         self.isotropic_vpvs_voigt = np.around(Vp_voigt / Vs_voigt, decimals=4)
 
+        # summary of average elastic properties
+        self.elastic = pd.DataFrame({'Unit:GPa': ['Voigt', 'Hill', 'Reuss'],
+                                     'Bulk_modulus': [self.K_voigt,
+                                                      self.K_hill,
+                                                      self.K_reuss],
+                                     'Shear_modulus': [self.G_voigt,
+                                                       self.G_hill,
+                                                       self.G_reuss],
+                                     'Poisson_ratio': [self.isotropic_poisson_voigt,
+                                                       self.isotropic_poisson_hill,
+                                                       self.isotropic_poisson_reuss]})
+
+        # summary of isotropic wavespeeds and ratios
+        self.wavespeeds = pd.DataFrame({'Unit:km/s': ['Voigt', 'Hill', 'Reuss'],
+                                        'Vp': [Vp_voigt, Vp_hill, Vp_reuss],
+                                        'Vs': [Vs_voigt, Vs_hill, Vs_reuss],
+                                        'Vp/vs': [self.isotropic_vpvs_voigt,
+                                                  self.isotropic_vpvs_hill,
+                                                  self.isotropic_vpvs_reuss]})
+
     def __repr__(self):
         output = str(type(self)) + "\n"
         output += "\n"
-        output += f"Mineral Name: {self.mineral_name}\n"
+        if self.mineral_name is not None:
+            output += f"Mineral Name: {self.mineral_name}\n"
+        if self.rock_type is not None:
+            output += f"Rock type: {self.rock_type}\n"
         output += f"Reference Source: {self.reference}\n"
         output += f"Crystal System: {self.crystal_system}\n"
         output += f"Pressure (GPa): {self.pressure:.1f}\n"
@@ -167,27 +201,16 @@ class ElasticProps:
         output += "\n"
         output += f"Elastic Tensor (Cij) in GPa:\n{self.Cij}\n"
         output += "\n"
-        output += "Calculated average properties:\n"
-        output += "Bulk Modulus (GPa) → VRH, (Reuss, Voigt)\n"
-        output += f"{self.K_hill:.3f}, ({self.K_reuss:.3f}, {self.K_voigt:.3f})\n"
+        output += "Anisotropy indexes:\n"
+        output += f"    Universal Elastic Anisotropy:           {self.universal_anisotropy:.3f}\n"
+        output += f"    Kube's Anisotropy Index (proportional): {self.Kube_anisotropy:.3f}\n"
         output += "\n"
-        output += "Shear Modulus (GPa) → VRH, (Reuss, Voigt)\n"
-        output += f"{self.G_hill:.3f}, ({self.G_reuss:.3f}, {self.G_voigt:.3f})\n"
+        output += "Calculated elastic average properties:\n"
+        output += f"{self.elastic.round(3).to_string(index=False)}"
         output += "\n"
-        output += "Isotropic Poisson Ratio → VRH, (Reuss, Voigt)\n"
-        output += f"{self.isotropic_poisson_hill:.3f}, ({self.isotropic_poisson_reuss:.3f}, {self.isotropic_poisson_voigt:.3f}))\n"
         output += "\n"
-        output += "Pugh's ratio → VRH, (Reuss, Voigt)\n"
-        output += f"({self.pugh_hill:.3f}, ({self.pugh_reuss:.3f}, {self.pugh_voigt:.3f})\n"
-        output += "\n"
-        output += "Anisotropy indexes\n"
-        output += f"Universal Elastic Anisotropy: {self.universal_anisotropy:.3f}\n"
-        output += f"Kube's Anisotropy Index (proportional): {self.Kube_anisotropy:.3f}\n"
-        output += "\n"
-        output += "Isotropic seismic properties → VRH, (Reuss, Voigt)\n"
-        output += f"Vp (km/s): {self.isotropic_vp_hill:.3f}, ({self.isotropic_vp_reuss:.3f}, {self.isotropic_vp_voigt:.3f})\n"
-        output += f"Vs (km/s): {self.isotropic_vs_hill:.3f}, ({self.isotropic_vs_reuss:.3f}, {self.isotropic_vs_voigt:.3f})\n"
-        output += f"Vp/Vs: {self.isotropic_vpvs_hill:.3f}, ({self.isotropic_vpvs_reuss:.3f}, {self.isotropic_vpvs_voigt:.3f})\n"
+        output += "Isotropic seismic properties:\n"
+        output += f"{self.wavespeeds.round(3).to_string(index=False)}"
 
         return output
 
