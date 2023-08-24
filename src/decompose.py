@@ -140,18 +140,19 @@ def vector_to_tensor(X: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    X : np.ndarray, shape(6, 6)
-        Elastic vector representation of the elastic tensor, Cij, in GPa.
+    X : np.ndarray, shape(21,)
+        Elastic vector representation of the elastic tensor Xi
+        in GPa.
 
     Returns
     -------
-    Cij : np.ndarray, shape(21,)
-        Elastic tensor for the material, in GPa, converted from the vector.
+    Cij : np.ndarray, shape(6, 6)
+        Elastic tensor for the material, in GPa.
 
     Raises
     ------
     ValueError
-        If the length of the input vector X is not 21.
+        If the length of the input vector X is not (21,).
     """
 
     if X.shape != (21,):
@@ -160,14 +161,41 @@ def vector_to_tensor(X: np.ndarray) -> np.ndarray:
     rt2 = np.sqrt(2)
     rt22 = rt2 * 2
 
-    Cij = np.array([
-        [X[0],         X[5] / rt2,  X[4] / rt2,  X[9] / 2,     X[13] / 2,    X[17] / 2],
-        [X[5] / rt2,   X[1],        X[3] / rt2,  X[15] / 2,    X[10] / 2,    X[14] / 2],
-        [X[4] / rt2,   X[3] / rt2,  X[2],        X[12] / 2,    X[16] / 2,    X[11] / 2],
-        [X[9] / 2,     X[15] / 2,   X[12] / 2,   X[6] / 2,     X[20] / rt22, X[19] / rt22],
-        [X[13] / 2,    X[10] / 2,   X[16] / 2,   X[20] / rt22, X[7] / 2,     X[18] / rt22],
-        [X[17] / 2,    X[14] / 2,   X[11] / 2,   X[19] / rt22, X[18] / rt22, X[8] / 2]
-    ])
+    # set equivalence Xi → Cij
+    # Diagonal components
+    C11 = X[0]
+    C22 = X[1]
+    C33 = X[2]
+    # Off-diagonal components
+    C23 = X[3] / rt2
+    C13 = X[4] / rt2
+    C12 = X[5] / rt2
+    # Pure shear components
+    C44 = X[6] / 2
+    C55 = X[7] / 2
+    C66 = X[8] / 2
+    # Shear-normal components  
+    C14 = X[9] / 2
+    C25 = X[10] / 2
+    C36 = X[11] / 2
+    C34 = X[12] / 2
+    C15 = X[13] / 2
+    C26 = X[14] / 2
+    C24 = X[15] / 2
+    C35 = X[16] / 2
+    C16 = X[17] / 2
+    # Others:
+    C56 = X[18] / rt22
+    C46 = X[19] / rt22
+    C45 = X[20] / rt22    
+
+    Cij = np.array(
+        [[ C11, C12, C13, C14, C15, C16],
+         [ C12, C22, C23, C24, C25, C26],
+         [ C13, C23, C33, C34, C35, C36],
+         [ C14, C24, C34, C44, C45, C46],
+         [ C15, C25, C35, C45, C55, C56],
+         [ C16, C26, C36, C46, C56, C66]])
 
     return Cij
 
