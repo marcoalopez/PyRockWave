@@ -107,24 +107,27 @@ def tensor_to_vector(Cij: np.ndarray) -> np.ndarray:
 
     """
     rt2 = np.sqrt(2)
+    rt22 = rt2 * 2
     X = np.zeros(21)
 
-    # Diagonal components
+    # Diagonal components: C11 , C22 , C33
     X[:3] = Cij[0, 0], Cij[1, 1], Cij[2, 2]
 
-    # Off-diagonal Cijomponents
+    # Off-diagonal components: √2*C23, √2*C13, √2*C12
     X[3:6] = rt2 * Cij[1, 2], rt2 * Cij[0, 2], rt2 * Cij[0, 1]
 
-    # Pure shear Cijomponents
+    # Pure shear components: 2*C44, 2*C55, 2*C66
     X[6:9] = 2 * Cij[3, 3], 2 * Cij[4, 4], 2 * Cij[5, 5]
 
-    # Shear-normal Cijomponents
+    # Shear-normal components: 2*C14, 2*C25, 2*C36
+    #                          2*C34, 2*C15, 2*C26
+    #                          2*C24, 2*C35, 2*C16
     X[9:12] = 2 * Cij[0, 3], 2 * Cij[1, 4], 2 * Cij[2, 5]
     X[12:15] = 2 * Cij[2, 3], 2 * Cij[0, 4], 2 * Cij[1, 5]
     X[15:18] = 2 * Cij[1, 3], 2 * Cij[2, 4], 2 * Cij[0, 5]
 
-    # SymmetriCij Cijomponents
-    X[18:21] = 2 * rt2 * Cij[4, 5], 2 * rt2 * Cij[3, 5], 2 * rt2 * Cij[3, 4]
+    # Others: 2*√2*C56 , 2*√2*C46 , 2*√2*C45
+    X[18:21] = rt22 * Cij[4, 5], rt22 * Cij[3, 5], rt22 * Cij[3, 4]
 
     return X
 
