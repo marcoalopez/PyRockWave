@@ -196,6 +196,7 @@ def orthogonal_projector(symmetry_class: str) -> np.ndarray:
     rt2 = np.sqrt(2)
     M = np.zeros((21, 21))
 
+    # Projection onto the isotropic space (N_h=2)
     if symmetry_class == "isotropic":
         M[0:3, 0:3] = 3 / 15
         M[0:3, 3:6] = rt2 / 15
@@ -209,6 +210,7 @@ def orthogonal_projector(symmetry_class: str) -> np.ndarray:
         M[6:9, 3:6] = -rt2 / 15
         M[6:9, 6:9] = 1 / 5
 
+    # Projection onto the hexagonal space (N_h=5)
     if symmetry_class == "hexagonal":
         M[0:2, 0:2] = 3 / 8
         M[0:2, 5] = M[5, 0:2] = 1 / (4 * rt2)
@@ -218,17 +220,20 @@ def orthogonal_projector(symmetry_class: str) -> np.ndarray:
         M[5, 5] = 3 / 4
         M[5, 8] = M[8, 5] = -1 / (2 * rt2)
 
+    # Projection onto the tetragonal space (N_h=6)
     if symmetry_class == "tetragonal":
         M[2, 2] = M[5, 5] = M[8, 8] = 1.0
         M[0:2, 0:2] = M[3:5, 3:5] = M[6:8, 6:8] = 1 / 2
 
+    # Projection onto the orthorhombic space (N_h=9)
     if symmetry_class == "orthorhombic":
         np.fill_diagonal(M, 1)
         M[9:, 9:] = 0
 
+    # Projection onto the monoclinic space (N_h=13)
     if symmetry_class == "monoclinic":
         np.fill_diagonal(M, 1)
-        M[:, 10:12] = M[:, 13:15] = M[:, 16:18] = M[:, 19:21] = 0
+        M[:, 9:11] = M[:, 12:14] = M[:, 15:17] = M[:, 18:20] = 0
 
     return M
 
