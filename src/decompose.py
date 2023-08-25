@@ -77,7 +77,7 @@ def decompose_Cij(Cij: np.ndarray) -> dict:
         
         X_total = tensor_to_vector(Cij_copy)
         
-        # get the vector X on a specific symmetry subspace
+        # compute the vector X on a specific symmetry subspace
         M = orthogonal_projector(symmetry_class)
         X_symmetry_class = np.dot(M, X_total)  # X_h = M*X
 
@@ -163,9 +163,7 @@ def vector_to_tensor(X: np.ndarray) -> np.ndarray:
 
     # set equivalence Xi → Cij
     # Diagonal components
-    C11 = X[0]
-    C22 = X[1]
-    C33 = X[2]
+    C11, C22, C33 = X[0], X[1], X[2]
     # Off-diagonal components
     C23 = X[3] / rt2
     C13 = X[4] / rt2
