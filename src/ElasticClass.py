@@ -41,16 +41,19 @@ class ElasticProps:
     """A class that encapsulates and calculates various elastic
     properties of materials."""
 
+    # dataclass compulsory fields
     temperature: float  # in °C
     pressure: float     # in GPa
     density: float      # density in g/cm3
     Cij: np.ndarray     # stiffness tensor in GPa
+
+    # dataclass optional fields
     mineral_name: Optional[str] = None
     crystal_system: Optional[str] = None
     rock_type: Optional[str] = None
     reference: Optional[str] = None
 
-    # fields to estimate
+    # fields estimated internally by the dataclass
     Sij: np.ndarray = field(init=False)  # compliance tensor
     K_voigt: float = field(init=False)
     K_reuss: float = field(init=False)
@@ -244,7 +247,7 @@ def decompose_Cij(Cij: np.ndarray) -> dict:
 
     if not np.allclose(Cij, Cij.T):
         raise ValueError("Cij should be symmetric.")
-    
+
     Cij_copy = np.copy(Cij)
 
     decomposed_elements = {
@@ -256,7 +259,7 @@ def decompose_Cij(Cij: np.ndarray) -> dict:
     }
 
     for symmetry_class, _ in decomposed_elements.items():
-        
+
         X_total = tensor_to_vector(Cij_copy)
         
         # compute the vector X on a specific symmetry subspace
@@ -466,21 +469,21 @@ def calc_percentages(decomposition: dict) -> dict:
     """
 
     percentages = {}
-    
+
     # estimate the sum of the norm of all elastic vectors
     suma = (np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) +
             np.linalg.norm(tensor_to_vector(decomposition['hexagonal'])) +
             np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) +
             np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) +
             np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])))
-    
+
     # estimate percentages
     percentages['isotropic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) / suma
     percentages['anisotropic'] = 100 - percentages['isotropic']
-    percentages['hexagonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['hexagonal']))  / suma
-    percentages['tetragonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['tetragonal']))  / suma
-    percentages['orthorhombic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['orthorhombic']))  / suma
-    percentages['monoclinic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['monoclinic']))  / suma
+    percentages['hexagonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['hexagonal'])) / suma
+    percentages['tetragonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) / suma
+    percentages['orthorhombic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) / suma
+    percentages['monoclinic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) / suma
 
     return percentages
 
