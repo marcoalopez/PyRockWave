@@ -266,4 +266,40 @@ def orthogonal_projector(symmetry_class: str) -> np.ndarray:
 
     return M
 
+
+def calc_percentages(decomposition: dict) -> dict:
+    """Calculate the percentage of isotropy and anisotropy
+    of the elastic tensor and the percentage represented
+    by each of the different symmetry classes.
+
+    Parameters
+    ----------
+    decomposition : dict
+        a Python dictionary with the decomposed elastic tensors
+
+    Returns
+    -------
+    dict
+        a Python dictionary with the percentages
+    """
+
+    percentages = {}
+    
+    # estimate the sum of the norm of all elastic vectors
+    suma = (np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) +
+            np.linalg.norm(tensor_to_vector(decomposition['hexagonal'])) +
+            np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) +
+            np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) +
+            np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])))
+    
+    # estimate percentages
+    percentages['isotropic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) / suma
+    percentages['anisotropic'] = 100 - percentages['isotropic']
+    percentages['hexagonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['hexagonal']))  / suma
+    percentages['tetragonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['tetragonal']))  / suma
+    percentages['orthorhombic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['orthorhombic']))  / suma
+    percentages['monoclinic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['monoclinic']))  / suma
+
+    return percentages
+
 # End of file
