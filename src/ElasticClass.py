@@ -197,10 +197,9 @@ class ElasticProps:
         output += "\n"
         output += f"Elastic Tensor (Cij) in GPa:\n{self.Cij}\n"
         output += "\n"
-        output += "Tensor decomposition:\n"
-        output += f"Isotropy = {self.percent['isotropic']:.1f} %; Anisotropy = {self.percent['anisotropic']:.1f} %\n"
-        output += "(hexagonal, tetragonal, orthorhombic, monoclinic):\n"
-        output += f"({self.percent['hexagonal']:.1f} %, {self.percent['tetragonal']:.1f} %, {self.percent['orthorhombic']:.1f} %, {self.percent['monoclinic']:.1f} %)\n"
+        output += "Tensor decomposition (Browaeys & Chevrot approach):\n"
+        output += f"    Isotropy = {self.percent['isotropic']:.1f} %\n"
+        output += f"    Anisotropy = {self.percent['anisotropic']:.1f} %\n"
         output += "\n"        
         output += "Anisotropy indexes:\n"
         output += f"    Universal Elastic Anisotropy:           {self.universal_anisotropy:.3f}\n"
@@ -256,21 +255,32 @@ def decompose_Cij(Cij: np.ndarray) -> dict:
         "tetragonal": None,
         "orthorhombic": None,
         "monoclinic": None,
+        "others": None
     }
 
     for symmetry_class, _ in decomposed_elements.items():
 
-        X_total = tensor_to_vector(Cij_copy)
+        if symmetry_class != "others":
+
+            X_total = tensor_to_vector(Cij_copy)
         
-        # compute the vector X on a specific symmetry subspace
-        M = orthogonal_projector(symmetry_class)
-        X_symmetry_class = np.dot(M, X_total)  # X_h = M*X
+            # compute the vector X on a specific symmetry subspace
+            M = orthogonal_projector(symmetry_class)
+            X_symmetry_class = np.dot(M, X_total)  # X_h = M*X
 
-        C_symmetry_class = np.around(vector_to_tensor(X_symmetry_class), decimals=2)
+            C_symmetry_class = np.around(vector_to_tensor(X_symmetry_class), decimals=2)
 
-        # store and subtract
-        decomposed_elements[symmetry_class] = C_symmetry_class
-        Cij_copy -= C_symmetry_class
+            # store and subtract
+            decomposed_elements[symmetry_class] = C_symmetry_class
+            Cij_copy -= C_symmetry_class
+        
+        else:
+            C_symmetry_class = Cij - (decomposed_elements['isotropic'] +
+                                      decomposed_elements['hexagonal'] +
+                                      decomposed_elements['tetragonal'] +
+                                      decomposed_elements['orthorhombic'] +
+                                      decomposed_elements['monoclinic'])
+            decomposed_elements[symmetry_class] = C_symmetry_class 
 
     return decomposed_elements
 
@@ -425,7 +435,7 @@ def orthogonal_projector(symmetry_class: str) -> np.ndarray:
         M[6:9, 6:9] = 1 / 5
 
     # Projection onto the hexagonal space (N_h=5)
-    if symmetry_class == "hexagonal":
+    elif symmetry_class == "hexagonal":
         M[0:2, 0:2] = 3 / 8
         M[0:2, 5] = M[5, 0:2] = 1 / (4 * rt2)
         M[0:2, 8] = M[8, 0:2] = 1 / 4
@@ -435,19 +445,22 @@ def orthogonal_projector(symmetry_class: str) -> np.ndarray:
         M[5, 8] = M[8, 5] = -1 / (2 * rt2)
 
     # Projection onto the tetragonal space (N_h=6)
-    if symmetry_class == "tetragonal":
+    elif symmetry_class == "tetragonal":
         M[2, 2] = M[5, 5] = M[8, 8] = 1.0
         M[0:2, 0:2] = M[3:5, 3:5] = M[6:8, 6:8] = 1 / 2
 
     # Projection onto the orthorhombic space (N_h=9)
-    if symmetry_class == "orthorhombic":
+    elif symmetry_class == "orthorhombic":
         np.fill_diagonal(M, 1)
         M[9:, 9:] = 0
 
     # Projection onto the monoclinic space (N_h=13)
-    if symmetry_class == "monoclinic":
+    elif symmetry_class == "monoclinic":
         np.fill_diagonal(M, 1)
         M[:, 9:11] = M[:, 12:14] = M[:, 15:17] = M[:, 18:20] = 0
+
+    else:
+        print('symmetry class not valid')
 
     return M
 
@@ -475,15 +488,17 @@ def calc_percentages(decomposition: dict) -> dict:
             np.linalg.norm(tensor_to_vector(decomposition['hexagonal'])) +
             np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) +
             np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) +
-            np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])))
+            np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) +
+            np.linalg.norm(tensor_to_vector(decomposition['others'])))
 
     # estimate percentages
-    percentages['isotropic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) / suma
-    percentages['anisotropic'] = 100 - percentages['isotropic']
-    percentages['hexagonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['hexagonal'])) / suma
-    percentages['tetragonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) / suma
-    percentages['orthorhombic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) / suma
-    percentages['monoclinic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) / suma
+    percentages['isotropic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) / suma, decimals=2)
+    percentages['anisotropic'] = np.around(100 - percentages['isotropic'], decimals=2)
+    percentages['hexagonal'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['hexagonal'])) / suma, decimals=2)
+    percentages['tetragonal'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) / suma, decimals=2)
+    percentages['orthorhombic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) / suma, decimals=2)
+    percentages['monoclinic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) / suma, decimals=2)
+    percentages['others'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['others'])) / suma, decimals=2)
 
     return percentages
 
