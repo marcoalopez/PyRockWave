@@ -28,6 +28,7 @@
 #######################################################################
 
 # Import statements
+from logging import raiseExceptions
 import numpy as np
 
 
@@ -62,7 +63,7 @@ def decompose_Cij(Cij: np.ndarray) -> dict:
 
     if not np.allclose(Cij, Cij.T):
         raise ValueError("Cij should be symmetric.")
-    
+
     Cij_copy = np.copy(Cij)
 
     decomposed_elements = {
@@ -71,17 +72,18 @@ def decompose_Cij(Cij: np.ndarray) -> dict:
         "tetragonal": None,
         "orthorhombic": None,
         "monoclinic": None,
+        "triclinic": None
     }
 
     for symmetry_class, _ in decomposed_elements.items():
-        
+
         X_total = tensor_to_vector(Cij_copy)
         
         # compute the vector X on a specific symmetry subspace
         M = orthogonal_projector(symmetry_class)
         X_symmetry_class = np.dot(M, X_total)  # X_h = M*X
 
-        C_symmetry_class = vector_to_tensor(X_symmetry_class)
+        C_symmetry_class = np.around(vector_to_tensor(X_symmetry_class), decimals=2)
 
         # store and subtract
         decomposed_elements[symmetry_class] = C_symmetry_class
@@ -240,7 +242,7 @@ def orthogonal_projector(symmetry_class: str) -> np.ndarray:
         M[6:9, 6:9] = 1 / 5
 
     # Projection onto the hexagonal space (N_h=5)
-    if symmetry_class == "hexagonal":
+    elif symmetry_class == "hexagonal":
         M[0:2, 0:2] = 3 / 8
         M[0:2, 5] = M[5, 0:2] = 1 / (4 * rt2)
         M[0:2, 8] = M[8, 0:2] = 1 / 4
@@ -250,19 +252,25 @@ def orthogonal_projector(symmetry_class: str) -> np.ndarray:
         M[5, 8] = M[8, 5] = -1 / (2 * rt2)
 
     # Projection onto the tetragonal space (N_h=6)
-    if symmetry_class == "tetragonal":
+    elif symmetry_class == "tetragonal":
         M[2, 2] = M[5, 5] = M[8, 8] = 1.0
         M[0:2, 0:2] = M[3:5, 3:5] = M[6:8, 6:8] = 1 / 2
 
     # Projection onto the orthorhombic space (N_h=9)
-    if symmetry_class == "orthorhombic":
+    elif symmetry_class == "orthorhombic":
         np.fill_diagonal(M, 1)
         M[9:, 9:] = 0
 
     # Projection onto the monoclinic space (N_h=13)
-    if symmetry_class == "monoclinic":
+    elif symmetry_class == "monoclinic":
         np.fill_diagonal(M, 1)
         M[:, 9:11] = M[:, 12:14] = M[:, 15:17] = M[:, 18:20] = 0
+
+    elif symmetry_class == "triclinic":
+        M = np.ones_like(M)
+
+    else:
+        print('symmetry class not valid')
 
     return M
 
@@ -284,21 +292,23 @@ def calc_percentages(decomposition: dict) -> dict:
     """
 
     percentages = {}
-    
+
     # estimate the sum of the norm of all elastic vectors
     suma = (np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) +
             np.linalg.norm(tensor_to_vector(decomposition['hexagonal'])) +
             np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) +
             np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) +
-            np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])))
-    
+            np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) +
+            np.linalg.norm(tensor_to_vector(decomposition['triclinic'])))
+
     # estimate percentages
     percentages['isotropic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) / suma
     percentages['anisotropic'] = 100 - percentages['isotropic']
-    percentages['hexagonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['hexagonal']))  / suma
-    percentages['tetragonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['tetragonal']))  / suma
-    percentages['orthorhombic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['orthorhombic']))  / suma
-    percentages['monoclinic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['monoclinic']))  / suma
+    percentages['hexagonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['hexagonal'])) / suma
+    percentages['tetragonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) / suma
+    percentages['orthorhombic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) / suma
+    percentages['monoclinic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) / suma
+    percentages['triclinic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['triclinic'])) / suma
 
     return percentages
 
