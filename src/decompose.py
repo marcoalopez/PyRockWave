@@ -71,12 +71,12 @@ def decompose_Cij(Cij: np.ndarray) -> dict:
         "tetragonal": None,
         "orthorhombic": None,
         "monoclinic": None,
-        "triclinic": None
+        "others": None
     }
 
     for symmetry_class, _ in decomposed_elements.items():
 
-        if symmetry_class != "triclinic":
+        if symmetry_class != "others":
 
             X_total = tensor_to_vector(Cij_copy)
         
@@ -305,7 +305,7 @@ def calc_percentages(decomposition: dict) -> dict:
             np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) +
             np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) +
             np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) +
-            np.linalg.norm(tensor_to_vector(decomposition['triclinic'])))
+            np.linalg.norm(tensor_to_vector(decomposition['others'])))
 
     # estimate percentages
     percentages['isotropic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) / suma, decimals=2)
@@ -314,7 +314,7 @@ def calc_percentages(decomposition: dict) -> dict:
     percentages['tetragonal'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) / suma, decimals=2)
     percentages['orthorhombic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) / suma, decimals=2)
     percentages['monoclinic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) / suma, decimals=2)
-    percentages['triclinic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['triclinic'])) / suma, decimals=2)
+    percentages['others'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['others'])) / suma, decimals=2)
 
     return percentages
 
