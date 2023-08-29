@@ -28,7 +28,6 @@
 #######################################################################
 
 # Import statements
-from logging import raiseExceptions
 import numpy as np
 
 
@@ -77,17 +76,27 @@ def decompose_Cij(Cij: np.ndarray) -> dict:
 
     for symmetry_class, _ in decomposed_elements.items():
 
-        X_total = tensor_to_vector(Cij_copy)
+        if symmetry_class != "triclinic":
+
+            X_total = tensor_to_vector(Cij_copy)
         
-        # compute the vector X on a specific symmetry subspace
-        M = orthogonal_projector(symmetry_class)
-        X_symmetry_class = np.dot(M, X_total)  # X_h = M*X
+            # compute the vector X on a specific symmetry subspace
+            M = orthogonal_projector(symmetry_class)
+            X_symmetry_class = np.dot(M, X_total)  # X_h = M*X
 
-        C_symmetry_class = np.around(vector_to_tensor(X_symmetry_class), decimals=2)
+            C_symmetry_class = np.around(vector_to_tensor(X_symmetry_class), decimals=2)
 
-        # store and subtract
-        decomposed_elements[symmetry_class] = C_symmetry_class
-        Cij_copy -= C_symmetry_class
+            # store and subtract
+            decomposed_elements[symmetry_class] = C_symmetry_class
+            Cij_copy -= C_symmetry_class
+        
+        else:
+            C_symmetry_class = Cij - (decomposed_elements['isotropic'] +
+                                      decomposed_elements['hexagonal'] +
+                                      decomposed_elements['tetragonal'] +
+                                      decomposed_elements['orthorhombic'] +
+                                      decomposed_elements['monoclinic'])
+            decomposed_elements[symmetry_class] = C_symmetry_class 
 
     return decomposed_elements
 
@@ -266,9 +275,6 @@ def orthogonal_projector(symmetry_class: str) -> np.ndarray:
         np.fill_diagonal(M, 1)
         M[:, 9:11] = M[:, 12:14] = M[:, 15:17] = M[:, 18:20] = 0
 
-    elif symmetry_class == "triclinic":
-        M = np.ones_like(M)
-
     else:
         print('symmetry class not valid')
 
@@ -302,13 +308,13 @@ def calc_percentages(decomposition: dict) -> dict:
             np.linalg.norm(tensor_to_vector(decomposition['triclinic'])))
 
     # estimate percentages
-    percentages['isotropic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) / suma
-    percentages['anisotropic'] = 100 - percentages['isotropic']
-    percentages['hexagonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['hexagonal'])) / suma
-    percentages['tetragonal'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) / suma
-    percentages['orthorhombic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) / suma
-    percentages['monoclinic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) / suma
-    percentages['triclinic'] = 100 * np.linalg.norm(tensor_to_vector(decomposition['triclinic'])) / suma
+    percentages['isotropic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) / suma, decimals=2)
+    percentages['anisotropic'] = np.around(100 - percentages['isotropic'], decimals=2)
+    percentages['hexagonal'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['hexagonal'])) / suma, decimals=2)
+    percentages['tetragonal'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) / suma, decimals=2)
+    percentages['orthorhombic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) / suma, decimals=2)
+    percentages['monoclinic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) / suma, decimals=2)
+    percentages['triclinic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['triclinic'])) / suma, decimals=2)
 
     return percentages
 
