@@ -29,6 +29,7 @@
 
 # Import statements
 import numpy as np
+import scipy as sp
 
 
 # Function definitions
@@ -71,12 +72,12 @@ def decompose_Cij(Cij: np.ndarray) -> dict:
         "tetragonal": None,
         "orthorhombic": None,
         "monoclinic": None,
-        "others": None
+        "remainder": None
     }
 
     for symmetry_class, _ in decomposed_elements.items():
 
-        if symmetry_class != "others":
+        if symmetry_class != "remainder":
 
             X_total = tensor_to_vector(Cij_copy)
         
@@ -208,7 +209,6 @@ def vector_to_tensor(X: np.ndarray) -> np.ndarray:
 
     return Cij
 
-
 def orthogonal_projector(symmetry_class: str) -> np.ndarray:
     """
     General projector that generates a matrix M in the 21D vectorial
@@ -305,7 +305,7 @@ def calc_percentages(decomposition: dict) -> dict:
             np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) +
             np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) +
             np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) +
-            np.linalg.norm(tensor_to_vector(decomposition['others'])))
+            np.linalg.norm(tensor_to_vector(decomposition['remainder'])))
 
     # estimate percentages
     percentages['isotropic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) / suma, decimals=2)
@@ -314,8 +314,76 @@ def calc_percentages(decomposition: dict) -> dict:
     percentages['tetragonal'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) / suma, decimals=2)
     percentages['orthorhombic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) / suma, decimals=2)
     percentages['monoclinic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) / suma, decimals=2)
-    percentages['others'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['others'])) / suma, decimals=2)
+    percentages['remainder'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['remainder'])) / suma, decimals=2)
 
     return percentages
+
+
+def euclidean_distance(A, B, squared=False):
+    """Euclidean distance between matrices.
+
+    Parameters
+    ----------
+    A : numpy.ndarray
+        First matrix, at least 2D ndarray.
+    B : numpy.ndarray
+        The second matrix, same dimensions as A
+    squared : bool, default False
+        Return squared distance.
+
+    Returns
+    -------
+    float
+        Euclidean distance between matrices A and B.
+    """
+    d = np.linalg.norm(A - B, ord='fro', axis=(-2, -1))
+
+    return d ** 2 if squared else d
+
+
+def log_euclidean_distance(A, B):
+    """Compute the log-Euclidean distance between two
+    positive definite matrices.
+
+    Parameters
+    ----------
+    A : numpy.ndarray
+        The first positive definite matrix.
+    B : numpy.ndarray
+        The second positive definite matrix.
+
+    Returns
+    -------
+    float
+        The log-Euclidean distance between matrices A and B.
+    """
+    log_A = sp.linalg.logm(A)
+    log_B = sp.linalg.logm(B)
+    diff = log_A - log_B
+    norm = np.linalg.norm(diff, 'fro')  # Frobenius norm
+    return norm
+
+def log_euclidean_distance2(A, B, squared=False):
+    """Compute the log-Euclidean distance between two
+    positive definite matrices.
+
+    Parameters
+    ----------
+    A : numpy.ndarray
+        The first positive definite matrix.
+    B : numpy.ndarray
+        The second positive definite matrix.
+    squared : bool, default False
+        Return squared distance.
+
+    Returns
+    -------
+    float
+        The log-Euclidean distance between matrices A and B.
+    """
+    log_A = sp.linalg.logm(A)
+    log_B = sp.linalg.logm(B)
+
+    return euclidean_distance(log_A, log_B, squared=squared)
 
 # End of file
