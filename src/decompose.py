@@ -282,39 +282,32 @@ def orthogonal_projector(symmetry_class: str) -> np.ndarray:
 
 
 def calc_percentages(decomposition: dict) -> dict:
-    """Calculate the percentage of isotropy and anisotropy
-    of the elastic tensor and the percentage represented
-    by each of the different symmetry classes.
+    """Calculate the percentage of isotropy, anisotropy,
+    and symmetry classes of the elastic tensor.
 
     Parameters
     ----------
     decomposition : dict
-        a Python dictionary with the decomposed elastic tensors
+        A dictionary with the decomposed elastic tensors
 
     Returns
     -------
     dict
-        a Python dictionary with the percentages
+        A dictionary with the calculated percentages
     """
 
     percentages = {}
 
-    # estimate the sum of the norm of all elastic vectors
-    suma = (np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) +
-            np.linalg.norm(tensor_to_vector(decomposition['hexagonal'])) +
-            np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) +
-            np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) +
-            np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) +
-            np.linalg.norm(tensor_to_vector(decomposition['remainder'])))
+    tensor_classes = ['isotropic', 'hexagonal', 'tetragonal', 'orthorhombic', 'monoclinic', 'remainder']
 
-    # estimate percentages
-    percentages['isotropic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['isotropic'])) / suma, decimals=2)
+    # estimate the sum of the norm of all elastic vectors
+    sum_norms = np.sum([np.linalg.norm(tensor_to_vector(decomposition[tensor_class])) for tensor_class in tensor_classes])
+
+    for tensor_class in tensor_classes:
+        norm = np.linalg.norm(tensor_to_vector(decomposition[tensor_class]))
+        percentages[tensor_class] = np.around(100 * norm / sum_norms, decimals=2)
+
     percentages['anisotropic'] = np.around(100 - percentages['isotropic'], decimals=2)
-    percentages['hexagonal'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['hexagonal'])) / suma, decimals=2)
-    percentages['tetragonal'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['tetragonal'])) / suma, decimals=2)
-    percentages['orthorhombic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['orthorhombic'])) / suma, decimals=2)
-    percentages['monoclinic'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['monoclinic'])) / suma, decimals=2)
-    percentages['remainder'] = np.around(100 * np.linalg.norm(tensor_to_vector(decomposition['remainder'])) / suma, decimals=2)
 
     return percentages
 
