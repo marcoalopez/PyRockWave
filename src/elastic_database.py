@@ -1,8 +1,8 @@
 # This file is part of the Open Database License (ODbL) - version 1.0
 #
 # Preamble:
-# The Mineral Elastic Database is an open database provided by
-# the Earth materials science laboratory at University of Oviedo.
+# The Mineral Elastic Database is an open database provided by the
+# Earth Materials Science Laboratory at the University of Oviedo.
 # It is licensed under the Open Database License (ODbL) version 1.0.
 #
 # License:
@@ -27,12 +27,12 @@
 # Attribution:
 # The attribution requirement under this license is satisfied by
 # including the following notice:
-# "Mineral Elastic Database by the Earth materials science laboratory
-# at University of Oviedo is licensed under the Open Database License
-# (ODbL) version 1.0."
+# "Mineral Elastic Database by the Earth Materials Science Laboratory
+# at the University of Oviedo is licensed under the Open Database 
+# License (ODbL) version 1.0."
 # If you make any changes or adaptations to this database, you must
 # indicate so and not imply that the original database is endorsed
-# by the Earth materials science laboratory at University of Oviedo.
+# by the Earth Materials Science Laboratory at University of Oviedo.
 #
 # License Text:
 # The full text of the Open Database License (ODbL) version 1.0 is
@@ -52,7 +52,10 @@
 
 # Import statements
 import numpy as np
-from ElasticClass import ElasticProps
+try:
+    from ElasticClass import ElasticProps
+except ImportError:
+    print("Warning: The ElasticClass.py file should be in the same folder as the database.")
 
 
 # Function definitions
@@ -85,8 +88,12 @@ def alpha_quartz(P=1e-5):
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
         - reference: Reference to the source publication.
-        - Other average (seismic) properties
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
 
     Examples
     --------
@@ -170,14 +177,18 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
     -------
     properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal.
+        - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system.
-        - temperature: Temperature in degrees Celsius (assumed 1027).
+        - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
         - reference: Reference to the source publication.
-        - Other average (seismic) properties
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
 
     Examples
     --------
@@ -259,8 +270,8 @@ def forsterite_Mao(P=1e-5):
         - Temperature fixed at 627°C (900 K)
         - Experimental data at 627 °C were obtained in the pressure
         range from 4.5 to 13.3 GPa. The elastic properties at
-        pressures below 4.5 GPa have to be extrapolated from
-        the polynomial model.
+        pressures below 4.5 GPa are extrapolated from the polynomial
+        model.
 
     Parameters
     ----------
@@ -271,14 +282,18 @@ def forsterite_Mao(P=1e-5):
     -------
     properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal.
+        - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
         - reference: Reference to the source publication.
-        - Other average (seismic) properties
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
 
     Examples
     --------
@@ -362,14 +377,18 @@ def omphacite(P=1e-5):
     -------
     properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal.
+        - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
         - reference: Reference to the source publication.
-        - Other average (seismic) properties
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
 
     Examples
     --------
@@ -463,14 +482,18 @@ def diopside(P=1e-5):
     -------
     properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal.
+        - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
         - reference: Reference to the source publication.
-        - Other average (seismic) properties
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
 
     Examples
     --------
@@ -561,14 +584,18 @@ def enstatite(P=1e-5):
     -------
     properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal.
+        - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
         - reference: Reference to the source publication.
-        - Other average (seismic) properties
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
 
     Examples
     --------
@@ -653,14 +680,18 @@ def pyrope(P=1e-5, T=476.85):
     -------
     properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal.
+        - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
         - reference: Reference to the source publication.
-        - Other average (seismic) properties
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
 
     Examples
     --------
@@ -745,14 +776,18 @@ def zoisite():
     -------
     properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal.
+        - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
         - reference: Reference to the source publication.
-        - Other average (seismic) properties
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
 
     Examples
     --------
@@ -800,7 +835,7 @@ def chlorite(P=1e-5):
     Returns the corresponding elastic tensor (GPa) and density
     (g/cm3) and other derived elastic properties of chlorite as
     a function of pressure based on a polynomial fit from first
-    principles simulations of Mookherjee and Mainprice (2014) [1]
+    principles simulation of Mookherjee and Mainprice (2014) [1]
 
 
     Caveats
@@ -809,6 +844,7 @@ def chlorite(P=1e-5):
         and assumes room temperature.
         - The C11, C22 and c44 estimated elastic constant values
         at 1.8 and 4.2 GPa do not follow the trend as the others.
+        - Based on first principles simulation
 
     Parameters
     ----------
@@ -819,14 +855,18 @@ def chlorite(P=1e-5):
     -------
     properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal.
+        - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
         - reference: Reference to the source publication.
-        - Other average (seismic) properties
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
 
     Examples
     --------
@@ -919,14 +959,18 @@ def amphiboles(type='Hornblende'):
     -------
     properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal.
+        - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
         - reference: Reference to the source publication.
-        - Other average (seismic) properties
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
 
     Examples
     --------
@@ -1029,14 +1073,18 @@ def plagioclase(type='An0'):
     -------
     properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal.
+        - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
         - reference: Reference to the source publication.
-        - Other average (seismic) properties
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
 
     Examples
     --------
@@ -1154,7 +1202,7 @@ def plagioclase(type='An0'):
 def antigorite(P=1e-5):
     """
     Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) and other derived elastic properties of omphacite
+    (g/cm3) and other derived elastic properties of antigorite
     as a function of pressure based on a polynomial fit from
     experimental data of Satta et al. (2022) [1]
 
@@ -1163,8 +1211,9 @@ def antigorite(P=1e-5):
         - The function does not account for temperature effects
         and assumes room temperature.
         - Some of the experimentally measured elastic constants
-        do not show a trend with pressure, but dispersion. In
-        these, it was decided to use the mean as the best model.
+        do not show a trend with pressure, but dispersion around
+        a value. In these, we decided to use the mean as the
+        best model.
 
     Parameters
     ----------
@@ -1175,18 +1224,22 @@ def antigorite(P=1e-5):
     -------
     properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal.
+        - name: Name of the crystal ('alpha_quartz').
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
         - density: Density in g/cm3.
         - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
         - reference: Reference to the source publication.
-        - Other average (seismic) properties
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexess
 
     Examples
     --------
-    >>> Atg = antigorite(1.0)
+    >>> Atg = antigorite(P=1.0)
 
     References
     ----------
@@ -1247,3 +1300,5 @@ def antigorite(P=1e-5):
         reference='https://doi.org/10.1029/2022GL099411')
 
     return properties
+
+# End of file
