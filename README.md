@@ -1,16 +1,22 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-07-27  
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-09-06  
 
-## What is PyRockWave and how to use it?
+## What is PyRockWave?
 
-PyRockWave is a set of Python codes for reading single-crystal elasticity databases and calculating and plot elastic properties (e.g. elastic wave propagation, seismic anisotropy, etc) in minerals and rocks using averaging schemes and different seismic models. It is in early development so there is no official release or documentation although the code is open to the public.
+PyRockWave is a Python-based tool for reading single-crystal elasticity databases and modelling elastic properties of earth materials (e.g. seismic wave propagation and anisotropy in heterogeneous media). It allows you to create realistic models of physical properties of rocks and more complex geological structures and simulate and illustrate how seismic waves travel through them. The code is designed in a modular way to facilitate its development and interaction with other codes to create a powerful and versatile tool.
+
+PyRockWave codes are still under heavy development (alpha state), so the functionality may be subject to major changes and there are no installation instructions or specific documentation on how to use it yet. In any case, the code is and will always be completely open source and free, so even though there is still no official release and very little documentation, you can have fun with it at your own risk.
+
+View repository on GitHub: https://github.com/marcoalopez/PyRockWave
 
 ## Requirements & Python installation
 
 TODO
 
-See an example of usage in the link below
+## How to use it?
+
+> 🚨**Beware**🚨: still under heavy development (alpha state)!
 
 - [Interacting with the mineral elastic data](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_database.ipynb)
 
@@ -20,8 +26,6 @@ See an example of usage in the link below
 
 - [Demonstration of the functionality of the ``polar_models`` module](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_polar.ipynb)
 - [Demonstration of the functionality of the ``christoffel`` module](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_christoffel.ipynb)
-
-View on GitHub: https://github.com/marcoalopez/PyRockWave
 
 ## How to contribute to this project?
 
