@@ -1,12 +1,12 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-09-06  
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-10-26  
 
 ## What is PyRockWave?
 
-PyRockWave is a Python-based tool for reading single-crystal elasticity databases and modelling elastic properties of earth materials (e.g. seismic wave propagation and anisotropy in heterogeneous media). It allows you to create realistic models of physical properties of rocks and more complex geological structures and simulate and illustrate how seismic waves travel through them. The code is designed in a modular way to facilitate its development and interaction with other codes to create a powerful and versatile tool.
+PyRockWave is a Python-based tool for reading single-crystal elasticity databases and modelling elastic properties of earth materials (e.g. seismic wave propagation and anisotropy in heterogeneous media). It allows you to create realistic models of the physical properties of rocks or rock units and simulate and illustrate how seismic waves propagate through them. The code is designed in a modular way to facilitate its development and the interaction with other codes.
 
-PyRockWave codes are still under heavy development (alpha state), so the functionality may be subject to major changes and there are no installation instructions or specific documentation on how to use it yet. In any case, the code is and will always be completely open source and free, so even though there is still no official release and very little documentation, you can have fun with it at your own risk.
+PyRockWave is still under heavy development (alpha state), so the functionality may be subject to major changes that break retrocompatibility, and there is no installation guide or specific documentation on how to use it yet. In any case, the code is (and always will be) open source and free, so even though there is no official release and very little documentation, you can have fun with it at your own risk.
 
 View repository on GitHub: https://github.com/marcoalopez/PyRockWave
 
