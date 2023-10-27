@@ -40,9 +40,10 @@ def Thomsen_params(cij: np.ndarray, density: float):
     Parameters
     ----------
     cij : numpy.ndarray
-        The elastic stiffness tensor of the material.
+        The elastic stiffness tensor of the material
+        in GPa.
     density : float
-        The density of the material.
+        The density of the material in g/cm3.
 
     Returns
     -------

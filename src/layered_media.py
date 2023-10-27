@@ -40,13 +40,13 @@ def snell(vp1, vp2, vs1, vs2, theta1):
     Parameters
     ----------
     vp1 : float or array-like
-        Compressional velocity of upper layer.
-    vp2 : float or array-like
-        Compressional velocity of lower layer.
+        P-wave velocity of upper layer.
     vs1 : float or array-like
-        Shear velocity of upper layer.
+        S-wave velocity of upper layer.
+    vp2 : float or array-like
+        P-wave velocity of lower layer.
     vs2 : float or array-like
-        Shear velocity of lower layer.
+        S-wave velocity of lower layer.
     theta1 : float or array-like
         Angle of incidence of P-wave in upper layer in degrees.
 
@@ -75,63 +75,6 @@ def snell(vp1, vp2, vs1, vs2, theta1):
     phi2 = np.arcsin(p * vs2)
 
     return theta2, phi1, phi2, p
-
-
-def zoeppritz(vp1, vs1, rho1, vp2, vs2, rho2, theta1):
-    """
-    The Zoeppritz equations describe seismic wave energy partitioning
-    at an interface, for example the boundary between two different
-    rocks. The equations relate the amplitude of incident P-waves to
-    reflected and refracted P- and S-waves at a plane interface for
-    a given angle of incidence.
-
-    Parameters
-    ----------
-    vp1 : float or array-like
-        Compressional velocity of upper layer.
-    vs1 : float or array-like
-        Shear velocity of upper layer.
-    rho1 : float or array-like
-        Density of upper layer.
-    vp2 : float or array-like
-        Compressional velocity of lower layer.
-    vs2 : float or array-like
-        Shear velocity of lower layer.
-    rho2 : float or array-like
-        Density of lower layer.
-    theta1 : float or array-like
-        Angle of incidence for P wave in upper layer in degrees.
-
-    Returns
-    -------
-    Rpp : float or array-like
-        Amplitude coefficients for reflected P-waves.
-
-    """
-    
-    # Convert angles to radians for numpy functions
-    theta1 = np.deg2rad(theta1)
-    
-    # Calculate reflection and refraction angles using Snell's law
-    theta2, phi1, phi2, _ = snell(vp1, vp2, vs1, vs2, theta1)
-
-    # Define matrices M and N based on Zoeppritz equations
-    M = np.array([
-        [-np.sin(theta1), -np.cos(phi1), np.sin(theta2), np.cos(phi2)],
-        [np.cos(theta1), -np.sin(phi1), np.cos(theta2), -np.sin(phi2)],
-        [2*rho1*vs1*np.sin(phi1)*np.cos(theta1), rho2*vs1*(1-2*np.sin(phi2)**2),
-         2*rho2*vs2*np.sin(phi2)*np.cos(theta2), rho2*vs2*(1-2*np.sin(phi2)**2)],
-        [-rho1*vp1*(1-2*np.sin(phi1)**2), rho1*vs1*np.sin(2*phi1),
-         rho2*vp2*(1-2*np.sin(phi2)**2), -rho2*vs2*np.sin(2*phi2)]
-    ])
-
-    # TODO
-    N = None
-
-    # Solve system of equations to find amplitude coefficients
-    Z = np.linalg.solve(M, N)
-
-    return Z[0]
 
 
 # End of file

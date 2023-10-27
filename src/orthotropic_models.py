@@ -40,9 +40,10 @@ def Tsvankin_params(cij: np.ndarray, density: float):
     Parameters
     ----------
     cij : numpy.ndarray
-        The elastic stiffness tensor of the material.
+        The elastic stiffness tensor of the material
+        in GPa.
     density : float
-        The density of the material.
+        The density of the material in g/cm3.
 
     Returns
     -------
@@ -86,13 +87,13 @@ def orthotropic_azimuthal_anisotropy(elastic, wavevectors):
     -------
     pandas.DataFrame
         Tabular data object containing the propagation directions
-        and calculated Vp, Vs1, and Vs2 speeds using the weak polar
+        and calculated Vp, Vs1, and Vs2 speeds using the orthorhombic
         anisotropy model.
     """
     # extract azimuths and polar angles
     azimuths, polar = wavevectors
 
-    # get Thomsen parameters
+    # get Tsvankin parameters
     Vp0, Vs0, *params = Tsvankin_params(elastic.Cij, elastic.density)
     epsilon1, delta1, gamma1, epsilon2, delta2, gamma2, delta3 = params
 
