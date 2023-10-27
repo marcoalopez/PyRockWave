@@ -34,7 +34,7 @@ import numpy as np
 # Function definitions
 def snell(vp1, vp2, vs1, vs2, theta1):
     """
-    Calculates the angles of and refraction and reflection for an incident
+    Calculates the angles of refraction and reflection for an incident
     P-wave in a two-layered system.
 
     Parameters
@@ -54,9 +54,9 @@ def snell(vp1, vp2, vs1, vs2, theta1):
     -------
     theta2 : float or array-like
         Angle of refraction for P-wave in lower layer in degrees.
-    thetas1 : float or array-like
+    phi1 : float or array-like
         Angle of reflection for S-wave in upper layer in degrees.
-    thetas2 : float or array-like
+    phi2 : float or array-like
         Angle of refraction for S-wave in lower layer in degrees.
     p : float or array-like
         Ray parameter.
@@ -64,17 +64,17 @@ def snell(vp1, vp2, vs1, vs2, theta1):
     """
     
     # Convert angles to radians
-    theta1 = np.radians(theta1)
+    theta1 = np.deg2rad(theta1)
     
     # Calculate ray parameter using Snell's law
     p = np.sin(theta1) / vp1
     
     # Calculate reflection and refraction angles using Snell's law
-    thetas1 = np.arcsin(p * vs1)
+    phi1 = np.arcsin(p * vs1)
     theta2 = np.arcsin(p * vp2)
-    thetas2 = np.arcsin(p * vs2)
+    phi2 = np.arcsin(p * vs2)
 
-    return theta2, thetas1, thetas2, p
+    return theta2, phi1, phi2, p
 
 
 def zoeppritz(vp1, vs1, rho1, vp2, vs2, rho2, theta1):
@@ -110,33 +110,23 @@ def zoeppritz(vp1, vs1, rho1, vp2, vs2, rho2, theta1):
     """
     
     # Convert angles to radians for numpy functions
-    theta1 = np.radians(theta1)
+    theta1 = np.deg2rad(theta1)
     
     # Calculate reflection and refraction angles using Snell's law
-    theta2, thetas1, thetas2, _ = snell(vp1, vp2, vs1, vs2, theta1)
+    theta2, phi1, phi2, _ = snell(vp1, vp2, vs1, vs2, theta1)
 
     # Define matrices M and N based on Zoeppritz equations
     M = np.array([
-        [-np.sin(theta1), -np.cos(thetas1), np.sin(theta2), np.cos(thetas2)],
-        [np.cos(theta1), -np.sin(thetas1), np.cos(theta2), -np.sin(thetas2)],
-        [2*rho1*vs1*np.sin(thetas1)*np.cos(theta1), rho2*vs1*(1-2*np.sin(thetas2)**2),
-         2*rho2*vs2*np.sin(thetas2)*np.cos(theta2), rho2*vs2*(1-2*np.sin(thetas2)**2)],
-        [-rho1*vp1*(1-2*np.sin(thetas1)**2), rho1*vs1*np.sin(2*thetas1),
-         rho2*vp2*(1-2*np.sin(thetas2)**2), -rho2*vs2*np.sin(2*thetas2)]
+        [-np.sin(theta1), -np.cos(phi1), np.sin(theta2), np.cos(phi2)],
+        [np.cos(theta1), -np.sin(phi1), np.cos(theta2), -np.sin(phi2)],
+        [2*rho1*vs1*np.sin(phi1)*np.cos(theta1), rho2*vs1*(1-2*np.sin(phi2)**2),
+         2*rho2*vs2*np.sin(phi2)*np.cos(theta2), rho2*vs2*(1-2*np.sin(phi2)**2)],
+        [-rho1*vp1*(1-2*np.sin(phi1)**2), rho1*vs1*np.sin(2*phi1),
+         rho2*vp2*(1-2*np.sin(phi2)**2), -rho2*vs2*np.sin(2*phi2)]
     ])
 
-    N = np.array([
-        [np.sin(theta1), np.cos(thetas1), -np.sin(theta2), -np.cos(thetas2)],
-        [np.cos(theta1), -np.sin(thetas1), np.cos(theta2), -np.sin(thetas2)],
-        [  0.5*rho1*vs1*np.sin(  0.5*thetas1)*np.cos(  0.5*theta1),
-           0.5*rho2*vs1*(0.5-0.5*np.sin(  0.5*thetas2)**0.5),
-           0.5*rho2*vs2*np.sin(  0.5*thetas2)*np.cos(  0.5*theta2),
-           0.5*rho2*vs2*(0.5-0.5*np.sin(  0.5*thetas3)**0.5)],
-        [rho3*vp3*(0.5-0.5*np.sin(  0.5*thetas3)**0.5),
-         -rho3*vs3*np.sin(  0.5*thetas3),
-         -rho4*vp4*(0.5-0.5*np.sin(  0.5*thetas4)**0.5),
-          rho4*vs4*np.sin(  0.5*thetas4)]
-    ])
+    # TODO
+    N = None
 
     # Solve system of equations to find amplitude coefficients
     Z = np.linalg.solve(M, N)
