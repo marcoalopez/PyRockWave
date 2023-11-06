@@ -114,7 +114,7 @@ def reuss_volume_weighted_average(elastic_tensors: np.ndarray,
         material.
     """
 
-    # Validate the shape of elastic_tensors
+    # Validate the shape of elastic_tensor
     assert elastic_tensors.shape[1:] == (6, 6), \
         f"array shape must be (n, 6, 6) not {elastic_tensors.shape}"
 
@@ -160,6 +160,11 @@ def voigt_CPO_weighted_average(elastic_tensor: np.ndarray,
     Cij_voigt : numpy array, shape(6, 6)
         Voigt average elastic tensor for the aggregate
     """
+
+    # Validate the shape of elastic_tensor
+    assert elastic_tensor.shape[1:] == (6, 6), \
+        f"array shape must be (n, 6, 6) not {elastic_tensor.shape}"
+
     pass
 
 
@@ -188,5 +193,72 @@ def reuss_CPO_weighted_average(compliance_tensor: np.ndarray,
         material.
     """
     pass
+
+
+def rotate_tensor(rot_matrix, tensor):
+    """
+    Rotate a 6x6 elasticity tensor using a rotation matrix.
+
+    Parameters
+    ----------
+    rot_matrix :
+        3x3 rotation matrix
+    tensor :
+        6x6 elasticity tensor
+
+    Returns
+    -------
+    rotated_tensor :
+        6x6 rotated elasticity tensor
+    """
+    # Create a transformation matrix for tensor components
+    rot_tensor = np.kron(rot_matrix, rot_matrix)
+
+    # Rotate the tensor using the transformation matrix
+    rotated_tensor = np.dot(np.dot(rot_tensor, tensor), rot_tensor.T)
+
+    return rotated_tensor
+
+
+def weighted_average_rotated_tensors(rotation_matrices, elasticity_tensor, weights):
+    """
+    TODO
+    Calculate the weighted average of rotated elasticity tensors.
+
+    Parameters
+    ----------
+    rotation_matrices :
+        List of 3x3 rotation matrices
+    elasticity_tensor :
+        6x6 elasticity tensor
+    weights :
+        array of weights for rotation matrices
+
+    Returns
+    -------
+    weighted_average_tensor :
+        6x6 weighted average rotated elasticity tensor
+    """
+
+    # Ensure the weights sum up to 1
+    if not np.isclose(np.sum(weights), 1):
+        weights = weights / np.sum(weights)
+
+    # Stack the rotation matrices into a 3D array
+    rotation_matrices = np.array(rotation_matrices)  # shape: (num_matrices, 3, 3)
+
+    # Expand dimensions to enable broadcasting
+    expanded_rotation_matrices = rotation_matrices[:, np.newaxis, :, :]  # shape: (num_matrices, 1, 3, 3)
+
+    # Expand dimensions of the elasticity tensor for broadcasting
+    expanded_elasticity_tensor = elasticity_tensor[np.newaxis, :, :]  # shape: (1, 6, 6)
+
+    # Perform element-wise tensor multiplication
+    rotated_tensors = np.einsum('aijb,aik->akjb', expanded_rotation_matrices, expanded_elasticity_tensor)
+
+    # Calculate the weighted sum of the rotated tensors
+    weighted_average_tensor = np.sum(weights[:, np.newaxis, np.newaxis, np.newaxis] * rotated_tensors, axis=0)
+
+    return weighted_average_tensor
 
 # End of file
