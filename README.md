@@ -1,6 +1,6 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-10-26  
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-11-15  
 
 ## What is PyRockWave?
 
@@ -18,14 +18,15 @@ TODO
 
 > 🚨**Beware**🚨: still under heavy development (alpha state)!
 
-- [Interacting with the mineral elastic data](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_database.ipynb)
+- [Interacting with the mineral elastic data](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_database.ipynb)
 
-- [The ElasticProps class explained](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/ElasticTensor_explained.ipynb)
+- [The ElasticProps class explained](https://github.com/marcoalopez/PyRockWave/blob/main/src/ElasticTensor_explained.ipynb)
 
-- [Demonstration of the functionality of the ``coordinates`` module](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_coordinates.ipynb)
+- [Demonstration of the functionality of the ``coordinates`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_coordinates.ipynb)
 
-- [Demonstration of the functionality of the ``polar_models`` module](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_polar.ipynb)
-- [Demonstration of the functionality of the ``christoffel`` module](https://deepnote.com/viewer/github/marcoalopez/PyRockWave/blob/main/src/example_christoffel.ipynb)
+- [Demonstration of the functionality of the ``polar_models`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_polar.ipynb)
+
+- [Demonstration of the functionality of the ``christoffel`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_christoffel.ipynb)
 
 ## How to contribute to this project?
 
