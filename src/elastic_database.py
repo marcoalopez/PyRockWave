@@ -52,6 +52,8 @@
 
 # Import statements
 import numpy as np
+
+# check 
 try:
     from ElasticClass import ElasticProps
 except ImportError:
@@ -1097,7 +1099,7 @@ def plagioclase(type='An0'):
     """
 
     # elastic independent terms (in GPa) and densities in g/cm3
-    if type == ('An0'):  # albite
+    if type == 'An0':  # albite
         C11, C22, C33 = 68.3, 184.3, 180.0  # diagonal pure shear
         C44, C55, C66 = 25.0, 26.9, 33.6    # diagonal simple shear
         C12, C13, C23 = 32.2, 30.4, 5.0     # off-diagonal pure shear
@@ -1300,5 +1302,102 @@ def antigorite(P=1e-5):
         reference='https://doi.org/10.1029/2022GL099411')
 
     return properties
+
+
+def kyanite(model='DFT'):
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) and other derived elastic properties of kyanite based
+    on atomic first-principles as calculated in Winkler et al.
+    (2001)[1] (average of Voigt and Reuss models)
+
+    Caveats
+    -------
+        - The function does not account for temperature or
+        pressure effects and assumes room conditions
+        - there is no experimental data that confirm the model
+        - Estimates were for 0K instead of room temperature?
+
+    Parameters
+    ----------
+    model : str
+        whether density functional theory (DFT) or core-shell
+        model (THB)
+
+    Returns
+    -------
+    properties : ElasticProps dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system.
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
+        - reference: Reference to the source publication.
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
+
+    Examples
+    --------
+    >>> ky = kyanite()
+
+    References
+    ----------
+    [1] Winkler, B., Hytha, M., Warren, M.C., Milman, V., Gale, J.D.,
+    Schreuer, J., 2001. Calculation of the elastic constants of the
+    Al2SiO5 polymorphs andalusite, sillimanite and kyanite. Zeitschrift
+    für Kristallographie - Crystalline Materials 216, 67–70.
+    https://doi.org/10.1524/zkri.216.2.67.203366
+    """
+
+    # elastic independent terms (in GPa) and densities in g/cm3
+    if model == 'DFT':
+        C11, C22, C33 = 387, 355, 366  # diagonal pure shear
+        C44, C55, C66 = 182, 80, 132   # diagonal simple shear
+        C12, C13, C23 = 100, 46, 112   # off-diagonal pure shear
+        C45, C46, C56 = -1.5, 0, -6.1  # off-diagonal simple shear
+        C14, C15, C16 = -3, 0, -6      # pure-simple shear relations
+        C24, C25, C26 = -22, -3, 3     # ...
+        C34, C35, C36 = -30, 3, 0      # ...
+
+    elif type == 'THB':
+        C11, C22, C33 = 363, 428, 490
+        C44, C55, C66 = 203, 117, 110
+        C12, C13, C23 = 124, 100, 175
+        C45, C46, C56 = -20, -8, 1
+        C14, C15, C16 = 8, 14, 12
+        C24, C25, C26 = -39, -5, -19
+        C34, C35, C36 = -45, -21, -12
+
+    else:
+        raise ValueError("Model must be: 'DFT' (default) or 'THB'")
+
+    Cij = np.array([[C11, C12, C13, C14, C15, C16],
+                    [C12, C22, C23, C24, C25, C26],
+                    [C13, C23, C33, C34, C35, C36],
+                    [C14, C24, C34, C44, C45, C46],
+                    [C15, C25, C35, C45, C55, C56],
+                    [C16, C26, C36, C46, C56, C66]])
+
+    properties = ElasticProps(
+        mineral_name='kyanite',
+        crystal_system='Triclinic',
+        temperature=25,
+        pressure=1e-4,
+        density=3.67,
+        Cij=Cij,
+        reference='https://doi.org/10.1524/zkri.216.2.67.203366')
+
+    return properties
+
+
+if __name__ == '__main__':
+    pass
+else:
+    print('Mineral Elastic Database v.2024.1.17 imported')
 
 # End of file
