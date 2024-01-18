@@ -1,6 +1,6 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2023-11-15  
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2024-01-18  
 
 ## What is PyRockWave?
 
@@ -41,8 +41,12 @@ The GitHub website hosting the project provides several options (you will need a
 
 Besides, if you want to contribute to the project, you might want to glimpse at the [code of conduct](https://github.com/marcoalopez/strength_envelopes/blob/master/CODE_OF_CONDUCT.md) (TLDR: be nice to others 😉). 
 
+## Funding
+
+The seed of these codes has been made possible thanks to funding from the Government of the Principality of Asturias and the Foundation for the Promotion of Applied Research in Asturias (FICYT) (grant SV-PA-21-AYUD/2021/57163) under the Asturias Plan for Science, Technology and Innovation 2018-2022 (PCTI-Asturias). 
+
 ---
-*Copyright © 2023 Marco A. Lopez-Sanchez*  
+*Copyright © 2023-2024 Marco A. Lopez-Sanchez*  
 _Information presented on this website and the notebooks is provided without any express or implied warranty and may include technical inaccuracies or typing errors; the author reserve the right to modify or enhance the content of this website as well as the notebooks at any time without previous notice. This webpage and the notebooks are not liable for the content of external links. Notebook contents under [Creative Commons Attribution license CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) and codes under GNU General Public License v3 (https://www.gnu.org/licenses/gpl-3.0.en.html) unless otherwise indicated._
 
 _Hosted on GitHub Pages — This website was created with [Typora](https://typora.io/)_
