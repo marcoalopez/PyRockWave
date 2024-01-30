@@ -6,7 +6,7 @@
 # It is licensed under the Open Database License (ODbL) version 1.0.
 #
 # License:
-# Copyright (c) 2023 Earth materials science laboratory at Uniovi.
+# Copyright (c) 2024 Earth materials science laboratory at Uniovi.
 #
 # You are free:
 # 1. To Share: To copy, distribute, and use the database.
@@ -36,8 +36,7 @@
 #
 # License Text:
 # The full text of the Open Database License (ODbL) version 1.0 is
-# available at:
-# https://opendatacommons.org/licenses/odbl/1.0/
+# available at: https://opendatacommons.org/licenses/odbl/1.0/
 # For the avoidance of doubt, this summary is not a license and it
 # has no legal value. You should refer to the full text of the ODbL
 # for the complete terms and conditions that apply.
@@ -66,14 +65,14 @@ def alpha_quartz(P=1e-5):
     Returns the corresponding elastic tensor (GPa) and density
     (g/cm3) and other derived elastic properties of alpha quartz
     as a function of pressure based on a polynomial fit from
-    experimental data of Wang et al. (2006) [1]
+    experimental data of Wang et al. (2015) [1]
 
     Caveats
     -------
         - C44 elastic term is worse constrained than the others.
         The fitting has an R-squared value of 0.96
-        - The function does not account for temperature effects
-        and assumes room temperature.
+        - The function does not account for temperature effects.
+        Room temperature is assumed.
 
     Parameters
     ----------
@@ -767,7 +766,7 @@ def zoisite():
     """
     Returns the corresponding elastic tensor (GPa) and density
     (g/cm3) and other derived elastic properties of zoisite
-    based on experimental data of Mao et al. (2005) [1]
+    based on experimental data of Mao et al. (2007) [1]
 
     Caveats
     -------
@@ -1396,8 +1395,8 @@ def kyanite(model='DFT'):
 
 
 if __name__ == '__main__':
-    pass
+    print('Mineral Elastic Database v.2024.1.30')
 else:
-    print('Mineral Elastic Database v.2024.1.17 imported')
+    print('Mineral Elastic Database v.2024.1.30 imported')
 
 # End of file
