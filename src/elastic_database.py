@@ -1302,6 +1302,105 @@ def antigorite(P=1e-5):
 
     return properties
 
+def lizardite(P=1e-5):
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) and other derived elastic properties of lizardite
+    as a function of pressure based on a polynomial fit from
+    experimental data of Tsuchiya et al. (2013) [1]
+
+    Caveats
+    -------
+        - The function does not account for temperature effects
+        and assumes room temperature.
+        - There is a dramatic change in elastic properties above
+        10 GPa, so the model here applies only for pressures below
+        this threshold.
+        - No experimental measures, atomic first-principles
+        - C14 elastic term is worse constrained than the others.
+        The fitting has an R-squared value of 0.7
+
+    Parameters
+    ----------
+    P : numeric, optional
+        pressure in GPa, by default 1e-5
+
+    Returns
+    -------
+    properties : ElasticProps dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system.
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
+        - reference: Reference to the source publication.
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexess
+
+    Examples
+    --------
+    >>> Lz = lizardite(P=0.5)
+
+    References
+    ----------
+    [1] Tsuchiya, J., 2013. A first-principles calculation of the elastic
+    and vibrational anomalies of lizardite under pressure. American
+    Mineralogist 98, 2046–2052. https://doi.org/10.2138/am.2013.4369
+
+    """
+
+    if (P > 10) | (P <= 0):
+        raise ValueError('The pressure is out of the safe range of the model: 0 to 10 GPa')
+
+    # Polynomial coefficients of elastic independent terms
+    coeffs = {
+        'C11': [-0.4758, 5.9191, 212.6],
+        'C33': [-0.8992, 22.548, 57.3],
+        'C12': [-0.384, 3.72, 73.3],
+        'C13': [0.0711, 6.235, 8.5],
+        'C14': [-0.0214, 0.2059, 1.3],
+        'C44': [-0.1363, 1.0282, 11.6],
+        'C66': [-0.0509, 1.1561, 69.7]
+    }
+
+    # elastic independent terms
+    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9971
+    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9986
+    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9879
+    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9998
+    C14 = np.polyval(coeffs['C14'], P)  # R-squared=0.6951
+    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9924
+    C66 = np.polyval(coeffs['C44'], P)  # R-squared=0.9989
+
+    # elastic dependent terms
+    C22, C55, C23, C24, C56 = C11, C44, C13, -C14, C14
+
+    Cij = np.array([[C11, C12, C13, C14, 0.0, 0.0],
+                    [C12, C22, C23, C24, 0.0, 0.0],
+                    [C13, C23, C33, 0.0, 0.0, 0.0],
+                    [C14, C24, 0.0, C44, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, C55, C56],
+                    [0.0, 0.0, 0.0, 0.0, C56, C66]])
+
+    # estimate density, R-squared=1
+    density = 0.0007 * P**2 + 0.0187 * P + 2.5081
+
+    properties = ElasticProps(
+        mineral_name='Lizardite',
+        crystal_system='Trigonal',
+        temperature=25,
+        pressure=P,
+        density=np.around(density, decimals=3),
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.2138/am.2013.4369')
+
+    return properties
+
 
 def kyanite(model='DFT'):
     """
@@ -1395,8 +1494,8 @@ def kyanite(model='DFT'):
 
 
 if __name__ == '__main__':
-    print('Mineral Elastic Database v.2024.1.30')
+    print('Mineral Elastic Database v.2024.1.31')
 else:
-    print('Mineral Elastic Database v.2024.1.30 imported')
+    print('Mineral Elastic Database v.2024.1.31 imported')
 
 # End of file
