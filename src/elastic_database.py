@@ -219,6 +219,7 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
             'C23': [-0.0486, 3.4657, 65],  # R-squared=0.9948
         }
         T = 1027
+        density = 0.0253 * P + 3.239  # R-squared=0.8772
 
     elif type == 'RT':
         coeffs = {
@@ -233,6 +234,7 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
             'C23': [0.0034, 3.4215, 74.9],   # R-squared=0.9926
         }
         T = 26
+        density = -0.0002 * P**2 + 0.0253 * P + 3.3413  # R-squared=1
 
     else:
         raise ValueError("type must be 'RT' (i.e. room T) or 'HT' (i.e. 1027°C)")
@@ -254,9 +256,6 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
                     [0.0, 0.0, 0.0, C44, 0.0, 0.0],
                     [0.0, 0.0, 0.0, 0.0, C55, 0.0],
                     [0.0, 0.0, 0.0, 0.0, 0.0, C66]])
-
-    # estimate density, R-squared=0.8772
-    density = 0.0253 * P + 3.239
 
     properties = ElasticProps(
         mineral_name='Forsterite',
