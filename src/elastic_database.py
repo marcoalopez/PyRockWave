@@ -1375,7 +1375,7 @@ def lizardite(P=1e-5):
     C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9998
     C14 = np.polyval(coeffs['C14'], P)  # R-squared=0.6951
     C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9924
-    C66 = np.polyval(coeffs['C44'], P)  # R-squared=0.9989
+    C66 = np.polyval(coeffs['C66'], P)  # R-squared=0.9989
 
     # elastic dependent terms
     C22, C55, C23, C24, C56 = C11, C44, C13, -C14, C14
