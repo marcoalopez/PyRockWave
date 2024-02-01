@@ -208,34 +208,45 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
     # Polynomial coefficients of elastic independent terms
     if type == 'HT':
         coeffs = {
-            'C11': [-0.0496, 7.7691, 269],
-            'C22': [-0.1069, 5.5317, 174],
-            'C33': [0.0351, 4.3771, 201],
-            'C44': [-0.0363, 1.8989, 54],
-            'C55': [1.204, 67],
-            'C66': [-0.0219, 1.6859, 66],
-            'C12': [-0.0581, 3.3446, 67],
-            'C13': [-0.055, 2.7464, 63],
-            'C23': [-0.0486, 3.4657, 65],
+            'C11': [-0.0496, 7.7691, 269], # R-squared=0.9960
+            'C22': [-0.1069, 5.5317, 174], # R-squared=0.9969
+            'C33': [0.0351, 4.3771, 201],  # R-squared=0.9966
+            'C44': [-0.0363, 1.8989, 54],  # R-squared=0.9916
+            'C55': [1.204, 67],            # R-squared=0.9951
+            'C66': [-0.0219, 1.6859, 66],  # R-squared=1.0
+            'C12': [-0.0581, 3.3446, 67],  # R-squared=0.9982
+            'C13': [-0.055, 2.7464, 63],   # R-squared=0.9891
+            'C23': [-0.0486, 3.4657, 65],  # R-squared=0.9948
         }
         T = 1027
 
     elif type == 'RT':
-        pass  # TODO
+        coeffs = {
+            'C11': [-0.0514, 7.8075, 319.2], # R-squared=0.9969
+            'C22': [-0.0930, 5.7684, 195.5], # R-squared=0.9912
+            'C33': [-0.0495, 5.7721, 232.7], # R-squared=0.9984
+            'C44': [-0.0296, 1.7099, 62.6],  # R-squared=0.9972
+            'C55': [-0.0378, 1.6603, 77.5],  # R-squared=0.9916
+            'C66': [-0.0660, 2.7941, 75.2],  # R-squared=0.9928
+            'C12': [-0.0511, 3.8683, 71.0],  # R-squared=0.9872
+            'C13': [-0.0734, 4.8050, 71.0],  # R-squared=0.9891
+            'C23': [0.0034, 3.4215, 74.9],   # R-squared=0.9926
+        }
+        T = 26
 
     else:
         raise ValueError("type must be 'RT' (i.e. room T) or 'HT' (i.e. 1027°C)")
 
     # elastic independent terms
-    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9960
-    C22 = np.polyval(coeffs['C22'], P)  # R-squared=0.9969
-    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9966
-    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9916
-    C55 = np.polyval(coeffs['C55'], P)  # R-squared=0.9951
-    C66 = np.polyval(coeffs['C66'], P)  # R-squared=1.0
-    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9982
-    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9891
-    C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.9948
+    C11 = np.polyval(coeffs['C11'], P)
+    C22 = np.polyval(coeffs['C22'], P)
+    C33 = np.polyval(coeffs['C33'], P)
+    C44 = np.polyval(coeffs['C44'], P)
+    C55 = np.polyval(coeffs['C55'], P)
+    C66 = np.polyval(coeffs['C66'], P)
+    C12 = np.polyval(coeffs['C12'], P)
+    C13 = np.polyval(coeffs['C13'], P)
+    C23 = np.polyval(coeffs['C23'], P)
 
     Cij = np.array([[C11, C12, C13, 0.0, 0.0, 0.0],
                     [C12, C22, C23, 0.0, 0.0, 0.0],
@@ -1494,8 +1505,8 @@ def kyanite(model='DFT'):
 
 
 if __name__ == '__main__':
-    print('Mineral Elastic Database v.2024.1.31')
+    print('Mineral Elastic Database v.2024.2.01')
 else:
-    print('Mineral Elastic Database v.2024.1.31 imported')
+    print('Mineral Elastic Database v.2024.2.01 imported')
 
 # End of file
