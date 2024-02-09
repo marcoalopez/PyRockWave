@@ -77,11 +77,11 @@ def snell(vp1, vp2, vs1, vs2, theta1):
     return theta2, phi1, phi2, p
 
 
-def calculate_reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
-                           a2, b2, e21, d21, e22, d22, g2, rho2,
-                           theta):
+def reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
+                 a2, b2, e21, d21, e22, d22, g2, rho2,
+                 theta):
     """
-    Calculates the reflectivity in the symmetry plane for interfaces
+    Calculates the P-wave reflectivity in the symmetry plane for interfaces
     between 2 orthorhombic media. This is refactored code with improved
     readability and documentation from srb toolbox written by Diana Sava.
     
@@ -123,7 +123,7 @@ def calculate_reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
     ---------
     Ruger, A., 1998, Variation of P-wave reflectivity coefficients
     with offset and azimuth in anisotropic media. Geophysics,
-    Vol 63, No 3, p935.
+    Vol 63, No 3, p935. https://doi.org/10.1190/1.1444405
     """
     
     # Convert incident angle to radians
