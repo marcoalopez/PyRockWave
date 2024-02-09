@@ -87,48 +87,27 @@ def calculate_reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
     
     Parameters
     ----------
-    a1 : float or array-like
-        P-wave vertical velocities of upper medium (1).
-    b1 : float or array-like
-        S-wave vertical velocities of upper medium (1).
-    e11 : float or array-like
+    a1, a2 : float or array-like
+        P-wave vertical velocities of upper (1) and lower (2) medium.
+    b1, b2 : float or array-like
+        S-wave vertical velocities of upper (1) and lower (2) medium.
+    e11, e21 : float or array-like
         Epsilon in the first symmetry plane of the orthorhombic
-        medium for the upper medium.
-    d11 : float or array-like
+        medium for the upper (11) and lower (21) medium.
+    d11, d21 : float or array-like
         Delta in the first symmetry plane of the orthorhombic
-        medium for the upper medium.
-    e12 : float or array-like
+        medium for the upper (11) and lower (21) medium.
+    e12, e22 : float or array-like
         Epsilon in the second symmetry plane of the orthorhombic
-        medium for the upper medium.
-    d12 : float or array-like
+        medium for the upper (12) and lower (22) medium.
+    d12, d22 : float or array-like
         Delta in the second symmetry plane of the orthorhombic
-        medium for the upper medium.
-    g1 : float or array-like
+        medium for the upper (12) and lower (22) medium.
+    g1, g2 : float or array-like
         Vertical shear wave splitting parameter for the
-        upper medium (1).
-    rho1 : float or array-like
-        Density of the upper medium.
-    a2 : float or array-like
-        P-wave vertical velocities of lower medium (2).
-    b2 : float or array-like
-        S-wave vertical velocities of lower medium (2).
-    e21 : float or array-like
-        Epsilon in the first symmetry plane of the orthorhombic
-        medium for the lower medium.
-    d21 : float or array-like
-        Delta in the first symmetry plane of the orthorhombic
-        medium for the lower medium.
-    e22 : float or array-like
-        Epsilon in the second symmetry plane of the orthorhombic
-        medium for the lower medium.
-    d22 : float or array-like
-        Delta in the second symmetry plane of the orthorhombic
-        medium for the lower medium.
-    g2 : float or array-like
-        Vertical shear wave splitting parameter for the lower
-        medium (2).
-    rho2 : float or array-like
-        Density of the lower medium.
+        upper (1) and lower (2) medium.
+    rho1, rho2 : float or array-like
+        Density of the upper (1) and lower (2) medium.
     theta : float or array-like
         Incident angle.
 
@@ -136,9 +115,9 @@ def calculate_reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
     -------
     tuple of array-like
         Rxy: PP reflectivity as a function of angle of incidence
-        in xz plane (13).
+        in xz plane.
         Ryz: PP reflectivity as a function of angle of incidence
-        in yz plane (23).
+        in yz plane.
 
     Reference
     ---------
