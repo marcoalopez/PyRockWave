@@ -1,6 +1,6 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2024-02-07  
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2024-02-13  
 
 ## What is PyRockWave?
 
@@ -26,6 +26,8 @@ TODO
 - [Demonstration of the functionality of the ``coordinates`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_coordinates.ipynb)
 
 - [Demonstration of the functionality of the ``polar_models`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_polar.ipynb)
+
+- [Demonstration of the functionality of the ``orthorhombic_models`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_orthotropic.ipynb)
 
 - [Demonstration of the functionality of the ``christoffel`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_christoffel.ipynb)
 
