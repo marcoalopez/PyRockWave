@@ -157,9 +157,14 @@ def orthotropic_azimuthal_anisotropy(elastic, wavevectors):
 
 
 def _calc_alphaPhi(azimuths, ε1, ε2, ε3, r1, r2):
-    first_term = 0.5 * ((r2 * ε2**2 * np.cos(azimuths)**2) + (r1 * ε1**2 * np.sin(azimuths)**2))
-    a = (r2 * ε2**2 * np.cos(azimuths)**2) + (r1 * ε1**2 * np.sin(azimuths)**2)
-    b = (1/ε3**2) * r1 * r2 * ε1**2 * ε2**2 * np.sin(2*azimuths)**2
+    first_term = 0.5 * (
+        (r2 * ε2**2 * np.cos(azimuths) ** 2) +
+        (r1 * ε1**2 * np.sin(azimuths) ** 2)
+    )
+    
+    a = (r2 * ε2**2 * np.cos(azimuths) ** 2) + \
+        (r1 * ε1**2 * np.sin(azimuths) ** 2)
+    b = (1 / ε3**2) * r1 * r2 * ε1**2 * ε2**2 * np.sin(2 * azimuths) ** 2
     second_term = 0.5 * np.sqrt(a**2 + b)
 
     return first_term + second_term
