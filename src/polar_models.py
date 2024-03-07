@@ -5,7 +5,7 @@
 # Filename: polar_models.py                                           #
 # Description: TODO                                                   #
 #                                                                     #
-# Copyright (c) 2023                                                  #
+# Copyright (c) 2024                                                  #
 #                                                                     #
 # PyRockWave is free software: you can redistribute it and/or modify  #
 # it under the terms of the GNU General Public License as published   #
@@ -84,8 +84,8 @@ def weak_polar_anisotropy(elastic, wavevectors):
     -------
     pandas.DataFrame
         Tabular data object containing the propagation directions
-        and calculated Vp, Vs1, and Vs2 speeds using the weak polar
-        anisotropy model.
+        and calculated Vp, Vs1, and Vs2 speeds and polarization
+        anisotropy using the weak polar anisotropy model.
     """
 
     # extract azimuths and polar angles
@@ -98,15 +98,23 @@ def weak_polar_anisotropy(elastic, wavevectors):
     sin_theta = np.sin(polar)
     cos_theta = np.cos(polar)
     Vp = Vp0 * (1 + delta * sin_theta**2 * cos_theta**2 + epsilon * sin_theta**4)
-    Vsv = Vs0 * (1 + (Vp0 / Vs0)**2 * (epsilon - delta) * sin_theta**2 * cos_theta**2)
+    Vsv = Vs0 * (1 + (Vp0 / Vs0) ** 2 * (epsilon - delta) * sin_theta**2 * cos_theta**2)
     Vsh = Vs0 * (1 + gamma * sin_theta**2)
+
+    # calc Vs1 (fast) and Vs2 (slow) shear waves
+    Vs1 = np.maximum(Vsv, Vsh)
+    Vs2 = np.minimum(Vsv, Vsh)
+
+    # estimate polarization anisotropy in percentage
+    ShearWaveSplitting = 200 * (Vs1 - Vs2) / (Vs1 + Vs2)
 
     # reshape and store arrays
     data = {'polar_ang': polar,
             'azimuthal_ang': azimuths,
             'Vp': Vp,
-            'Vsv': Vsv,
-            'Vsh': Vsh}
+            'Vs1': Vs1,
+            'Vs2': Vs2,
+            'SWS': np.around(ShearWaveSplitting, 1)}
 
     return pd.DataFrame(data)
 
@@ -128,8 +136,8 @@ def polar_anisotropy(elastic, wavevectors):
     -------
     pandas.DataFrame
         Tabular data object containing the propagation directions
-        and calculated Vp, Vs1, and Vs2 speeds using a polar
-        anisotropy model.
+        and calculated Vp, Vs1, and Vs2 speeds and polarization
+        anisotropy using the Andreson polar anisotropy model.
     """
 
     # extract azimuths and polar angles
@@ -140,24 +148,42 @@ def polar_anisotropy(elastic, wavevectors):
     c13 = elastic.Cij[0, 2]
 
     # estimate D value
-    first_term = (c33 - c44)**2
-    second_term = 2 * (2 * (c13 + c44)**2 - (c33 - c44)*(c11 + c33 - 2*c44)) * np.sin(polar)**2
-    third_term = ((c11+c33-2*c44)**2 - 4*(c13+c44)**2) * np.sin(polar)**4
+    first_term = (c33 - c44) ** 2
+    second_term = (
+        2
+        * (2 * (c13 + c44) ** 2 - (c33 - c44) * (c11 + c33 - 2 * c44))
+        * np.sin(polar) ** 2
+    )
+    third_term = ((c11 + c33 - 2 * c44) ** 2 - 4 * (c13 + c44) ** 2) * np.sin(
+        polar
+    ) ** 4
     D = np.sqrt(first_term + second_term + third_term)
 
     # estimate wavespeeds as a function of propagation polar angle
     sin_theta = np.sin(polar)
     cos_theta = np.cos(polar)
-    Vp = np.sqrt((1 / (2 * elastic.density)) * (c33 + c44 + (c11 - c33) * sin_theta**2 + D))
-    Vsv = np.sqrt((1 / (2 * elastic.density)) * (c33 + c44 + (c11 - c33) * sin_theta**2 - D))
+    Vp = np.sqrt(
+        (1 / (2 * elastic.density)) * (c33 + c44 + (c11 - c33) * sin_theta**2 + D)
+    )
+    Vsv = np.sqrt(
+        (1 / (2 * elastic.density)) * (c33 + c44 + (c11 - c33) * sin_theta**2 - D)
+    )
     Vsh = np.sqrt((1 / elastic.density) * (c44 * cos_theta**2 + c66 * sin_theta**2))
+    
+    # calc Vs1 (fast) and Vs2 (slow) shear waves
+    Vs1 = np.maximum(Vsv, Vsh)
+    Vs2 = np.minimum(Vsv, Vsh)
+
+    # estimate polarization anisotropy in percentage
+    ShearWaveSplitting = 200 * (Vs1 - Vs2) / (Vs1 + Vs2)
 
     # reshape and store arrays
     data = {'polar_ang': polar,
             'azimuthal_ang': azimuths,
             'Vp': Vp,
-            'Vsv': Vsv,
-            'Vsh': Vsh}
+            'Vs1': Vs1,
+            'Vs2': Vs2,
+            'SWS': np.around(ShearWaveSplitting, 1)}
 
     return pd.DataFrame(data)
 
