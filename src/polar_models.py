@@ -84,8 +84,9 @@ def weak_polar_anisotropy(elastic, wavevectors):
     -------
     pandas.DataFrame
         Tabular data object containing the propagation directions
-        and calculated Vp, Vs1, and Vs2 speeds and polarization
-        anisotropy using the weak polar anisotropy model.
+        and calculated Vp, Vsv, Vsh, Vs1, and Vs2 speeds and
+        polarization anisotropy using the weak polar anisotropy
+        model.
     """
 
     # extract azimuths and polar angles
@@ -111,6 +112,8 @@ def weak_polar_anisotropy(elastic, wavevectors):
     # reshape and store arrays
     data = {'polar_ang': polar,
             'azimuthal_ang': azimuths,
+            'Vsv': Vsv,
+            'Vsh': Vsh,
             'Vp': Vp,
             'Vs1': Vs1,
             'Vs2': Vs2,
@@ -136,8 +139,9 @@ def polar_anisotropy(elastic, wavevectors):
     -------
     pandas.DataFrame
         Tabular data object containing the propagation directions
-        and calculated Vp, Vs1, and Vs2 speeds and polarization
-        anisotropy using the Andreson polar anisotropy model.
+        and calculated Vp, Vsv, Vsh, Vs1, and Vs2 speeds and
+        polarization anisotropy using the weak polar anisotropy
+        model.
     """
 
     # extract azimuths and polar angles
@@ -180,6 +184,8 @@ def polar_anisotropy(elastic, wavevectors):
     # reshape and store arrays
     data = {'polar_ang': polar,
             'azimuthal_ang': azimuths,
+            'Vsv': Vsv,
+            'Vsh': Vsh,
             'Vp': Vp,
             'Vs1': Vs1,
             'Vs2': Vs2,

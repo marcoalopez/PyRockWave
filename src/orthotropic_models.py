@@ -68,7 +68,7 @@ def Tsvankin_params(cij: np.ndarray, density: float):
     epsilon2 = (c11 - c33) / (2 * c33)
     delta2 = ((c13 + c55)**2 - (c33 - c55)**2) / (2*c33 * (c33 - c55))
     gamma2 = (c66 - c44) / (2 * c44)
-    # VTI parameter in the XZ plane
+    # VTI parameter in the XY plane
     delta3 = (c12 + c66)**2 - (c11 - c66)**2 / (2*c11 * (c11 - c66))
 
     return Vp0, Vs0, epsilon1, delta1, gamma1, epsilon2, delta2, gamma2, delta3
