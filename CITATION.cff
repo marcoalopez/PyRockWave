@@ -1,0 +1,28 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: PyRockWave
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - orcid: 'https://orcid.org/0000-0002-0261-9267'
+    given-names: Marco Antonio
+    family-names: Lopez-Sanchez
+    email: marcoalopez@outlook.com
+identifiers:
+  - type: url
+    value: 'https://github.com/marcoalopez/PyRockWave'
+    description: >-
+      Python codes for modelling elastic and seismic
+      properties in rocks
+repository-code: 'https://github.com/marcoalopez/PyRockWave'
+url: 'https://marcoalopez.github.io/PyRockWave/'
+keywords:
+  - Python
+  - geophysics
+  - elasticity
+  - petrophysics
+license: GPL-3.0
