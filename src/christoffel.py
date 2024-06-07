@@ -144,8 +144,9 @@ def _rearrange_tensor(C_ij: np.ndarray):
         for k in range(3):
             for j in range(3):
                 for i in range(3):
-                    C_ijkl[i, j, k, L] = C_ij[voigt_notation[10 * i + j],
-                                              voigt_notation[10 * k + L]]
+                    C_ijkl[i, j, k, L] = C_ij[
+                        voigt_notation[10 * i + j], voigt_notation[10 * k + L]
+                    ]
 
     return C_ijkl
 
@@ -262,8 +263,10 @@ def _calc_eigen(Mij: np.ndarray):
 
     eigen_values, eigen_vectors = np.linalg.eigh(Mij)
 
-    return (eigen_values[np.argsort(eigen_values)],
-            eigen_vectors.T[np.argsort(eigen_values)])
+    return (
+        eigen_values[np.argsort(eigen_values)],
+        eigen_vectors.T[np.argsort(eigen_values)],
+    )
 
 
 def calc_phase_velocities(eigenvalues: np.ndarray):
@@ -298,13 +301,12 @@ def calc_phase_velocities(eigenvalues: np.ndarray):
 
     # Check if eigenvalues is a 3x1 array
     if not isinstance(eigenvalues, np.ndarray) or eigenvalues.shape != (3,):
-        raise ValueError("eigenvalues should be a 3x3 NumPy array.")
+        raise ValueError("eigenvalues should be a 3x1 NumPy array.")
 
     return np.sign(eigenvalues) * np.sqrt(np.absolute(eigenvalues))
 
 
-def _christoffel_matrix_gradient(wavevector: np.ndarray,
-                                 Cijkl: np.ndarray):
+def _christoffel_matrix_gradient(wavevector: np.ndarray, Cijkl: np.ndarray):
     """Calculate the derivative of the Christoffel matrix. The
     derivative of the Christoffel matrix is computed using
     the formula (e.g. Jaeken and Cottenier, 2016):
@@ -348,8 +350,7 @@ def _christoffel_matrix_gradient(wavevector: np.ndarray,
     return np.transpose(gradmat, (1, 0, 2))
 
 
-def _eigenvector_derivatives(eigenvectors: np.ndarray,
-                             gradient_matrix: np.ndarray):
+def _eigenvector_derivatives(eigenvectors: np.ndarray, gradient_matrix: np.ndarray):
     """Calculate the derivatives of eigenvectors with respect to
     the gradient matrix.
 
@@ -385,38 +386,49 @@ def _eigenvector_derivatives(eigenvectors: np.ndarray,
 
 def calc_group_velocities(phase_velocities,
                           eigenvectors,
-                          M_derivative,
-                          wave_vector):
-    """_summary_
+                          christoffel_gradient,
+                          wave_vectors):
+    """ Calculates the group velocities and power flow angles
+    of seismic waves as a funtion of direction.
+
+    Group velocity is the velocity with which the overall energy of the wave
+    propagates. It's calculated as the gradient of the phase velocity with
+    respect to the wave vector. The power flow angle is the angle between
+    the group velocity (energy direction) and the wave direction.
+
+    This function takes the phase velocities, eigenvectors of the Christoffel matrix,
+    derivative of the Christoffel matrix, and propagation direction as input and returns
+    the group velocity tensor, group velocity magnitude and direction for each wave mode,
+    and the power flow angle.
 
     Parameters
     ----------
-    phase_velocities : _type_
-        _description_
-    eigenvectors : _type_
-        _description_
-    dM : _type_
-        _description_
+    phase_velocities : array-like
+        Phase velocities for a particular direction or directions
+    eigenvectors : array-like
+        Eigenvectors of the Christoffel matrix.
+    christoffel_gradient : array-like
+        Gradient of the Christoffel matrix (∇M)
+    wave_vectors : array-like
+        Direction(s) of wave propagation.
     """
 
-    velocity_group = np.zeros((3, 3))
-    group_abs = np.zeros(3)
-    group_dir = np.zeros((3, 3))
+    # Calculate gradients (derivatives) of eigenvalues (v^2)
+    # eigenvalue_gradients = _eigenvector_derivatives(eigenvectors, christoffel_gradient)
+    eigenvalue_gradients = np.einsum('ij,ijk,ik->ij', eigenvectors, christoffel_gradient, eigenvectors)
 
-    # estimate the derivative of eigenvectors
-    eigen_derivatives = _eigenvector_derivatives(eigenvectors, M_derivative)
+    # Group velocity is the gradient of the phase velocity
+    velocity_group = eigenvalue_gradients / (2 * phase_velocities[:, np.newaxis])
 
-    # estimate group velocities and...TODO
-    for i in range(3):
-        for j in range(3):
-            velocity_group[i, j] = M_derivative[i, j] / (2 * phase_velocities[i])
-        group_abs[i] = np.linalg.norm(velocity_group[i])
-        group_dir[i] = velocity_group[i] / group_abs[i]
+    # Calculate the magnitude and direction of the group velocity for each mode
+    velocity_group_magnitudes = np.linalg.norm(velocity_group, axis=1)
+    velocity_group_directions = velocity_group / velocity_group_magnitudes[:, np.newaxis]
 
-    # estimate the powerflow angle
-    powerflow_angle = np.arccos(np.dot(group_dir, wave_vector))
+    # Calculate power flow angles
+    cos_power_flow_angle = np.dot(velocity_group_directions, wave_vectors)
+    power_flow_angles = np.arccos(np.around(cos_power_flow_angle, decimals=10))
 
-    return velocity_group, powerflow_angle
+    return eigenvalue_gradients, velocity_group, power_flow_angles
 
 
 def _christoffel_matrix_hessian(Cijkl: np.ndarray):
