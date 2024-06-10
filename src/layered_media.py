@@ -296,19 +296,23 @@ def schoenberg_muir_layered_medium(cij_layer1: np.ndarray,
     Cnn1 = cij_layer1[2:5, 2:5]
     Cnn2 = cij_layer2[2:5, 2:5]
     # tangential-normal
-    Ctn1 = cij_layer1[0:3, 2:5].T
-    Ctn2 = cij_layer2[0:3, 2:5].T
-    # tangential
-    Ctt1 = cij_layer1[0:3, 0:3]
-    Ctt2 = cij_layer2[0:3, 0:3]
+    Ctn1 = cij_layer1[[0,1,5], 2:5]
+    Ctn2 = cij_layer2[[0,1,5], 2:5]
+    # tangential ->np.ix_(row_indices, col_indices)
+    Ctt1 = cij_layer1[np.ix_([0, 1, 5], [0, 1, 5])]
+    Ctt2 = cij_layer2[np.ix_([0, 1, 5], [0, 1, 5])]
  
     # Compute effective normal stiffness
     c_normal_eff = np.linalg.inv(vfrac1 * np.linalg.inv(Cnn1) + vfrac2 * np.linalg.inv(Cnn2))
+    print(f"Cnn = {np.around(c_normal_eff, 4)}")
+    print("")
 
     # Compute effective tangential-normal stiffness
     c_tangential_normal_eff = (
         vfrac1 * Ctn1 @ np.linalg.inv(Cnn1) + vfrac2 * Ctn2 @ np.linalg.inv(Cnn2)
     ) @ c_normal_eff
+    print(f"Ctn = {np.around(c_tangential_normal_eff, 4)}")
+    print("")
 
     # Compute effective tangential stiffness
     term1 = vfrac1 * Ctt1 + vfrac2 * Ctt2
@@ -319,7 +323,9 @@ def schoenberg_muir_layered_medium(cij_layer1: np.ndarray,
                     vfrac1 * np.linalg.inv(Cnn1) @ Ctn1.T +
                     vfrac2 * np.linalg.inv(Cnn2) @ Ctn2.T)
 
-    c_tangential_eff = term1 - term2 + term3 
+    c_tangential_eff = term1 - term2 + term3
+    print(f"Ctt = {np.around(c_tangential_eff, 4)}")
+    print("")
     
     # Assemble effective stiffness tensor in full Voigt notation
     effective_stiffness = np.block([
