@@ -92,9 +92,11 @@ def reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
                  theta):
     """
     Calculates the P-wave reflectivity in the symmetry plane for interfaces
-    between 2 orthorhombic media. This is refactored code with improved
-    readability and documentation from srb toolbox (see Rorsym.m file)
-    written by Diana Sava.    
+    between 2 orthorhombic media.
+    
+    This is Python reimplementation with improved readability and
+    documentation from srb toolbox (see Rorsym.m file) originally
+    written by Diana Sava. 
     
     Parameters
     ----------
@@ -216,6 +218,156 @@ def Tsvankin_params(cij: np.ndarray, density: float):
     delta3 = (c12 + c66)**2 - (c11 - c66)**2 / (2*c11 * (c11 - c66))
 
     return Vp0, Vs0, epsilon1, delta1, gamma1, epsilon2, delta2, gamma2, delta3
+
+
+# TO REVISE (UNTESTED)
+def schoenberg_muir_layered_medium(cij_layer1: np.ndarray,
+                                   cij_layer2: np.ndarray,
+                                   vfrac1: float,
+                                   vfrac2: float):
+    """Calculate the effective stiffness and compliance tensors for
+    a layered medium using the Schoenberg & Muir approach.
+
+    This function computes the effective stiffness and compliance
+    tensors for a medium composed of two alternating thin layers.
+    The approach partitions the 6x6 stiffness and compliance matrices
+    into submatrices, which are then used to calculate the effective
+    properties.
+
+    Parameters
+    ----------
+    cij_layer1 : numpy.ndarray
+        6x6 stiffness matrix of the first layer
+    cij_layer2 : numpy.ndarray
+        6x6 stiffness matrix of the second layer
+    vfrac1 : float between 0 and 1
+        Volume (thickness) fraction of the first layer (0 <= vfrac1 <= 1)
+    vfrac2 : float between 0 and 1
+        Volume (thickness) fraction of the first layer (0 <= vfrac2 <= 1)
+
+    Returns
+    -------
+    tuple: A tuple containing:
+        - effective_stiffness (numpy.ndarray): 6x6 effective stiffness matrix.
+        - effective_compliance (numpy.ndarray): 6x6 effective compliance matrix.
+        - effective_stiffness_from_compliance (numpy.ndarray): 6x6 effective
+        stiffness matrix computed from the effective compliance
+    
+    References
+    ----------
+    Schoenberg, M., & Muir, F. (1989). A calculus for finely layered
+    anisotropic media. Geophysics, 54(5), 581-589. https://doi.org/10.1190/1.1442685
+
+    Nichols, D., Muir, F., & Schoenberg, M. (1989). Elastic properties
+    of finely layered media. SEG Technical Program Expanded Abstracts
+    1989 (pp. 1091-1094).
+
+    Notes
+    -----
+    This is Python reimplementation with improved readability and
+    documentation from srb toolbox (see sch_muir_bckus.m file)
+    originally written by Kaushik Bandyopadhyay in 2008.
+    """
+
+    # Input Error handling
+    if not isinstance(cij_layer1, np.ndarray) or not isinstance(cij_layer2, np.ndarray):
+        raise TypeError("cij_layer1 and cij_layer2 must be numpy arrays.")
+    
+    if cij_layer1.shape != (6, 6) or cij_layer2.shape != (6, 6):
+        raise ValueError("cij_layer1 and cij_layer2 must be 6x6 arrays.")
+    
+    if not np.allclose(cij_layer1, cij_layer1.T):
+        raise Exception("the elastic tensor 1 is not symmetric!")
+
+    if not np.allclose(cij_layer2, cij_layer2.T):
+        raise Exception("the elastic tensor 2 is not symmetric!")
+
+    if not isinstance(vfrac1, (int, float)) or not isinstance(vfrac2, (int, float)):
+        raise TypeError("vfrac1 and vfrac2 must be numbers.")
+
+    if not (0 <= vfrac1 <= 1) or not (0 <= vfrac2 <= 1):
+        raise ValueError("Volume fractions must be between 0 and 1.")
+
+    if not np.isclose(vfrac1 + vfrac2, 1, rtol=1e-03):
+        raise ValueError("Volume fractions must sum (approximately) to 1.")
+
+    # Extract submatrices (partition) for Cnn, Ctn, Ctt from the stiffness tensor
+    # normal
+    Cnn1 = cij_layer1[2:5, 2:5]
+    Cnn2 = cij_layer2[2:5, 2:5]
+    # tangential-normal
+    Ctn1 = cij_layer1[0:3, 2:5].T
+    Ctn2 = cij_layer2[0:3, 2:5].T
+    # tangential
+    Ctt1 = cij_layer1[0:3, 0:3]
+    Ctt2 = cij_layer2[0:3, 0:3]
+ 
+    # Compute effective normal stiffness
+    c_normal_eff = np.linalg.inv(vfrac1 * np.linalg.inv(Cnn1) + vfrac2 * np.linalg.inv(Cnn2))
+
+    # Compute effective tangential-normal stiffness
+    c_tangential_normal_eff = (
+        vfrac1 * Ctn1 @ np.linalg.inv(Cnn1) + vfrac2 * Ctn2 @ np.linalg.inv(Cnn2)
+    ) @ c_normal_eff
+
+    # Compute effective tangential stiffness
+    term1 = vfrac1 * Ctt1 + vfrac2 * Ctt2
+    term2 = (vfrac1 * Ctn1 @ np.linalg.inv(Cnn1) @ Ctn1.T +
+             vfrac2 * Ctn2 @ np.linalg.inv(Cnn2) @ Ctn2.T)
+    term3 = (vfrac1 * Ctn1 @ np.linalg.inv(Cnn1) +
+             vfrac2 * Ctn2 @ np.linalg.inv(Cnn2)) @ c_normal_eff @ (
+                    vfrac1 * np.linalg.inv(Cnn1) @ Ctn1.T +
+                    vfrac2 * np.linalg.inv(Cnn2) @ Ctn2.T)
+
+    c_tangential_eff = term1 - term2 + term3 
+    
+    # Assemble effective stiffness tensor in full Voigt notation
+    effective_stiffness = np.block([
+        [c_tangential_eff, c_tangential_normal_eff],
+        [c_tangential_normal_eff.T, c_normal_eff]
+    ])
+ 
+    # Compute compliances from stiffnesses
+    sij_layer1 = np.linalg.inv(cij_layer1)
+    sij_layer2 = np.linalg.inv(cij_layer2)
+
+    # Extract submatrices (partition) for Snn, Stn, Snt, Stt from the compliance tensor
+    Snn1 = sij_layer1[2:5, 2:5]
+    Snn2 = sij_layer2[2:5, 2:5]
+    Stn1 = sij_layer1[0:3, 2:5].T
+    Stn2 = sij_layer2[0:3, 2:5].T
+    Snt1 = Stn1.T
+    Snt2 = Stn2.T
+    Stt1 = sij_layer1[0:3, 0:3]
+    Stt2 = sij_layer2[0:3, 0:3]
+
+    # Compute effective normal compliance
+    s_normal_eff = (vfrac1 * Snn1 + vfrac2 * Snn2 -
+                    (vfrac1 * Snt1 @ np.linalg.inv(Stt1) @ Stn1 +
+                     vfrac2 * Snt2 @ np.linalg.inv(Stt2) @ Stn2) +
+                    (vfrac1 * Snt1 @ np.linalg.inv(Stt1) +
+                     vfrac2 * Snt2 @ np.linalg.inv(Stt2)) @
+                    np.linalg.inv(vfrac1 * np.linalg.inv(Stt1) + vfrac2 * np.linalg.inv(Stt2)) @
+                    (vfrac1 * np.linalg.inv(Stt1) @ Stn1 + 
+                     vfrac2 * np.linalg.inv(Stt2) @ Stn2))
+
+    # Compute effective tangential-normal compliance
+    s_tangential_normal_eff = ((np.linalg.inv(vfrac1 * np.linalg.inv(Stt1) + vfrac2 * np.linalg.inv(Stt2))) @
+                              (vfrac1 * np.linalg.inv(Stt1) @ Stn1 + vfrac2 * np.linalg.inv(Stt2) @ Stn2))
+
+    # Compute effective tangential compliance
+    s_tangential_eff = np.linalg.inv(vfrac1 * np.linalg.inv(Stt1) + vfrac2 * np.linalg.inv(Stt2))
+
+    # Assemble effective compliance matrix
+    effective_compliance = np.block([
+        [s_tangential_eff, s_tangential_normal_eff],
+        [s_tangential_normal_eff.T, s_normal_eff]
+    ])
+
+    # Compute stiffness from effective compliance
+    effective_stiffness_from_compliance = np.linalg.inv(effective_compliance)
+
+    return effective_stiffness, effective_compliance, effective_stiffness_from_compliance
 
 
 # End of file
