@@ -3,7 +3,8 @@
 # This file is part of PyRockWave Python module                       #
 #                                                                     #
 # Filename: layered_media.py                                          #
-# Description: TODO                                                   #
+# Description: Module to calculate seismic reflectivity in layered    #
+# media.                                                              #
 #                                                                     #
 # Copyright (c) 2023                                                  #
 #                                                                     #
@@ -77,13 +78,23 @@ def snell(vp1, vp2, vs1, vs2, theta1):
     return theta2, phi1, phi2, p
 
 
+def calc_reflectivity(
+    cij_upper: np.ndarray,
+    cij_lower: np.ndarray,
+    density_upper: float,
+    density_lower: float,
+):
+    pass
+
+
 def reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
                  a2, b2, e21, d21, e22, d22, g2, rho2,
                  theta):
     """
     Calculates the P-wave reflectivity in the symmetry plane for interfaces
     between 2 orthorhombic media. This is refactored code with improved
-    readability and documentation from srb toolbox written by Diana Sava.
+    readability and documentation from srb toolbox (see Rorsym.m file)
+    written by Diana Sava.    
     
     Parameters
     ----------
@@ -153,7 +164,7 @@ def reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
     # Calculate factor f 
     f = (2 * b_avg / a_avg)**2
 
-    # Calculate reflectivity in xz plane (Rxy)
+    # Calculate reflectivity in xz plane (Rxz)
     Rxz = ((Z2 - Z1) / (Z2 + Z1) +
            0.5 * (a_diff / a_avg - f * (G_diff / G_avg - 2 * (g2 - g1)) + d22 - d12) * sin_sq_theta +
            0.5 * (a_diff / a_avg + e22 - e12) * sin_sq_theta * tan_sq_theta)
@@ -164,6 +175,47 @@ def reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
            0.5 * (a_diff / a_avg + e21 - e11) * sin_sq_theta * tan_sq_theta)
 
     return Rxz, Ryz
+
+
+def Tsvankin_params(cij: np.ndarray, density: float):
+    """Estimate the Tsvankin parameters for weak
+    azimuthal orthotropic anisotropy.
+
+    Parameters
+    ----------
+    cij : numpy.ndarray
+        The elastic stiffness tensor of the material
+        in GPa.
+    density : float
+        The density of the material in g/cm3.
+
+    Returns
+    -------
+    [float, float, float, float, float, float, float, float, float]
+        List containing Vp0, Vs0, epsilon, delta, and gamma.
+    """
+
+    # unpack some elastic constants for readibility
+    c11, c22, c33, c44, c55, c66 = np.diag(cij)
+    c12, c13, c23 = cij[0, 1], cij[0, 2],  cij[1, 2]
+
+    # estimate the vertically propagating speeds
+    Vp0 = np.sqrt(c33 / density)
+    Vs0 = np.sqrt(c55 / density)
+
+    # estimate Tsvankin dimensionless parameters
+    # VTI parameters in the YZ plane
+    epsilon1 = (c22 - c33) / (2 * c33)
+    delta1 = ((c23 + c44)**2 - (c33 - c44)**2) / (2*c33 * (c33 - c44))
+    gamma1 = (c66 - c55) / (2 * c55)
+    # VTI parameters in the XZ plane
+    epsilon2 = (c11 - c33) / (2 * c33)
+    delta2 = ((c13 + c55)**2 - (c33 - c55)**2) / (2*c33 * (c33 - c55))
+    gamma2 = (c66 - c44) / (2 * c44)
+    # VTI parameter in the XY plane
+    delta3 = (c12 + c66)**2 - (c11 - c66)**2 / (2*c11 * (c11 - c66))
+
+    return Vp0, Vs0, epsilon1, delta1, gamma1, epsilon2, delta2, gamma2, delta3
 
 
 # End of file
