@@ -227,13 +227,9 @@ def schoenberg_muir_layered_medium(cij_layer1: np.ndarray,
                                    vfrac1: float,
                                    vfrac2: float):
     """Calculate the effective stiffness and compliance tensors for
-    a layered medium using the Schoenberg & Muir approach.
-
-    This function computes the effective stiffness and compliance
+    a layered medium using the Schoenberg & Muir approach.This
+    function computes the effective stiffness and compliance
     tensors for a medium composed of two alternating thin layers.
-    The approach partitions the 6x6 stiffness and compliance matrices
-    into submatrices, which are then used to calculate the effective
-    properties.
 
     Parameters
     ----------
@@ -248,20 +244,21 @@ def schoenberg_muir_layered_medium(cij_layer1: np.ndarray,
 
     Returns
     -------
-    tuple: A tuple containing:
-        - effective_stiffness (numpy.ndarray): 6x6 effective stiffness tensor.
-        - effective_compliance (numpy.ndarray): 6x6 effective compliance tensor.
-        - effective_stiffness_from_compliance (numpy.ndarray): 6x6 effective
-        stiffness tensor computed from the effective compliance
+    - effective_stiffness (numpy.ndarray): 6x6 effective stiffness tensor.
+    - effective_compliance (numpy.ndarray): 6x6 effective compliance tensor.
+    - effective_stiffness_from_compliance (numpy.ndarray): 6x6 effective
+    stiffness tensor computed from the effective compliance
     
     References
     ----------
     Schoenberg, M., & Muir, F. (1989). A calculus for finely layered
-    anisotropic media. Geophysics, 54(5), 581-589. https://doi.org/10.1190/1.1442685
+    anisotropic media. Geophysics, 54(5), 581-589.
+    https://doi.org/10.1190/1.1442685
 
-    Nichols, D., Muir, F., & Schoenberg, M. (1989). Elastic properties
-    of finely layered media. SEG Technical Program Expanded Abstracts
-    1989 (pp. 1091-1094).
+    Nichols, D., Muir, F., & Schoenberg, M. (1989). Elastic
+    properties of rocks with multiple sets of fractures. SEG
+    Technical Program Expanded Abstracts: 471-474.
+    https://doi.org/10.1190/1.1889682
 
     Notes
     -----
