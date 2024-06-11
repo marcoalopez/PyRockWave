@@ -384,6 +384,7 @@ def _eigenvector_derivatives(eigenvectors: np.ndarray, gradient_matrix: np.ndarr
     return eigen_derivatives
 
 
+# TODO (UNTESTED!)
 def calc_group_velocities(phase_velocities,
                           eigenvectors,
                           christoffel_gradient,
