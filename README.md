@@ -1,15 +1,15 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2024-03-13  
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2024-06-22 
 
 ## What is PyRockWave?
 
-PyRockWave is a Python-based tool for reading single-crystal elasticity databases and modelling elastic properties of earth materials (e.g. seismic wave propagation and anisotropy in heterogeneous media). It allows you to create models of the physical properties of rocks or rock units and simulate and illustrate how seismic waves propagate through them. The code is designed in a modular way to facilitate its development and the interaction with other codes.
+PyRockWave is a Python-based tool for reading single-crystal elasticity databases and modelling the elastic properties of earth materials (e.g. seismic wave propagation and anisotropy in heterogeneous media). It allows you to create models of the physical properties of rocks or rock units and to simulate and illustrate how seismic waves propagate through them. The code is designed in a modular way to facilitate its development and the interaction with other codes.
 
 View repository on GitHub: https://github.com/marcoalopez/PyRockWave
 
 > [!CAUTION]
-> PyRockWave is still under heavy development (alpha state), so the functionality may be subject to major changes that break retrocompatibility, and there is no installation guide or specific documentation on how to use it yet. In any case, the code is (and always will be) open source and free, so even though there is no official release and very little documentation, you can have fun with it at your own risk.
+> PyRockWave is still under development (alpha state), so the functionality may be subject to major changes that break backwards compatibility, some of the code is untested, and there is no installation guide or specific documentation on how to use it yet. In any case, the code is (and always will be) open source and free, so even though there is no official release and very little documentation, you can have fun with it at your own risk.
 
 ## Requirements & Python installation
 
