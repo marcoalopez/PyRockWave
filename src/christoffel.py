@@ -41,15 +41,45 @@ def christoffel_wave_speeds(Cij: np.ndarray,
 
     Parameters
     ----------
-    Cij : _type_
-        _description_
+    Cij : numpy.ndarray
+        The 6x6 elastic tensor in Voigt notation.
+    
     density : _type_
         _description_
-    wavevectors : _type_
-        _description_
+    
+    wavevectors : numpy.ndarray
+        The wave vectors normalized to lie on the unit sphere as a
+        1D or 2D NumPy array.
+        If 1D, shape must be (3,).
+        If 2D, shape must be (n, 3).
+    
     type : str, optional
         _description_, by default 'phase'
+    
+    Raises
+    ------
+    ValueError
+        If C_ij is not a 6x6 symmetric NumPy array.
     """
+
+    # Sanity checks on inputs
+    # Check if C_ij is a 6x6 symmetric matrix
+    if not isinstance(Cij, np.ndarray) or Cij.shape != (6, 6):
+        raise ValueError("Cij should be a 6x6 NumPy array.")
+    if not np.allclose(Cij, Cij.T):
+        raise ValueError("Cij should be symmetric.")
+    # validate wavevectors
+    if not isinstance(wavevectors, np.ndarray):
+        raise ValueError("wavevectors should be a NumPy array.")
+    if wavevectors.ndim == 1 and wavevectors.shape[0] == 3:
+        wavevectors = wavevectors.reshape(1, 3)
+    elif wavevectors.ndim == 2 and wavevectors.shape[1] == 3:
+        pass
+    else:
+        raise ValueError(
+            "wavevectors should be a NumPy array of shape (3,) if 1D or (n, 3) if 2D."
+        )
+
     scaling_factor = 1 / density
 
     # rearrange tensor Cij → Cijkl
@@ -98,7 +128,7 @@ def christoffel_wave_speeds(Cij: np.ndarray,
         pass
 
 
-def _rearrange_tensor(C_ij: np.ndarray):
+def _rearrange_tensor(Cij: np.ndarray) -> np.ndarray:
     """Rearrange a 6x6 (rank 2, dimension 6) elastic tensor into
     a 3x3x3x3 (rank 4, dimension 3) elastic tensor according to
     Voigt notation. This rearranging improves tensor operations
@@ -106,49 +136,36 @@ def _rearrange_tensor(C_ij: np.ndarray):
 
     Parameters
     ----------
-    C_ij : numpy.ndarray
+    Cij : numpy.ndarray
         The 6x6 elastic tensor in Voigt notation.
 
     Returns
     -------
-    numpy.ndarray
-        The 3x3x3x3 elastic tensor corresponding to the input
-        tensor.
-
-    Raises
-    ------
-    ValueError
-        If C_ij is not a 6x6 symmetric NumPy array.
+    numpy.ndarray of shape (3, 3, 3, 3).
+        The corresponding 3x3x3x3 elastic tensor
 
     Notes
     -----
     The function uses a dictionary, `voigt_notation`, to map the
     indices from the 6x6 tensor to the 3x3x3x3 tensor in Voigt
-    notation. The resulting tensor, C_ijkl, is calculated by
-    rearranging elements from the input tensor, C_ij, according to
+    notation. The resulting tensor, Cijkl, is calculated by
+    rearranging elements from the input tensor, Cij, according to
     the mapping.
     """
 
-    # Check if C_ij is a 6x6 symmetric matrix
-    if not isinstance(C_ij, np.ndarray) or C_ij.shape != (6, 6):
-        raise ValueError("C_ij should be a 6x6 NumPy array.")
-
-    if not np.allclose(C_ij, C_ij.T):
-        raise ValueError("C_ij should be symmetric.")
-
     voigt_notation = {0: 0, 11: 1, 22: 2, 12: 3, 21: 3, 2: 4, 20: 4, 1: 5, 10: 5}
 
-    C_ijkl = np.zeros((3, 3, 3, 3))
+    Cijkl = np.zeros((3, 3, 3, 3))
 
     for L in range(3):
         for k in range(3):
             for j in range(3):
                 for i in range(3):
-                    C_ijkl[i, j, k, L] = C_ij[
+                    Cijkl[i, j, k, L] = Cij[
                         voigt_notation[10 * i + j], voigt_notation[10 * k + L]
                     ]
 
-    return C_ijkl
+    return Cijkl
 
 
 def _normalize_vector(vector: np.ndarray):
@@ -164,11 +181,6 @@ def _normalize_vector(vector: np.ndarray):
     -------
     numpy.ndarray, shape (3,)
         The normalized 3D vector.
-
-    Raises
-    ------
-    ValueError
-        If the input vector does not have a shape of (3,).
 
     Notes
     -----
@@ -221,17 +233,6 @@ def _christoffel_matrix(wavevectors: np.ndarray, Cijkl: np.ndarray) -> np.ndarra
     """
 
     # Validate input parameters
-    if not isinstance(wavevectors, np.ndarray):
-        raise ValueError("wavevectors should be a NumPy array.")
-    if wavevectors.ndim == 1 and wavevectors.shape[0] == 3:
-        wavevectors = wavevectors.reshape(1, 3)
-    elif wavevectors.ndim == 2 and wavevectors.shape[1] == 3:
-        pass
-    else:
-        raise ValueError(
-            "wavevectors should be a NumPy array of shape (3,) if 1D or (n, 3) if 2D."
-        )
-
     if not isinstance(Cijkl, np.ndarray) or Cijkl.shape != (3, 3, 3, 3):
         raise ValueError("Cijkl should be a 4D NumPy array of shape (3, 3, 3, 3).")
 
@@ -258,12 +259,12 @@ def _calc_eigen(Mij: np.ndarray):
 
     Parameters
     ----------
-    Mij : numpy ndarray
+    Mij : numpy.ndarray
         the Christoffel matrix (3x3)
 
     Returns
     -------
-    two numpy ndarrays
+    two numpy.ndarrays
         a (,3) array with the eigenvalues
         a (3,3) array with the eigenvectors
     """
@@ -350,9 +351,6 @@ def _christoffel_matrix_gradient(wavevector: np.ndarray, Cijkl: np.ndarray):
     """
 
     # Validate input parameters
-    if not isinstance(wavevector, np.ndarray) or wavevector.shape != (3,):
-        raise ValueError("wave_vector should be a 1D NumPy array of length 3.")
-
     if not isinstance(Cijkl, np.ndarray) or Cijkl.shape != (3, 3, 3, 3):
         raise ValueError("Cijkl should be a 4D NumPy array of shape (3, 3, 3, 3).")
 
