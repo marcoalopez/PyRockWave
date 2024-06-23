@@ -63,7 +63,7 @@ def christoffel_wave_speeds(Cij: np.ndarray,
     """
 
     # Sanity checks on inputs
-    # Check if C_ij is a 6x6 symmetric matrix
+    # Check if Cij is a 6x6 symmetric matrix
     if not isinstance(Cij, np.ndarray) or Cij.shape != (6, 6):
         raise ValueError("Cij should be a 6x6 NumPy array.")
     if not np.allclose(Cij, Cij.T):
@@ -80,15 +80,14 @@ def christoffel_wave_speeds(Cij: np.ndarray,
             "wavevectors should be a NumPy array of shape (3,) if 1D or (n, 3) if 2D."
         )
 
-    scaling_factor = 1 / density
-
     # rearrange tensor Cij → Cijkl
     Cijkl = _rearrange_tensor(Cij)
 
     # estimate the normalized Christoffel matrix (M) for
     # every wavevector
     Mij = _christoffel_matrix(wavevectors, Cijkl)
-    norm_Mij = Mij * scaling_factor
+    scaling_factor = 1 / density
+    norm_Mij = Mij * scaling_factor  # TEST THIS!
 
     # estimate the eigenvalues and eigenvectors
     eigenvalues, eigenvectors = _calc_eigen(norm_Mij)
@@ -142,7 +141,7 @@ def _rearrange_tensor(Cij: np.ndarray) -> np.ndarray:
     Returns
     -------
     numpy.ndarray of shape (3, 3, 3, 3).
-        The corresponding 3x3x3x3 elastic tensor
+        The equivalent 3x3x3x3 elastic tensor
 
     Notes
     -----
@@ -213,9 +212,7 @@ def _christoffel_matrix(wavevectors: np.ndarray, Cijkl: np.ndarray) -> np.ndarra
     ----------
     wavevectors : numpy.ndarray
         The wave vectors normalized to lie on the unit sphere as a
-        1D or 2D NumPy array.
-        If 1D, shape must be (3,).
-        If 2D, shape must be (n, 3).
+        Numpy array of shape (n, 3).
 
     Cijkl : numpy.ndarray
         The elastic tensor as a 4D NumPy array of shape (3, 3, 3, 3).
@@ -223,7 +220,7 @@ def _christoffel_matrix(wavevectors: np.ndarray, Cijkl: np.ndarray) -> np.ndarra
     Returns
     -------
     numpy.ndarray
-        The Christoffel matrix as a 2D NumPy array of shape (n, 3, 3).
+        The Christoffel matri(x)ces as a 2D NumPy array of shape (n, 3, 3).
 
     Notes
     -----
@@ -260,19 +257,17 @@ def _calc_eigen(Mij: np.ndarray):
     Parameters
     ----------
     Mij : numpy.ndarray
-        the Christoffel matrix (3x3)
+        the Christoffel matri(x)ces as a 2D NumPy array of
+        shape (n, 3, 3).
 
     Returns
     -------
     two numpy.ndarrays
-        a (,3) array with the eigenvalues
-        a (3,3) array with the eigenvectors
+        a (n, 1, 3) array with the eigenvalues of each matrix
+        a (n, 3, 3) array with the eigenvectors of each matrix
     """
 
-    # Check if M is a 3x3 array
-    if not isinstance(Mij, np.ndarray) or Mij.shape != (3, 3):
-        raise ValueError("M should be a 3x3 NumPy array.")
-
+    # TO REIMPLEMENT ASSUMING A SHAPE (n, 3, 3).
     eigen_values, eigen_vectors = np.linalg.eigh(Mij)
 
     return (
@@ -281,7 +276,7 @@ def _calc_eigen(Mij: np.ndarray):
     )
 
 
-def calc_phase_velocities(eigenvalues: np.ndarray):
+def calc_phase_velocities(eigenvalues: np.ndarray) -> np.ndarray:
     """Estimate the material's sound velocities of a monochromatic
     plane wave, referred to as the phase velocity, as a function of
     crystal/aggreagte orientation from the Christoffel matrix (M).
@@ -292,12 +287,14 @@ def calc_phase_velocities(eigenvalues: np.ndarray):
     Parameters
     ----------
     eigenvalues : numpy.ndarray
-        The eigenvalues of the normalized Christoffel matrix
+        The eigenvalues of the normalized Christoffel matrix. A
+        numpy array of shape (n, 1, 3)
 
     Returns
     -------
-    numpy.ndarray
-        Three wave velocities [Vs2, Vs1, Vp], where Vs2 < Vs1 < Vp.
+    numpy.ndarray of shape (n, 1, 3)
+        Each triad contains the three wave velocities [Vs2, Vs1, Vp],
+        where Vs2 < Vs1 < Vp.
 
     Notes
     -----
@@ -311,14 +308,11 @@ def calc_phase_velocities(eigenvalues: np.ndarray):
     See calc_group_velocities.
     """
 
-    # Check if eigenvalues is a 3x1 array
-    if not isinstance(eigenvalues, np.ndarray) or eigenvalues.shape != (3,):
-        raise ValueError("eigenvalues should be a 3x1 NumPy array.")
-
+    # TO REIMPLEMENT ASSUMING A SHAPE (n, 3, 3)
     return np.sign(eigenvalues) * np.sqrt(np.absolute(eigenvalues))
 
 
-def _christoffel_matrix_gradient(wavevector: np.ndarray, Cijkl: np.ndarray):
+def _christoffel_matrix_gradient(wavevectors: np.ndarray, Cijkl: np.ndarray) -> np.ndarray:
     """Calculate the derivative of the Christoffel matrix. The
     derivative of the Christoffel matrix is computed using
     the formula (e.g. Jaeken and Cottenier, 2016):
@@ -327,8 +321,9 @@ def _christoffel_matrix_gradient(wavevector: np.ndarray, Cijkl: np.ndarray):
 
     Parameters
     ----------
-    wave_vector : numpy.ndarray
-        The wave vector as a 1D NumPy array of length 3.
+    wavevectors : numpy.ndarray
+        The wave vectors normalized to lie on the unit sphere as a
+        Numpy array of shape (n, 3).
 
     Cijkl : numpy.ndarray
         The elastic tensor as a 4D NumPy array of shape (3, 3, 3, 3).
@@ -338,7 +333,7 @@ def _christoffel_matrix_gradient(wavevector: np.ndarray, Cijkl: np.ndarray):
     -------
     numpy.ndarray
         The gradient matrix of the Christoffel matrix with respect
-        to x_n, reshaped as a 3D NumPy array of shape (3, 3, 3).
+        to x_n, reshaped as a 3D NumPy array of shape (n, 3, 3, 3).
 
     Notes
     -----
@@ -350,11 +345,9 @@ def _christoffel_matrix_gradient(wavevector: np.ndarray, Cijkl: np.ndarray):
     3D matrix with shape (3, 3, 3).
     """
 
-    # Validate input parameters
-    if not isinstance(Cijkl, np.ndarray) or Cijkl.shape != (3, 3, 3, 3):
-        raise ValueError("Cijkl should be a 4D NumPy array of shape (3, 3, 3, 3).")
-
-    gradmat = np.dot(wavevector, Cijkl + np.transpose(Cijkl, (0, 2, 1, 3)))
+    # TO REIMPLEMENT ASSUMING A SHAPE (n, 3) for wavevectors and a return
+    # pf shape (n, 3, 3, 3)
+    gradmat = np.dot(wavevectors, Cijkl + np.transpose(Cijkl, (0, 2, 1, 3)))
 
     return np.transpose(gradmat, (1, 0, 2))
 
@@ -366,22 +359,24 @@ def _eigenvector_derivatives(eigenvectors: np.ndarray, gradient_matrix: np.ndarr
     Parameters
     ----------
     eigenvectors : numpy.ndarray
-        Array of shape (3, 3) representing three eigenvectors
-        of the Christoffel matrix.
+        Array of shape (n, 3, 3) representing three eigenvectors
+        for each Christoffel matrix calculated.
+
     gradient_matrix : numpy.ndarray
         The derivative of the Christoffel matrix, which has a
-        shape of (3, 3, 3)
+        shape of (n, 3, 3, 3)
 
     Returns
     -------
     numpy.ndarray:
-        Array of shape (3, 3, 3), where the i-th index
+        Array of shape (n, 3, 3, 3), where the i-th index
         corresponds to the i-th eigenvector, and each element
         (i, j, k) represents the derivative of the i-th
         eigenvector with respect to the j-th component of
         the k-th eigenvector.
     """
 
+    # TO REIMPLEMENT ASSUMING A SHAPE (n, 3, 3) for eigenvectors
     eigen_derivatives = np.zeros((3, 3))
 
     for i in range(3):
@@ -441,6 +436,7 @@ def calc_group_velocities(phase_velocities,
     return eigenvalue_gradients, velocity_group, power_flow_angles
 
 
+# TODO (UNTESTED!)
 def _christoffel_matrix_hessian(Cijkl: np.ndarray):
     """Compute the Hessian of the Christoffel matrix. The Hessian
     of the Christoffel matrix, denoted as hessianmat[i, j, k, L]
