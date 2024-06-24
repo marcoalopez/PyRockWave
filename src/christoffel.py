@@ -59,7 +59,8 @@ def christoffel_wave_speeds(Cij: np.ndarray,
     Raises
     ------
     ValueError
-        If C_ij is not a 6x6 symmetric NumPy array.
+        If Cij is not a 6x6 symmetric NumPy array.
+    TODO
     """
 
     # Sanity checks on inputs
@@ -263,12 +264,20 @@ def _calc_eigen(Mij: np.ndarray):
     Returns
     -------
     two numpy.ndarrays
-        a (n, 1, 3) array with the eigenvalues of each matrix
+        a (n, 3) array with the eigenvalues of each matrix
         a (n, 3, 3) array with the eigenvectors of each matrix
     """
 
+    # get the number ofChristoffel matrices to proccess
+    n = Mij.shape[0]
+
+    # preallocate arrays
+    eigen_values = np.zeros((n, 3))
+    eigen_vectors = np.zeros((n, 3, 3))
+
     # TO REIMPLEMENT ASSUMING A SHAPE (n, 3, 3).
-    eigen_values, eigen_vectors = np.linalg.eigh(Mij)
+    for i in range(n):
+        eigen_values[i, :], eigen_vectors[i, :, :] = np.linalg.eigh(Mij[i, :, :])
 
     return (
         eigen_values[np.argsort(eigen_values)],
