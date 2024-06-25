@@ -366,8 +366,7 @@ def _christoffel_gradient_matrix(
     # initialize array (pre-allocate)
     delta_Mij = np.zeros((n, 3, 3, 3))
 
-    # TO REIMPLEMENT ASSUMING A SHAPE (n, 3) for wavevectors and a return
-    # pf shape (n, 3, 3, 3)
+    # calculate the gradient matrices from the Christoffel matrices
     for i in range(n):
         delta_Mij_temp = np.dot(
             wavevectors[i, :], Cijkl + np.transpose(Cijkl, (0, 2, 1, 3))
@@ -377,7 +376,9 @@ def _christoffel_gradient_matrix(
     return delta_Mij
 
 
-def _eigenvector_derivatives(eigenvectors: np.ndarray, gradient_matrix: np.ndarray):
+def _eigenvector_derivatives(
+    eigenvectors: np.ndarray, gradient_matrix: np.ndarray
+) -> np.ndarray:
     """Calculate the derivatives of eigenvectors with respect to
     the gradient matrix.
 
@@ -394,29 +395,42 @@ def _eigenvector_derivatives(eigenvectors: np.ndarray, gradient_matrix: np.ndarr
     Returns
     -------
     numpy.ndarray:
-        Array of shape (n, 3, 3, 3), where the i-th index
+        Array of shape (n, 3, 3), where the i-th index
         corresponds to the i-th eigenvector, and each element
         (i, j, k) represents the derivative of the i-th
         eigenvector with respect to the j-th component of
         the k-th eigenvector.
     """
 
-    # TO REIMPLEMENT ASSUMING A SHAPE (n, 3, 3) for eigenvectors
-    eigen_derivatives = np.zeros((3, 3))
+    # get the number of wave vectors
+    n = eigenvectors.shape[0]
 
-    for i in range(3):
-        for j in range(3):
-            eigen_derivatives[i, j] = np.dot(
-                eigenvectors[i], np.dot(gradient_matrix[j], eigenvectors[i])
-            )
+    # initialize array (pre-allocate)
+    eigen_derivatives = np.zeros((n, 3, 3))
+
+    # calculate the derivatives
+    for ori in range(n):
+        temp = np.zeros((3, 3))
+
+        for i in range(3):
+            for j in range(3):
+                temp[i, j] = np.dot(
+                    eigenvectors[ori, i],
+                    np.dot(gradient_matrix[ori, j], eigenvectors[ori, i]),
+                )
+
+        eigen_derivatives[ori, :, :] = temp
 
     return eigen_derivatives
 
 
 # TODO (UNTESTED!)
 def calc_group_velocities(
-    phase_velocities, eigenvectors, christoffel_gradient, wave_vectors
-):
+    phase_velocities: np.ndarray,
+    eigenvectors: np.ndarray,
+    christoffel_gradient: np.ndarray,
+    wave_vectors: np.ndarray,
+) -> np.ndarray:
     """Calculates the group velocities and power flow angles
     of seismic waves as a funtion of direction.
 
@@ -473,10 +487,10 @@ def _christoffel_matrix_hessian(Cijkl: np.ndarray):
     of the Christoffel matrix, denoted as hessianmat[i, j, k, L]
     here represents the second partial derivatives of the Christoffel
     matrix M_kl with respect to the spatial coordinates x_i and x_j
-    (i, j = 0, 1, 2). ICan be calculated using the formulas (e.g.
+    (i, j = 0, 1, 2). Can be calculated using the formulas (e.g.
     Jaeken and Cottenier, 2016):
 
-    hessianmat[i, j, k, L] = ∂^2M_ij / ∂q_k * ∂q_m
+    hessianmat[i, j, k, L] = ∂^2Mij / ∂q_k * ∂q_m
     hessianmat[i, j, k, L] = C_ikmj + C_imkj
 
     Parameters
