@@ -268,7 +268,7 @@ def _calc_eigen(Mij: np.ndarray):
         a (n, 3, 3) array with the eigenvectors of each matrix
     """
 
-    # get the number ofChristoffel matrices to proccess
+    # get the number of Christoffel matrices to proccess
     n = Mij.shape[0]
 
     # preallocate arrays
@@ -277,12 +277,11 @@ def _calc_eigen(Mij: np.ndarray):
 
     # TO REIMPLEMENT ASSUMING A SHAPE (n, 3, 3).
     for i in range(n):
-        eigen_values[i, :], eigen_vectors[i, :, :] = np.linalg.eigh(Mij[i, :, :])
+        eigen_values_temp, eigen_vectors_temp = np.linalg.eigh(Mij[i, :, :])
+        eigen_values[i, :] = np.argsort(eigen_values_temp)
+        eigen_vectors[i, :, :] = np.argsort(eigen_vectors_temp).T  # TEST!
 
-    return (
-        eigen_values[np.argsort(eigen_values)],
-        eigen_vectors.T[np.argsort(eigen_values)],
-    )
+    return eigen_values, eigen_vectors
 
 
 def calc_phase_velocities(eigenvalues: np.ndarray) -> np.ndarray:
@@ -297,11 +296,11 @@ def calc_phase_velocities(eigenvalues: np.ndarray) -> np.ndarray:
     ----------
     eigenvalues : numpy.ndarray
         The eigenvalues of the normalized Christoffel matrix. A
-        numpy array of shape (n, 1, 3)
+        numpy array of shape (n, 3)
 
     Returns
     -------
-    numpy.ndarray of shape (n, 1, 3)
+    numpy.ndarray of shape (n, 3)
         Each triad contains the three wave velocities [Vs2, Vs1, Vp],
         where Vs2 < Vs1 < Vp.
 
@@ -317,16 +316,27 @@ def calc_phase_velocities(eigenvalues: np.ndarray) -> np.ndarray:
     See calc_group_velocities.
     """
 
-    # TO REIMPLEMENT ASSUMING A SHAPE (n, 3, 3)
-    return np.sign(eigenvalues) * np.sqrt(np.absolute(eigenvalues))
+    # get the number of eigen values to proccess
+    n = eigenvalues.shape[0]
+
+    # preallocate array
+    phase_speeds = np.zeros((n, 3))
+
+    # TO REIMPLEMENT ASSUMING A SHAPE (n, 3)
+    for i in range(n):
+        phase_speeds[i, :] = np.sign(eigenvalues[i, :]) * np.sqrt(
+            np.absolute(eigenvalues[i, :])
+        )
+
+    return phase_speeds
 
 
-def _christoffel_matrix_gradient(wavevectors: np.ndarray, Cijkl: np.ndarray) -> np.ndarray:
+def _christoffel_gradient_matrix(wavevectors: np.ndarray, Cijkl: np.ndarray) -> np.ndarray:
     """Calculate the derivative of the Christoffel matrix. The
     derivative of the Christoffel matrix is computed using
     the formula (e.g. Jaeken and Cottenier, 2016):
 
-    ∂M_ij / ∂q_k = ∑m (C_ikmj + C_imkj) *  q_m
+    ∂Mij / ∂q_k = ∑m (Cikmj + Cimkj) *  q_m
 
     Parameters
     ----------
@@ -350,15 +360,23 @@ def _christoffel_matrix_gradient(wavevectors: np.ndarray, Cijkl: np.ndarray) -> 
     vector and the elastic tensor Cijkl. The derivative of the
     Christoffel matrix with respect a wave vector is given by the
     summation of the products of q_k (wave vector component)
-    and the terms (C_ikmj + C_imkj). The final result is reshaped to a
+    and the terms (Cikmj + Cimkj). The final result is reshaped to a
     3D matrix with shape (3, 3, 3).
     """
 
+    # get the number of wave vectors
+    n = wavevectors.shape[0]
+
+    # initialize array (pre-allocate)
+    delta_Mij = np.zeros((n, 3, 3, 3))
+
     # TO REIMPLEMENT ASSUMING A SHAPE (n, 3) for wavevectors and a return
     # pf shape (n, 3, 3, 3)
-    gradmat = np.dot(wavevectors, Cijkl + np.transpose(Cijkl, (0, 2, 1, 3)))
+    for i in range(n):
+        delta_Mij_temp = np.dot(wavevectors[i, :], Cijkl + np.transpose(Cijkl, (0, 2, 1, 3)))
+        delta_Mij[i, :, :, :] = np.transpose(delta_Mij_temp, (1, 0, 2))
 
-    return np.transpose(gradmat, (1, 0, 2))
+    return delta_Mij
 
 
 def _eigenvector_derivatives(eigenvectors: np.ndarray, gradient_matrix: np.ndarray):
@@ -417,13 +435,16 @@ def calc_group_velocities(phase_velocities,
 
     Parameters
     ----------
-    phase_velocities : array-like
+    phase_velocities : numpy.ndarray
         Phase velocities for a particular direction or directions
-    eigenvectors : array-like
+
+    eigenvectors : numpy.ndarray
         Eigenvectors of the Christoffel matrix.
-    christoffel_gradient : array-like
+
+    christoffel_gradient : numpy.ndarray
         Gradient of the Christoffel matrix (∇M)
-    wave_vectors : array-like
+
+    wave_vectors : numpy.ndarray
         Direction(s) of wave propagation.
     """
 
