@@ -33,29 +33,28 @@ import pandas as pd
 
 
 # Function definitions
-def christoffel_wave_speeds(Cij: np.ndarray,
-                            density: float,
-                            wavevectors: np.ndarray,
-                            type='phase'):
+def christoffel_wave_speeds(
+    Cij: np.ndarray, density: float, wavevectors: np.ndarray, type="phase"
+):
     """_summary_
 
     Parameters
     ----------
     Cij : numpy.ndarray
         The 6x6 elastic tensor in Voigt notation.
-    
+
     density : _type_
         _description_
-    
+
     wavevectors : numpy.ndarray
         The wave vectors normalized to lie on the unit sphere as a
         1D or 2D NumPy array.
         If 1D, shape must be (3,).
         If 2D, shape must be (n, 3).
-    
+
     type : str, optional
         _description_, by default 'phase'
-    
+
     Raises
     ------
     ValueError
@@ -94,10 +93,9 @@ def christoffel_wave_speeds(Cij: np.ndarray,
     eigenvalues, eigenvectors = _calc_eigen(norm_Mij)
 
     # CALCULATE PHASE VELOCITIES (km/s)
-    Vs2, Vs1, Vp = calc_phase_velocities(norm_Mij, eigenvalues)
+    Vs2, Vs1, Vp = calc_phase_velocities(eigenvalues)
 
-    if type == 'phase':
-
+    if type == "phase":
         # calculate shear wave splitting
 
         # return a dataframe with phase velocities
@@ -105,7 +103,6 @@ def christoffel_wave_speeds(Cij: np.ndarray,
         pass
 
     else:
-
         # calculate the derivative of the Christoffel matrix (∇M)
         dMijk = _christoffel_matrix_gradient(wavevectors, Cijkl)
 
@@ -113,10 +110,9 @@ def christoffel_wave_speeds(Cij: np.ndarray,
         dλ = _eigenvector_derivatives(eigenvectors, dMijk)
 
         # CALCULATE GROUP VELOCITIES (km/s)
-        Vs2, Vs1, Vp = calc_group_velocities(phase_velocities,
-                                             eigenvectors,
-                                             dMijk,
-                                             wavevectors)
+        Vs2, Vs1, Vp = calc_group_velocities(
+            phase_velocities, eigenvectors, dMijk, wavevectors
+        )
 
         # CALCULATE THE ENHANCEMENT FACTOR
         H = _christoffel_matrix_hessian(Cijkl)
@@ -277,9 +273,7 @@ def _calc_eigen(Mij: np.ndarray):
 
     # TO REIMPLEMENT ASSUMING A SHAPE (n, 3, 3).
     for i in range(n):
-        eigen_values_temp, eigen_vectors_temp = np.linalg.eigh(Mij[i, :, :])
-        eigen_values[i, :] = np.argsort(eigen_values_temp)
-        eigen_vectors[i, :, :] = np.argsort(eigen_vectors_temp).T  # TEST!
+        eigen_values[i, :], eigen_vectors[i, :, :] = np.linalg.eigh(Mij[i, :, :])
 
     return eigen_values, eigen_vectors
 
@@ -331,7 +325,9 @@ def calc_phase_velocities(eigenvalues: np.ndarray) -> np.ndarray:
     return phase_speeds
 
 
-def _christoffel_gradient_matrix(wavevectors: np.ndarray, Cijkl: np.ndarray) -> np.ndarray:
+def _christoffel_gradient_matrix(
+    wavevectors: np.ndarray, Cijkl: np.ndarray
+) -> np.ndarray:
     """Calculate the derivative of the Christoffel matrix. The
     derivative of the Christoffel matrix is computed using
     the formula (e.g. Jaeken and Cottenier, 2016):
@@ -373,7 +369,9 @@ def _christoffel_gradient_matrix(wavevectors: np.ndarray, Cijkl: np.ndarray) -> 
     # TO REIMPLEMENT ASSUMING A SHAPE (n, 3) for wavevectors and a return
     # pf shape (n, 3, 3, 3)
     for i in range(n):
-        delta_Mij_temp = np.dot(wavevectors[i, :], Cijkl + np.transpose(Cijkl, (0, 2, 1, 3)))
+        delta_Mij_temp = np.dot(
+            wavevectors[i, :], Cijkl + np.transpose(Cijkl, (0, 2, 1, 3))
+        )
         delta_Mij[i, :, :, :] = np.transpose(delta_Mij_temp, (1, 0, 2))
 
     return delta_Mij
@@ -408,19 +406,18 @@ def _eigenvector_derivatives(eigenvectors: np.ndarray, gradient_matrix: np.ndarr
 
     for i in range(3):
         for j in range(3):
-            eigen_derivatives[i, j] = np.dot(eigenvectors[i],
-                                             np.dot(gradient_matrix[j],
-                                                    eigenvectors[i]))
+            eigen_derivatives[i, j] = np.dot(
+                eigenvectors[i], np.dot(gradient_matrix[j], eigenvectors[i])
+            )
 
     return eigen_derivatives
 
 
 # TODO (UNTESTED!)
-def calc_group_velocities(phase_velocities,
-                          eigenvectors,
-                          christoffel_gradient,
-                          wave_vectors):
-    """ Calculates the group velocities and power flow angles
+def calc_group_velocities(
+    phase_velocities, eigenvectors, christoffel_gradient, wave_vectors
+):
+    """Calculates the group velocities and power flow angles
     of seismic waves as a funtion of direction.
 
     Group velocity is the velocity with which the overall energy of the wave
@@ -450,14 +447,18 @@ def calc_group_velocities(phase_velocities,
 
     # Calculate gradients (derivatives) of eigenvalues (v^2)
     # eigenvalue_gradients = _eigenvector_derivatives(eigenvectors, christoffel_gradient)
-    eigenvalue_gradients = np.einsum('ij,ijk,ik->ij', eigenvectors, christoffel_gradient, eigenvectors)
+    eigenvalue_gradients = np.einsum(
+        "ij,ijk,ik->ij", eigenvectors, christoffel_gradient, eigenvectors
+    )
 
     # Group velocity is the gradient of the phase velocity
     velocity_group = eigenvalue_gradients / (2 * phase_velocities[:, np.newaxis])
 
     # Calculate the magnitude and direction of the group velocity for each mode
     velocity_group_magnitudes = np.linalg.norm(velocity_group, axis=1)
-    velocity_group_directions = velocity_group / velocity_group_magnitudes[:, np.newaxis]
+    velocity_group_directions = (
+        velocity_group / velocity_group_magnitudes[:, np.newaxis]
+    )
 
     # Calculate power flow angles
     cos_power_flow_angle = np.dot(velocity_group_directions, wave_vectors)
@@ -513,5 +514,6 @@ def _hessian_eigen():
 
 def _calc_enhancement_factor(Hλ):
     pass
+
 
 # End of file
