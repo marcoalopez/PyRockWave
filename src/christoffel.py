@@ -326,7 +326,8 @@ def calc_phase_velocities(eigenvalues: np.ndarray) -> np.ndarray:
 
 
 def _christoffel_gradient_matrix(
-    wavevectors: np.ndarray, Cijkl: np.ndarray
+    wavevectors: np.ndarray,
+    Cijkl: np.ndarray
 ) -> np.ndarray:
     """Calculate the derivative of the Christoffel matrix. The
     derivative of the Christoffel matrix is computed using
@@ -377,7 +378,8 @@ def _christoffel_gradient_matrix(
 
 
 def _eigenvector_derivatives(
-    eigenvectors: np.ndarray, gradient_matrix: np.ndarray
+    eigenvectors: np.ndarray,
+    gradient_matrix: np.ndarray
 ) -> np.ndarray:
     """Calculate the derivatives of eigenvectors with respect to
     the gradient matrix.
@@ -481,20 +483,19 @@ def calc_group_velocities(
     return eigenvalue_gradients, velocity_group, power_flow_angles
 
 
-# TODO (UNTESTED!)
-def _christoffel_matrix_hessian(Cijkl: np.ndarray):
+def _christoffel_matrix_hessian(Cijkl: np.ndarray) -> np.ndarray:
     """Compute the Hessian of the Christoffel matrix. The Hessian
     of the Christoffel matrix, denoted as hessianmat[i, j, k, L]
     here represents the second partial derivatives of the Christoffel
     matrix Mij with respect to the spatial coordinates q_k and q_m
-    Can be calculated from the stiffness tensor using the formulas
-    (e.g. Jaeken and Cottenier, 2016):
+    Can be calculated directly from the stiffness tensor using the
+    formulas (e.g. Jaeken and Cottenier, 2016):
 
     hessianmat[i, j, k, L] = ∂^2Mij / ∂q_k * ∂q_m
     hessianmat[i, j, k, L] = Cikmj + Cimkj
 
     Note that the Hessian of the Christoffel matrix is independent
-    of q (direction)
+    of q (wavevectors)
 
     Parameters
     ----------
@@ -514,6 +515,7 @@ def _christoffel_matrix_hessian(Cijkl: np.ndarray):
     Hessian matrix.
     """
 
+    # initialize array (pre-allocate)
     hessianmat = np.zeros((3, 3, 3, 3))
 
     for i in range(3):
@@ -526,20 +528,17 @@ def _christoffel_matrix_hessian(Cijkl: np.ndarray):
 
 
 def _hessian_eigen(
-    Mij: np.ndarray,
     eigenvalues: np.ndarray,
     eigenvectors: np.ndarray,
     delta_Mij: np.ndarray,
     hess_matrix: np.ndarray,
 ) -> np.ndarray:
-    """_summary_
+    """Compute the hessian of the eigenvalues.
+
+    Hessian[n][i][j] = d^2 lambda_n / dx_i dx_j
 
     Parameters
     ----------
-    Mij : numpy.ndarray
-        The derivative of the Christoffel matrices, which has a
-        shape of (n, 3, 3, 3)
-
     eigenvalues : numpy.ndarray
         The eigenvalues of the normalized Christoffel matrices,
         which has a shape of (n, 3)
@@ -553,15 +552,43 @@ def _hessian_eigen(
         shape of (n, 3, 3)
 
     hess_matrix : numpy.ndarray
-        The Hessian of the Christoffel matrices, which has a
-        shape of TODO
+        The Hessian matrix, which has a shape of (3, 3, 3, 3)
 
     Returns
     -------
     np.ndarray
         _description_
     """
-    pass
+
+    # get the number of orientations
+    n = eigenvectors.shape[0]
+
+    # initialize array (pre-allocate)
+    hessian = np.zeros((n, 3, 3, 3))
+
+    # procedure
+    for wavevector in range(n):
+        diag = np.zeros((n, 3, 3))  # initialize array
+
+        for j in range(3):
+            hessian[j] += np.dot(
+                np.dot(hess_matrix, eigenvectors[wavevector, j]), eigenvectors[wavevector, j]
+            )
+
+            for i in range(3):
+                x = eigenvalues[wavevector, j] - eigenvalues[wavevector, i]
+                if abs(x) < 1e-10:
+                    diag[i, i] = 0.0
+                else:
+                    diag[i, i] = 1.0 / x
+
+            pseudoinv = np.dot(np.dot(eigenvectors[wavevector].T, diag), eigenvectors[wavevector])
+            deriv_vec = np.dot(delta_Mij[wavevector], eigenvectors[wavevector, j])
+
+            # Take derivative of eigenvectors into account: 2 * (d/dx s_i) * pinv_ij * (d_dy s_j)
+            hessian[j] += 2.0 * np.dot(np.dot(deriv_vec, pseudoinv), deriv_vec.T)
+    
+    return hessian
 
 
 def _calc_enhancement_factor(Hλ):
