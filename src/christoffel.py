@@ -93,7 +93,7 @@ def christoffel_wave_speeds(
     eigenvalues, eigenvectors = _calc_eigen(norm_Mij)
 
     # CALCULATE PHASE VELOCITIES (km/s)
-    Vs2, Vs1, Vp = calc_phase_velocities(eigenvalues)
+    phase_velocities = calc_phase_velocities(eigenvalues)
 
     if type == "phase":
         # calculate shear wave splitting
@@ -104,7 +104,7 @@ def christoffel_wave_speeds(
 
     else:
         # calculate the derivative of the Christoffel matrix (∇M)
-        dMijk = _christoffel_matrix_gradient(wavevectors, Cijkl)
+        dMijk = _christoffel_gradient_matrix(wavevectors, Cijkl)
 
         # calculate the derivative of the Christoffel matrix eigenvalues.
         dλ = _eigenvector_derivatives(eigenvectors, dMijk)
@@ -491,7 +491,7 @@ def _christoffel_matrix_hessian(Cijkl: np.ndarray):
     Jaeken and Cottenier, 2016):
 
     hessianmat[i, j, k, L] = ∂^2Mij / ∂q_k * ∂q_m
-    hessianmat[i, j, k, L] = C_ikmj + C_imkj
+    hessianmat[i, j, k, L] = Cikmj + Cimkj
 
     Parameters
     ----------
@@ -522,7 +522,42 @@ def _christoffel_matrix_hessian(Cijkl: np.ndarray):
     return hessianmat
 
 
-def _hessian_eigen():
+def _hessian_eigen(
+    Mij: np.ndarray,
+    eigenvalues: np.ndarray,
+    eigenvectors: np.ndarray,
+    delta_Mij: np.ndarray,
+    hess_matrix: np.ndarray,
+) -> np.ndarray:
+    """_summary_
+
+    Parameters
+    ----------
+    Mij : numpy.ndarray
+        The derivative of the Christoffel matrices, which has a
+        shape of (n, 3, 3, 3)
+
+    eigenvalues : numpy.ndarray
+        The eigenvalues of the normalized Christoffel matrices,
+        which has a shape of (n, 3)
+
+    eigenvectors : numpy.ndarray
+        The eigenvectors of the normalized Christoffel matrices,
+        which has a shape of (n, 3, 3)
+
+    delta_Mij : numpy.ndarray
+        The derivatives of the Christoffel matrices, which has a
+        shape of (n, 3, 3)
+
+    hess_matrix : numpy.ndarray
+        The Hessian of the Christoffel matrices, which has a
+        shape of TODO
+
+    Returns
+    -------
+    np.ndarray
+        _description_
+    """
     pass
 
 
