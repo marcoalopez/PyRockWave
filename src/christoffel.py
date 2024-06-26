@@ -486,12 +486,15 @@ def _christoffel_matrix_hessian(Cijkl: np.ndarray):
     """Compute the Hessian of the Christoffel matrix. The Hessian
     of the Christoffel matrix, denoted as hessianmat[i, j, k, L]
     here represents the second partial derivatives of the Christoffel
-    matrix M_kl with respect to the spatial coordinates x_i and x_j
-    (i, j = 0, 1, 2). Can be calculated using the formulas (e.g.
-    Jaeken and Cottenier, 2016):
+    matrix Mij with respect to the spatial coordinates q_k and q_m
+    Can be calculated from the stiffness tensor using the formulas
+    (e.g. Jaeken and Cottenier, 2016):
 
     hessianmat[i, j, k, L] = ∂^2Mij / ∂q_k * ∂q_m
     hessianmat[i, j, k, L] = Cikmj + Cimkj
+
+    Note that the Hessian of the Christoffel matrix is independent
+    of q (direction)
 
     Parameters
     ----------
