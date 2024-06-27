@@ -78,23 +78,52 @@ def snell(vp1, vp2, vs1, vs2, theta1):
     return theta2, phi1, phi2, p
 
 
-# TODO
 def calc_reflectivity(
-    cij_upper: np.ndarray,
+    cij_upper: float,
     cij_lower: np.ndarray,
     density_upper: float,
     density_lower: float,
-    incident_angles
+    incident_angles,
 ):
-    pass
+    """_summary_
+
+    Parameters
+    ----------
+    cij_upper : float
+        _description_
+    cij_lower : np.ndarray
+        _description_
+    density_upper : float
+        _description_
+    density_lower : float
+        _description_
+    incident_angles : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    # compute Tsvankin params
+    # Vp0, Vs0, epsilon1, delta1, gamma1, epsilon2, delta2, gamma2, delta3
+    upper_layer_params = Tsvankin_params(cij_upper, density_upper)
+    lower_layer_params = Tsvankin_params(cij_lower, density_lower)
+
+    # calc reflectivity
+    return reflectivity(upper_layer_params, lower_layer_params, incident_angles)
 
 
-def reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
-                 a2, b2, e21, d21, e22, d22, g2, rho2,
-                 theta):
+def reflectivity(
+    upper_layer_Tsvankin_params,
+    lower_layer_Tsvankin_params,
+    upper_rho: float,
+    lower_rho: float,
+    theta_rad: float,
+):
     """
     Calculates the P-wave reflectivity in the symmetry plane for interfaces
-    between 2 orthorhombic media.
+    between 2 orthorhombic media using the approach of Ruger (1998).
     
     This is Python reimplementation with improved readability and
     documentation from srb toolbox (see Rorsym.m file) originally
@@ -102,10 +131,10 @@ def reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
     
     Parameters
     ----------
-    a1, a2 : float or array-like
-        P-wave vertical velocities of upper (1) and lower (2) medium.
-    b1, b2 : float or array-like
-        S-wave vertical velocities of upper (1) and lower (2) medium.
+    Vp0_1, Vp0_2 : float or array-like
+        P-wave vertical velocities (Vp0) of upper (1) and lower (2) medium.
+    Vs0_1, Vs0_2 : float or array-like
+        S-wave vertical velocities (Vs0) of upper (1) and lower (2) medium.
     e11, e21 : float or array-like
         Epsilon in the first symmetry plane of the orthorhombic
         medium for the upper (11) and lower (21) medium.
@@ -124,7 +153,7 @@ def reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
     rho1, rho2 : float or array-like
         Density of the upper (1) and lower (2) medium.
     theta : float or array-like
-        Incident angle.
+        Incident angle in radians.
 
     Returns
     -------
@@ -140,26 +169,28 @@ def reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
     with offset and azimuth in anisotropic media. Geophysics,
     Vol 63, No 3, p935. https://doi.org/10.1190/1.1444405
     """
-    
-    # Convert incident angle to radians
-    theta_rad = np.deg2rad(theta)
 
+    # extract Tsvankin params
+    # Vp0, Vs0, epsilon1, delta1, epsilon2, delta2, gamma1, gamma2, delta3
+    Vp0_up, Vs0_up, e1_up, d1_up, e2_up, d2_up, g1_up, _, _ = upper_layer_Tsvankin_params
+    Vp0_low, Vs0_low, e1_low, d1_low, e2_low, d2_low, g1_low, _, _ = lower_layer_Tsvankin_params
+    
     # Calculate impedance for both media
-    Z1 = rho1 * a1
-    Z2 = rho2 * a2
+    Z1 = upper_rho * Vp0_up
+    Z2 = lower_rho * Vp0_low
 
     # Calculate shear modulus for both media and their
     # average and difference
-    G1 = rho1 * b1**2
-    G2 = rho2 * b2**2
+    G1 = upper_rho * Vs0_up**2
+    G2 = lower_rho * Vs0_low**2
     G_avg = (G1 + G2) / 2.0
     G_diff = G2 - G1
 
     # Calculate average and difference for P-wave and
     # S-wave velocities 
-    a_avg = (a1 + a2) / 2.0
-    a_diff = a2 - a1
-    b_avg = (b1 + b2) / 2.0
+    a_avg = (Vp0_up + Vp0_low) / 2.0
+    a_diff = Vp0_low - Vp0_up
+    b_avg = (Vs0_up + Vs0_low) / 2.0
 
     # Calculate sin^2(theta) and tan^2(theta)
     sin_sq_theta = np.sin(theta_rad)**2
@@ -170,13 +201,13 @@ def reflectivity(a1, b1, e11, d11, e12, d12, g1, rho1,
 
     # Calculate reflectivity in xz plane (Rxz)
     Rxz = ((Z2 - Z1) / (Z2 + Z1) +
-           0.5 * (a_diff / a_avg - f * (G_diff / G_avg - 2 * (g2 - g1)) + d22 - d12) * sin_sq_theta +
-           0.5 * (a_diff / a_avg + e22 - e12) * sin_sq_theta * tan_sq_theta)
+           0.5 * (a_diff / a_avg - f * (G_diff / G_avg - 2 * (g1_low - g1_up)) + d2_low - d2_up) * sin_sq_theta +
+           0.5 * (a_diff / a_avg + e2_low - e2_up) * sin_sq_theta * tan_sq_theta)
 
     # Calculate reflectivity in yz plane (Ryz)
     Ryz = ((Z2 - Z1) / (Z2 + Z1) +
-           0.5 * (a_diff / a_avg - f * G_diff / G_avg + d21 - d11) * sin_sq_theta +
-           0.5 * (a_diff / a_avg + e21 - e11) * sin_sq_theta * tan_sq_theta)
+           0.5 * (a_diff / a_avg - f * G_diff / G_avg + d1_low - d1_up) * sin_sq_theta +
+           0.5 * (a_diff / a_avg + e1_low - e1_up) * sin_sq_theta * tan_sq_theta)
 
     return Rxz, Ryz
 
@@ -219,7 +250,7 @@ def Tsvankin_params(cij: np.ndarray, density: float):
     # VTI parameter in the XY plane
     delta3 = (c12 + c66)**2 - (c11 - c66)**2 / (2*c11 * (c11 - c66))
 
-    return Vp0, Vs0, epsilon1, delta1, gamma1, epsilon2, delta2, gamma2, delta3
+    return Vp0, Vs0, epsilon1, delta1, epsilon2, delta2, gamma1, gamma2, delta3
 
 
 def schoenberg_muir_layered_medium(cij_layer1: np.ndarray,
