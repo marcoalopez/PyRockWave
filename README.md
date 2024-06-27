@@ -1,10 +1,10 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2024-06-22 
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2024-06-27 
 
 ## What is PyRockWave?
 
-PyRockWave is a Python-based tool for reading single-crystal elasticity databases and modelling the elastic properties of earth materials (e.g. seismic wave propagation and anisotropy in heterogeneous media). It allows you to create models of the physical properties of rocks or rock units and to simulate and illustrate how seismic waves propagate through them. The code is designed in a modular way to facilitate its development and the interaction with other codes.
+PyRockWave is a Python-based tool for reading single-crystal elasticity databases and modeling the elastic properties of earth materials (e.g. seismic wave propagation and anisotropy in heterogeneous media). It allows you to create models of the physical properties of rocks or rock units and to simulate and illustrate how seismic waves propagate through them. The code is designed in a modular way to facilitate its development and the interaction with other codes.
 
 View repository on GitHub: https://github.com/marcoalopez/PyRockWave
 
@@ -27,7 +27,9 @@ TODO
 
 - [Demonstration of the functionality of the ``orthorhombic_models`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_orthotropic.ipynb)
 
-- [Demonstration of the functionality of the ``christoffel`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_christoffel.ipynb)
+- Demonstration of the functionality of the ``christoffel`` module (TODO)
+
+- Demonstration of the functionality of the ``layered_media`` module (TODO)
 
 ## How to contribute to this project?
 
