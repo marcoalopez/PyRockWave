@@ -131,29 +131,33 @@ def reflectivity(
     
     Parameters
     ----------
-    Vp0_1, Vp0_2 : float or array-like
-        P-wave vertical velocities (Vp0) of upper (1) and lower (2) medium.
-    Vs0_1, Vs0_2 : float or array-like
-        S-wave vertical velocities (Vs0) of upper (1) and lower (2) medium.
-    e11, e21 : float or array-like
-        Epsilon in the first symmetry plane of the orthorhombic
-        medium for the upper (11) and lower (21) medium.
-    d11, d21 : float or array-like
-        Delta in the first symmetry plane of the orthorhombic
-        medium for the upper (11) and lower (21) medium.
-    e12, e22 : float or array-like
-        Epsilon in the second symmetry plane of the orthorhombic
-        medium for the upper (12) and lower (22) medium.
-    d12, d22 : float or array-like
-        Delta in the second symmetry plane of the orthorhombic
-        medium for the upper (12) and lower (22) medium.
-    g1, g2 : float or array-like
-        Vertical shear wave splitting parameter for the
-        upper (1) and lower (2) medium.
-    rho1, rho2 : float or array-like
-        Density of the upper (1) and lower (2) medium.
-    theta : float or array-like
-        Incident angle in radians.
+    upper_layer_Tsvankin_params : array-like of shape (,8)
+        The Tsvankin params of the upper medium.
+
+    lower_layer_Tsvankin_params: array-like of shape (,8)
+        The Tsvankin params of the lower medium.
+
+    upper_rho, lower_rho : float
+        Density of the upper and lower medium.
+
+    theta_rad : float or array-like
+        Incident angle in radians
+
+    Arrays with Tsvankin params includes the following params in this
+    specific order (for details refer to Tsvankin_params function):
+    -----------------------------------------------------------------
+    Vp0 : P-wave vertical velocities of medium.
+    Vs0 : S-wave vertical velocities of medium.
+    epsilon1 (e1) : Epsilon in the first symmetry plane of
+        the orthorhombic medium (normal to x).
+    delta1 (d1) : Delta in the first symmetry plane of the
+        orthorhombic medium (normal to x).
+    epsilon2 (e2) : Epsilon in the second symmetry plane of
+        the orthorhombic medium (normal to y).
+    delta2 (d2) : Delta in the second symmetry plane of the
+        orthorhombic medium (normal to y).
+    gamma1 (g1) : Vertical shear wave splitting parameter
+         of the medium.
 
     Returns
     -------
@@ -172,8 +176,8 @@ def reflectivity(
 
     # extract Tsvankin params
     # Vp0, Vs0, epsilon1, delta1, epsilon2, delta2, gamma1, gamma2, delta3
-    Vp0_up, Vs0_up, e1_up, d1_up, e2_up, d2_up, g1_up, _, _ = upper_layer_Tsvankin_params
-    Vp0_low, Vs0_low, e1_low, d1_low, e2_low, d2_low, g1_low, _, _ = lower_layer_Tsvankin_params
+    Vp0_up, Vs0_up, e1_up, d1_up, e2_up, d2_up, g1_up, *_ = upper_layer_Tsvankin_params
+    Vp0_low, Vs0_low, e1_low, d1_low, e2_low, d2_low, g1_low, *_ = lower_layer_Tsvankin_params
     
     # Calculate impedance for both media
     Z1 = upper_rho * Vp0_up
