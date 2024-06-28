@@ -164,43 +164,6 @@ def _rearrange_tensor(Cij: np.ndarray) -> np.ndarray:
     return Cijkl
 
 
-def _normalize_vector(vector: np.ndarray):
-    """Normalizes a vector in 3d cartesian space to lie
-    on the unit sphere.
-
-    Parameters
-    ----------
-    vector : numpy.ndarray, shape (3,)
-        a vector in 3d cartesian space
-
-    Returns
-    -------
-    numpy.ndarray, shape (3,)
-        The normalized 3D vector.
-
-    Notes
-    -----
-    The function normalizes the input vector by dividing each component
-    by the vector's magnitude to ensure it lies on the unit sphere.
-
-    Example
-    --------
-    >>> v = np.array([1.0, 2.0, 3.0])
-    >>> normalize_vector(v)
-    array([0.26726124, 0.53452248, 0.80178373])
-    """
-    if vector.shape != (3,):
-        raise ValueError("Input vector must have shape (3,).")
-
-    magnitude = np.linalg.norm(vector)
-
-    # Handle the zero vector case
-    if magnitude == 0:
-        return vector
-
-    return vector / magnitude
-
-
 def _christoffel_matrix(wavevectors: np.ndarray, Cijkl: np.ndarray) -> np.ndarray:
     """Calculate the Christoffel matrix for a given wave vector
     and elastic tensor Cij.
