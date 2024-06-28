@@ -1,6 +1,6 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2024-06-27 
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2024-06-28 
 
 ## What is PyRockWave?
 
@@ -30,6 +30,8 @@ TODO
 - Demonstration of the functionality of the ``christoffel`` module (TODO)
 
 - Demonstration of the functionality of the ``layered_media`` module (TODO)
+
+- Demonstration of the functionality of the ``tensor_tools`` module (TODO)
 
 ## How to contribute to this project?
 
