@@ -87,7 +87,7 @@ def christoffel_wave_speeds(
     # every wavevector
     Mij = _christoffel_matrix(wavevectors, Cijkl)
     scaling_factor = 1 / density
-    norm_Mij = Mij * scaling_factor  # TEST THIS!
+    norm_Mij = Mij * scaling_factor
 
     # estimate the eigenvalues and eigenvectors
     eigenvalues, eigenvectors = _calc_eigen(norm_Mij)
@@ -107,7 +107,7 @@ def christoffel_wave_speeds(
         dMijk = _christoffel_gradient_matrix(wavevectors, Cijkl)
 
         # calculate the derivative of the Christoffel matrix eigenvalues.
-        dλ = _eigenvector_derivatives(eigenvectors, dMijk)
+        dλ = _eigenvalue_derivatives(eigenvectors, dMijk)
 
         # CALCULATE GROUP VELOCITIES (km/s)
         Vs2, Vs1, Vp = calc_group_velocities(
@@ -340,9 +340,8 @@ def _christoffel_gradient_matrix(
     return delta_Mij
 
 
-def _eigenvector_derivatives(
-    eigenvectors: np.ndarray,
-    gradient_matrix: np.ndarray
+def _eigenvalue_derivatives(
+    eigenvectors: np.ndarray, gradient_matrix: np.ndarray
 ) -> np.ndarray:
     """Calculate the derivatives of eigenvectors with respect to
     the gradient matrix.
@@ -379,14 +378,65 @@ def _eigenvector_derivatives(
 
         for i in range(3):
             for j in range(3):
-                temp[i, j] = np.dot(
-                    eigenvectors[ori, i],
-                    np.dot(gradient_matrix[ori, j], eigenvectors[ori, i]),
-                )
+                temp[i, j] = np.dot(eigenvectors[ori, i], np.dot(gradient_matrix[ori, j], eigenvectors[ori, i]))
 
-        eigen_derivatives[ori, :, :] = temp
+        eigen_derivatives[ori] = temp
 
     return eigen_derivatives
+
+
+def group_velocities(phase_velocities: np.ndarray, eigenvalue_gradients: np.ndarray):
+    """
+    Calculate the group velocities for seismic waves in given
+    directions, and their magnitudes and directions.
+
+    Parameters
+    ----------
+    phase_velocities : np.ndarray of shape (n, 3)
+        Phase velocities for n directions and 3 wave
+        polarizations (P, S1, S2).
+
+    eigenvalue_gradients : np.ndarray of shape (n, 3, 3)
+        Gradients of phase velocities with respect to wavenumber
+        for n directions, 3 polarizations, and 3 spatial dimensions.
+
+    Returns
+    -------
+    tuple containing:
+        group_velocities : np.ndarray of shape (n, 3, 3)
+            Group velocities for n directions, 3 wave polarizations,
+            and 3 spatial dimensions.
+        group_velocity_magnitudes : np.ndarray of shape (n, 3)
+            Magnitudes of group velocities for n directions and
+            3 wave polarizations.
+        group_velocity_directions : np.ndarray of shape (n, 3, 3)
+            Unit vectors representing directions of group velocities
+            for n directions and 3 wave polarizations.
+
+    Notes
+    -----
+    The group velocity is calculated using the relation:
+    v_g = (d/dk) * v_p / (2 * v_p)
+    where v_g is the group velocity, d/dk is the derivative with respect to the wave vector,
+    and v_p is the phase velocity.
+    """
+
+    # # Ensure the input arrays have the correct shapes
+    # assert phase_velocities.ndim == 2 and phase_velocities.shape[1] == 3, "phase_velocities must be of shape (n, 3)"
+    # assert eigenvalue_gradients.ndim == 3 and eigenvalue_gradients.shape[1:] == (3, 3), "eigenvalue_gradients must be of shape (n, 3, 3)"
+    
+    # Calculate group velocities
+    phase_velocities_reshaped = phase_velocities[:, :, np.newaxis]
+    group_velocities = eigenvalue_gradients / (2 * phase_velocities_reshaped)
+
+    # Calculate magnitudes of group velocities
+    group_velocity_magnitudes = np.linalg.norm(group_velocities, axis=2)
+
+    # Calculate directions of group velocities (unit vectors)
+    epsilon = 1e-10  # Add a small epsilon to avoid division by zero
+    group_velocity_directions = group_velocities / (group_velocity_magnitudes[:, :, np.newaxis] + epsilon)
+
+    return group_velocities, group_velocity_magnitudes, group_velocity_directions
 
 
 # TODO (UNTESTED!)
@@ -394,7 +444,7 @@ def calc_group_velocities(
     phase_velocities: np.ndarray,
     eigenvectors: np.ndarray,
     christoffel_gradient: np.ndarray,
-    wave_vectors: np.ndarray,
+    wave_vectors: np.ndarray
 ) -> np.ndarray:
     """Calculates the group velocities and power flow angles
     of seismic waves as a funtion of direction.
@@ -419,16 +469,10 @@ def calc_group_velocities(
 
     christoffel_gradient : numpy.ndarray
         Gradient of the Christoffel matrix (∇M)
-
-    wave_vectors : numpy.ndarray
-        Direction(s) of wave propagation.
     """
 
     # Calculate gradients (derivatives) of eigenvalues (v^2)
-    # eigenvalue_gradients = _eigenvector_derivatives(eigenvectors, christoffel_gradient)
-    eigenvalue_gradients = np.einsum(
-        "ij,ijk,ik->ij", eigenvectors, christoffel_gradient, eigenvectors
-    )
+    eigenvalue_gradients = _eigenvalue_derivatives(eigenvectors, christoffel_gradient)
 
     # Group velocity is the gradient of the phase velocity
     velocity_group = eigenvalue_gradients / (2 * phase_velocities[:, np.newaxis])
