@@ -185,7 +185,7 @@ def _christoffel_matrix(wavevectors: np.ndarray, Cijkl: np.ndarray) -> np.ndarra
     Notes
     -----
     The Christoffel matrix is calculated using the formula
-    M = k @ Cijkl @ k, where M is the Christoffel matrix, k is a
+    Mil = qj @ Cijkl @ qk, where M is the Christoffel matrix, q is a
     wave vector, and Cijkl is the elastic tensor (stiffness matrix).
     """
 
@@ -197,15 +197,15 @@ def _christoffel_matrix(wavevectors: np.ndarray, Cijkl: np.ndarray) -> np.ndarra
     n = wavevectors.shape[0]
 
     # initialize array (pre-allocate)
-    Mij = np.zeros((n, 3, 3))
+    Mil = np.zeros((n, 3, 3))
 
     for i in range(n):
-        Mij[i, :, :] = np.dot(wavevectors[i, :], np.dot(wavevectors[i, :], Cijkl))
+        Mil[i, :, :] = np.dot(wavevectors[i, :], np.dot(wavevectors[i, :], Cijkl))
 
-    return Mij
+    return Mil
 
 
-def _calc_eigen(Mij: np.ndarray):
+def _calc_eigen(Mil: np.ndarray):
     """Return the eigenvalues and eigenvectors of the Christoffel
     matrix sorted from low to high. The eigenvalues are related to
     primary (P) and secondary (S-fast, S-slow) wave speeds. The
@@ -228,7 +228,7 @@ def _calc_eigen(Mij: np.ndarray):
     """
 
     # get the number of Christoffel matrices to proccess
-    n = Mij.shape[0]
+    n = Mil.shape[0]
 
     # preallocate arrays
     eigen_values = np.zeros((n, 3))
@@ -236,7 +236,7 @@ def _calc_eigen(Mij: np.ndarray):
 
     # TO REIMPLEMENT ASSUMING A SHAPE (n, 3, 3).
     for i in range(n):
-        eigen_values[i, :], eigen_vectors[i, :, :] = np.linalg.eigh(Mij[i, :, :])
+        eigen_values[i, :], eigen_vectors[i, :, :] = np.linalg.eigh(Mil[i, :, :])
 
     return eigen_values, eigen_vectors
 
@@ -328,16 +328,16 @@ def _christoffel_gradient_matrix(
     n = wavevectors.shape[0]
 
     # initialize array (pre-allocate)
-    delta_Mij = np.zeros((n, 3, 3, 3))
+    M_ilk = np.zeros((n, 3, 3, 3))
 
     # calculate the gradient matrices from the Christoffel matrices
     for i in range(n):
-        delta_Mij_temp = np.dot(
+        Milk_temp = np.dot(
             wavevectors[i, :], Cijkl + np.transpose(Cijkl, (0, 2, 1, 3))
         )
-        delta_Mij[i, :, :, :] = np.transpose(delta_Mij_temp, (1, 0, 2))
+        M_ilk[i, :, :, :] = np.transpose(Milk_temp, (1, 0, 2))
 
-    return delta_Mij
+    return M_ilk
 
 
 def _eigenvalue_derivatives(
