@@ -29,7 +29,7 @@
 
 # Import statements
 import numpy as np
-# from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation as R
 
 
 ####################################################################
@@ -52,7 +52,7 @@ def _symmetrise_tensor(tensor: np.ndarray) -> np.ndarray:
         The symmetrized tensor.
     """
     if not isinstance(tensor, np.ndarray):
-        raise ValueError("Input must be a numpy array.")
+        raise ValueError("Input must be a Numpy array.")
 
     if tensor.ndim != 2 or tensor.shape[0] != tensor.shape[1]:
         raise ValueError("Input must be a 2D square matrix (n x n).")
@@ -63,7 +63,7 @@ def _symmetrise_tensor(tensor: np.ndarray) -> np.ndarray:
     return tensor + ctensor.T
 
 
-def _rearrange_tensor(Cij: np.ndarray):
+def _rearrange_tensor(Cij: np.ndarray) -> np.ndarray:
     """Rearrange a 6x6 (rank 2, dimension 6) elastic tensor into
     a 3x3x3x3 (rank 4, dimension 3) elastic tensor according to
     Voigt notation. This rearranging improves tensor operations
@@ -109,13 +109,14 @@ def _rearrange_tensor(Cij: np.ndarray):
         for k in range(3):
             for j in range(3):
                 for i in range(3):
-                    Cijkl[i, j, k, L] = Cij[voigt_notation[10 * i + j],
-                                              voigt_notation[10 * k + L]]
+                    Cijkl[i, j, k, L] = Cij[
+                        voigt_notation[10 * i + j], voigt_notation[10 * k + L]
+                    ]
 
     return Cijkl
 
 
-def _tensor_in_voigt(C_ijkl: np.ndarray):
+def _tensor_in_voigt(C_ijkl: np.ndarray) -> np.ndarray:
     """Convert the 3x3x3x3 (rank 4, dimension 3) elastic tensor
     into a 6x6 (rank 2, dimension 6) elastic tensor according to
     Voigt notation.
@@ -181,7 +182,7 @@ def _tensor_in_voigt(C_ijkl: np.ndarray):
     return C_ij + C_ij.T
 
 
-def _normalize_vector(vector: np.ndarray):
+def _normalize_vector(vector: np.ndarray) -> np.ndarray:
     """Normalizes a vector in 3d cartesian space to lie
     on the unit sphere.
 
@@ -223,11 +224,12 @@ def _normalize_vector(vector: np.ndarray):
     return vector / magnitude
 
 
-def _rotate_stiffness_tensor(
+def _rotate_Cijkl(
     stiffness_tensor: np.ndarray, rotation_matrix: np.ndarray
 ) -> np.ndarray:
-    """Rotate a 3x3x3x3 symmetric stiffness tensor using Einstein
-    summation (numpy.einsum). The operation is as follows:
+    """Rotate a 3x3x3x3 symmetric stiffness tensor using a rotation
+    matrix and Einstein summation (numpy.einsum). The operation is
+    as follows:
 
     C'ijkl = Ria x Rjb x Rkc x Rld x Cabcd
 
@@ -261,5 +263,75 @@ def _rotate_stiffness_tensor(
     )
 
     return rotated_tensor
+
+def rotate_stiffness_tensor(
+    stiffness_tensor: np.ndarray,
+    angle_degrees: float,
+    rotation_axis: str = "z"
+    ) -> tuple[np.ndarray, np.ndarray]:
+    """Rotates a stiffness matrix (Voigt notation) or a
+    stiffness tensor around a specified axis. The rotation
+    is performed in the right-handed coordinate system taking
+    into account the following reference frame:
+
+    TODO
+
+    Parameters
+    ----------
+    stiffness_tensor : np.ndarray of shape 6x6 or 3x3x3x3
+        The original stiffness matrix in Voigt notation 6x6
+        or in tensor format (3x3x3x3)
+
+    angle_degrees : float
+        The rotation angle in degrees (positive for counterclockwise rotation).
+
+    rotation_axis : str, optional
+        The axis around which to rotate:
+        "x": Rotate around x-axis (fix x, rotate y and z)
+        "y": Rotate around y-axis (fix y, rotate x and z)
+        "z": Rotate around z-axis (fix z, rotate x and y)
+        Default is "z".
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        - The rotated 6x6 stiffness matrix (Voigt notation)
+        - The rotated 3x3x3x3 stiffness tensor
+    """
+
+    # Sanity input checks
+    if not isinstance(stiffness_tensor, np.ndarray):
+        raise ValueError("Cij should be a NumPy array.")
+    
+    if not isinstance(rotation_axis, str):
+        raise ValueError("rotation_axis should be a string.")
+
+    if stiffness_tensor.shape != (3, 3, 3, 3) or stiffness_tensor.shape != (6, 6):
+        raise ValueError(
+            "Input stiffness array must be 3x3x3x3 or 6x6 (Voigt notation)"
+        )
+
+    # convert 6x6 to 3x3x3x3
+    if stiffness_tensor.shape != (6, 6):
+        stiffness_tensor = _rearrange_tensor(stiffness_tensor)
+
+    # generate the rotation
+    if rotation_axis == "z":
+        rotation = R.from_euler("z", angle_degrees, degrees=True)
+    elif rotation_axis == "x":
+        rotation = R.from_euler("x", angle_degrees, degrees=True)
+    elif rotation_axis == "y":
+        rotation = R.from_euler("y", angle_degrees, degrees=True)
+    else:
+        raise ValueError("rotation_axis must be 'x', 'y', or 'z'")
+
+    # rotate tensor
+    rotated_Cijkl = _rotate_Cijkl(stiffness_tensor, rotation.as_matrix())
+
+    # get the rotated tensor in Voigt notation
+    rotated_Cij = _tensor_in_voigt(rotated_Cijkl)
+
+    return rotated_Cij, rotated_Cijkl
+
 
 # End of file
