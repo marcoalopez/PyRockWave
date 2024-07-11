@@ -64,10 +64,10 @@ def _symmetrise_tensor(tensor: np.ndarray) -> np.ndarray:
 
 
 def _rearrange_tensor(Cij: np.ndarray) -> np.ndarray:
-    """Rearrange a 6x6 (rank 2, dimension 6) elastic tensor into
-    a 3x3x3x3 (rank 4, dimension 3) elastic tensor according to
-    Voigt notation. This rearranging improves tensor operations
-    while maintaining the original information.
+    """Rearranges the 6x6 (rank 2, dimension 6) stiffness (elastic)
+    matrix in Voigt notation into a 3x3x3x3 (rank 4, dimension 3)
+    stiffness tensor. This rearrangement is necessary to perform
+    tensor operations while retaining the original information.
 
     Parameters
     ----------
@@ -270,7 +270,7 @@ def rotate_stiffness_tensor(
     rotation_axis: str = "z"
     ) -> tuple[np.ndarray, np.ndarray]:
     """Rotates a stiffness matrix (Voigt notation) or a
-    stiffness tensor around a specified axis. The rotation
+    stiffness tensor aabout a specified axis. The rotation
     is performed in the right-handed coordinate system taking
     into account the following reference frame:
 
@@ -306,13 +306,13 @@ def rotate_stiffness_tensor(
     if not isinstance(rotation_axis, str):
         raise ValueError("rotation_axis should be a string.")
 
-    if stiffness_tensor.shape != (3, 3, 3, 3) or stiffness_tensor.shape != (6, 6):
+    if not (stiffness_tensor.shape == (3, 3, 3, 3) or stiffness_tensor.shape == (6, 6)):
         raise ValueError(
             "Input stiffness array must be 3x3x3x3 or 6x6 (Voigt notation)"
         )
 
     # convert 6x6 to 3x3x3x3
-    if stiffness_tensor.shape != (6, 6):
+    if stiffness_tensor.shape == (6, 6):
         stiffness_tensor = _rearrange_tensor(stiffness_tensor)
 
     # generate the rotation

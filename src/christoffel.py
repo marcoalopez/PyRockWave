@@ -124,46 +124,6 @@ def christoffel_wave_speeds(
         pass
 
 
-def _rearrange_tensor(Cij: np.ndarray) -> np.ndarray:
-    """Rearrange a 6x6 (rank 2, dimension 6) elastic tensor into
-    a 3x3x3x3 (rank 4, dimension 3) elastic tensor according to
-    Voigt notation. This rearranging improves tensor operations
-    while maintaining the original information.
-
-    Parameters
-    ----------
-    Cij : numpy.ndarray
-        The 6x6 elastic tensor in Voigt notation.
-
-    Returns
-    -------
-    numpy.ndarray of shape (3, 3, 3, 3).
-        The equivalent 3x3x3x3 elastic tensor
-
-    Notes
-    -----
-    The function uses a dictionary, `voigt_notation`, to map the
-    indices from the 6x6 tensor to the 3x3x3x3 tensor in Voigt
-    notation. The resulting tensor, Cijkl, is calculated by
-    rearranging elements from the input tensor, Cij, according to
-    the mapping.
-    """
-
-    voigt_notation = {0: 0, 11: 1, 22: 2, 12: 3, 21: 3, 2: 4, 20: 4, 1: 5, 10: 5}
-
-    Cijkl = np.zeros((3, 3, 3, 3))
-
-    for L in range(3):
-        for k in range(3):
-            for j in range(3):
-                for i in range(3):
-                    Cijkl[i, j, k, L] = Cij[
-                        voigt_notation[10 * i + j], voigt_notation[10 * k + L]
-                    ]
-
-    return Cijkl
-
-
 def _christoffel_matrix(wavevectors: np.ndarray, Cijkl: np.ndarray) -> np.ndarray:
     """Calculate the Christoffel matrix for a given wave vector
     and elastic tensor Cij.
