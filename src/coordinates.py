@@ -91,7 +91,11 @@ def cart2sph(x, y, z):
 def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
     """Returns an approximately equispaced spherical grid in
     spherical coordinates (azimuthal and polar angles) using
-    a modified version of the offset Fibonacci lattice algorithm
+    a modified version of the offset Fibonacci lattice algorithm.
+    The Fibonacci Lattice algorithm is often considered one of the
+    best in terms of balancing uniformity, computational efficiency,
+    and ease of implementation. It's particularly good for large
+    numbers of points.
 
     Note: Matemathically speaking, you cannot put more than 20
     perfectly evenly spaced points on a sphere. However, there
@@ -158,6 +162,64 @@ def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
             return np.rad2deg(theta[phi >= np.pi/2]) % 360, np.rad2deg(phi[phi >= np.pi/2])
         else:
             return np.rad2deg(theta) % 360, np.rad2deg(phi)
+
+
+def equispaced_S2_grid2(num_points: int) -> np.ndarray:
+    """
+    Generate evenly distributed points on a unit sphere using
+    the Equal-Area Partitioning method.
+
+    This method, also known as the Spherical Fibonacci mapping,
+    creates a spiral-like distribution of points from the south
+    pole to the north pole of a unit sphere.
+
+    Parameters
+    ----------
+    num_points : int
+        The number of points to generate on the sphere surface.
+    
+    type : str
+        Either in cartesian or spherical coordinates
+
+    Returns
+    -------
+    np.ndarray
+        An array of shape (num_points, 3) containing the (x, y, z)
+        coordinates of the generated points on the unit sphere.
+
+    Notes
+    -----
+    The algorithm uses the golden angle (phi) to determine the azimuthal angle
+    increment between points, resulting in an approximately uniform distribution.
+
+    References
+    ----------
+    Swinbank, R., & Purser, R.J. (2006). Fibonacci grids: A novel approach to
+    global modelling. Quarterly Journal of the Royal Meteorological Society, 
+    132(619), 1769-1793.
+    """
+
+    # Generate indices from 1 to num_points
+    indices = np.arange(1, num_points + 1)
+
+    # Calculate the golden angle in radians
+    golden_angle = np.pi * (3 - np.sqrt(5))
+
+    # Calculate the polar angle (latitude)
+    polar_angle = np.arccos(1 - 2 * indices / (num_points + 1))
+
+    # Calculate the azimuthal angle (longitude)
+    azimuthal_angle = golden_angle * indices
+    
+    # Convert spherical coordinates to Cartesian coordinates
+    x = np.sin(polar_angle) * np.cos(azimuthal_angle)
+    y = np.sin(polar_angle) * np.sin(azimuthal_angle)
+    z = np.cos(polar_angle)
+
+    # Stack the coordinates into a single array
+    sphere_points = np.column_stack((x, y, z))
+
+    return sphere_points
 
 
 ####################################################################
