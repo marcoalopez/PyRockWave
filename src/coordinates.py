@@ -150,18 +150,24 @@ def equispaced_S2_grid(n=20809, degrees=False, hemisphere=None):
 
     if degrees is False:
         if hemisphere == 'upper':
-            return theta[phi <= np.pi/2] % (2*np.pi), phi[phi <= np.pi/2]
+            azimuth, polar_ang = theta[phi <= np.pi/2] % (2*np.pi), phi[phi <= np.pi/2]
         elif hemisphere == 'lower':
-            return theta[phi >= np.pi/2] % (2*np.pi), phi[phi >= np.pi/2]
+            azimuth, polar_ang = theta[phi >= np.pi/2] % (2*np.pi), phi[phi >= np.pi/2]
         else:
-            return theta % (2*np.pi), phi
+            azimuth, polar_ang = theta % (2*np.pi), phi
     else:
         if hemisphere == 'upper':
-            return np.rad2deg(theta[phi <= np.pi/2]) % 360, np.rad2deg(phi[phi <= np.pi/2])
+            azimuth, polar_ang = np.rad2deg(theta[phi <= np.pi/2]) % 360, np.rad2deg(phi[phi <= np.pi/2])
         elif hemisphere == 'lower':
-            return np.rad2deg(theta[phi >= np.pi/2]) % 360, np.rad2deg(phi[phi >= np.pi/2])
+            azimuth, polar_ang = np.rad2deg(theta[phi >= np.pi/2]) % 360, np.rad2deg(phi[phi >= np.pi/2])
         else:
-            return np.rad2deg(theta) % 360, np.rad2deg(phi)
+            azimuth, polar_ang = np.rad2deg(theta) % 360, np.rad2deg(phi)
+        
+    # order angles according to polar angle, from 0 to 180 (degrees)
+    azimuth = azimuth[np.argsort(polar_ang)]
+    polar_ang = np.sort(polar_ang)
+
+    return azimuth, polar_ang
 
 
 def equispaced_S2_grid2(num_points: int) -> np.ndarray:
