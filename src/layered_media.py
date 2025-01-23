@@ -1,32 +1,34 @@
 # -*- coding: utf-8 -*-
-#######################################################################
-# This file is part of PyRockWave Python module                       #
-#                                                                     #
-# Filename: layered_media.py                                          #
-# Description: Module to calculate seismic reflectivity in layered    #
-# media.                                                              #
-#                                                                     #
-# Copyright (c) 2023                                                  #
-#                                                                     #
-# PyRockWave is free software: you can redistribute it and/or modify  #
-# it under the terms of the GNU General Public License as published   #
-# by the Free Software Foundation, either version 3 of the License,   #
-# or (at your option) any later version.                              #
-#                                                                     #
-# PyRockWave is distributed in the hope that it will be useful,       #
-# but WITHOUT ANY WARRANTY; without even the implied warranty of      #
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the        #
-# GNU General Public License for more details.                        #
-#                                                                     #
-# You should have received a copy of the GNU General Public License   #
-# along with PyRockWave. If not, see <http://www.gnu.org/licenses/>.  #
-#                                                                     #
-# Author:                                                             #
-# Marco A. Lopez-Sanchez, http://orcid.org/0000-0002-0261-9267        #
-# Email: lopezmarco [to be found at] uniovi.es                        #
-# Website: https://marcoalopez.github.io/PyRockWave/                  #
-# Project Repository: https://github.com/marcoalopez/PyRockWave       #
-#######################################################################
+###############################################################################
+# PyRockWave: A Python Module for modelling elastic properties                #
+# of Earth materials.                                                         #
+#                                                                             #
+# Filename: layered_media.py                                                  #
+# Description: This module calculates seismic reflectivity in layered media.  #
+#                                                                             #
+# Copyright (c) 2023-Present                                                  #
+#                                                                             #
+# License:                                                                    #
+# PyRockWave is free software: you can redistribute it and/or modify          #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation, either version 3 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# PyRockWave is distributed in the hope that it will be useful,               #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with PyRockWave. If not, see <http://www.gnu.org/licenses/>.          #
+#                                                                             #
+# Author:                                                                     #
+# Marco A. Lopez-Sanchez                                                      #
+# ORCID: http://orcid.org/0000-0002-0261-9267                                 #
+# Email: lopezmarco [at] uniovi.es                                            #
+# Website: https://marcoalopez.github.io/PyRockWave/                          #
+# Repository: https://github.com/marcoalopez/PyRockWave                       #
+###############################################################################
 
 # Import statements
 import numpy as np
@@ -79,11 +81,11 @@ def snell(vp1, vp2, vs1, vs2, theta1):
 
 
 def calc_reflectivity(
-    cij_upper: float,
+    cij_upper: np.ndarray,
     cij_lower: np.ndarray,
     density_upper: float,
     density_lower: float,
-    incident_angles,
+    incident_angles: np.ndarray,
 ):
     """_summary_
 
@@ -238,7 +240,7 @@ def Tsvankin_params(cij: np.ndarray, density: float):
     c11, c22, c33, c44, c55, c66 = np.diag(cij)
     c12, c13, c23 = cij[0, 1], cij[0, 2],  cij[1, 2]
 
-    # estimate the vertically propagating speeds
+    # estimate the vertical propagating speeds
     Vp0 = np.sqrt(c33 / density)
     Vs0 = np.sqrt(c55 / density)
 
