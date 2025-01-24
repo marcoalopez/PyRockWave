@@ -1,10 +1,10 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2024-07-29
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2025-01-24
 
 ## What is PyRockWave?
 
-PyRockWave is an open-source Python tool for reading single-crystal elastic databases and modeling and visualizing various elastic properties of Earth materials. It allows you to create models of the physical properties of rocks or rock units and to simulate and illustrate how seismic waves propagate through them. The code is designed in a modular way to facilitate its development and the interaction with other codes. Application examples, created using Jupyter notebooks, promote ease of use and reproducible workflows.
+PyRockWave is an open-source Python tool for reading single-crystal elastic databases and modeling and visualizing elastic properties of Earth materials. It allows you to create models of the physical properties of rocks or rock units and to simulate and illustrate how seismic waves propagate through them. The code is designed in a modular way to facilitate its development and the interaction with other codes. Application examples, created using Jupyter notebooks, promote ease of use and reproducible workflows.
 
 View repository on GitHub: https://github.com/marcoalopez/PyRockWave
 
@@ -23,15 +23,13 @@ TODO
 
 - [Demonstration of the functionality of the ``coordinates`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_coordinates.ipynb)
 
-- [Demonstration of the functionality of the ``polar_models`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_polar.ipynb)
-
-- [Demonstration of the functionality of the ``orthorhombic_models`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_orthotropic.ipynb)
-
-- Demonstration of the functionality of the ``christoffel`` module (TODO)
-
-- Demonstration of the functionality of the ``layered_media`` module (TODO)
-
 - [Demonstration of the functionality of the ``tensor_tools`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_tensor_tools.ipynb)
+
+- [Demonstration of the functionality of the ``anisotropic_models`` module](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_anisotropic_models.ipynb)
+
+- Demonstration of the functionality of the ``christoffel`` module (I'm working on it! 😊)
+
+- Demonstration of the functionality of the ``layered_media`` module (I'm working on it! 😊)
 
 ## How to contribute to this project?
 
@@ -46,10 +44,10 @@ The GitHub website hosting the project provides several options (you will need a
 
 ## Funding
 
-The seed of these codes has been made possible thanks to funding from the Government of the Principality of Asturias and the Foundation for the Promotion of Applied Research in Asturias (FICYT) (grant SV-PA-21-AYUD/2021/57163) under the Asturias Plan for Science, Technology and Innovation 2018-2022 (PCTI-Asturias). 
+The seed of these codes has been made possible thanks to funding from the Government of the Principality of Asturias and the Foundation for the Promotion of Applied Research in Asturias (FICYT) (grant: SV-PA-21-AYUD/2021/57163) under the Asturias Plan for Science, Technology and Innovation 2018-2022 (PCTI-Asturias). 
 
 ---
-*Copyright © 2024 Marco A. Lopez-Sanchez*  
+*Copyright © 2025 Marco A. Lopez-Sanchez*  
 
 > [!WARNING]
 >  _The information on this website and in the script documentation is provided without any warranty of any kind, either expressed or implied, and may include technical inaccuracies or typographical errors; the author reserves the right to make changes or improvements to the content of this website and the script documentation at any time without notice. This website and its documentation are not responsible for the content of external links. Notebook contents under [Creative Commons Attribution license CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) and codes under GNU General Public License v3 (https://www.gnu.org/licenses/gpl-3.0.en.html) unless otherwise indicated._
