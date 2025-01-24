@@ -25,7 +25,7 @@
 # Author:                                                                     #
 # Marco A. Lopez-Sanchez                                                      #
 # ORCID: http://orcid.org/0000-0002-0261-9267                                 #
-# Email: lopezmarco [at] uniovi.es                                            #
+# Email: lopezmarco [to be found at] uniovi.es                                #
 # Website: https://marcoalopez.github.io/PyRockWave/                          #
 # Repository: https://github.com/marcoalopez/PyRockWave                       #
 ###############################################################################
