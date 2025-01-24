@@ -36,7 +36,11 @@ import pandas as pd
 
 
 # Function definitions
-def weak_polar_anisotropy(elastic, wavevectors):
+def weak_polar_anisotropy(
+    cij: np.ndarray,
+    density_gcm3: float,
+    wavevectors_rad: np.ndarray
+):
     """Calculate the velocity of body waves in a material as a function
     of the direction of propagation, assuming that the elastic properties
     of the material have a weak polar anisotropy, using the Thomsen
@@ -44,11 +48,14 @@ def weak_polar_anisotropy(elastic, wavevectors):
 
     Parameters
     ----------
-    elastic : elasticClass
-        The elastic properties of the material.
+    cij : numpy.ndarray
+        The elastic tensor of the material in 6x6 shape
 
-    wavevectors : numpy.ndarray
-        The wave vectors in spherical coordinates
+    density : float
+        The density of the material in g/cm3.
+
+    wavevectors_rad : numpy.ndarray
+        The wave vectors in spherical coordinates (radians)
 
     Returns
     -------
@@ -61,10 +68,10 @@ def weak_polar_anisotropy(elastic, wavevectors):
     """
 
     # extract azimuths and polar angles
-    azimuths, polar = wavevectors
+    azimuths, polar = wavevectors_rad
 
     # compute Thomsen parameters
-    Vp0, Vs0, epsilon, delta, gamma = Thomsen_params(elastic.Cij, elastic.density)
+    Vp0, Vs0, epsilon, delta, gamma = Thomsen_params(cij, density_gcm3)
 
     # estimate wavespeeds as a function of propagation polar angle
     sin_theta = np.sin(polar)
@@ -81,19 +88,25 @@ def weak_polar_anisotropy(elastic, wavevectors):
     ShearWaveSplitting = 200 * (Vs1 - Vs2) / (Vs1 + Vs2)
 
     # reshape and store arrays
-    data = {'polar_ang': polar,
-            'azimuthal_ang': azimuths,
-            'Vsv': Vsv,
-            'Vsh': Vsh,
-            'Vp': Vp,
-            'Vs1': Vs1,
-            'Vs2': Vs2,
-            'SWS': np.around(ShearWaveSplitting, 1)}
+    data = {
+        "polar_ang": polar,
+        "azimuthal_ang": azimuths,
+        "Vsv": Vsv,
+        "Vsh": Vsh,
+        "Vp": Vp,
+        "Vs1": Vs1,
+        "Vs2": Vs2,
+        "SWS": np.around(ShearWaveSplitting, 1),
+    }
 
     return pd.DataFrame(data)
 
 
-def polar_anisotropy(elastic, wavevectors):
+def polar_anisotropy(
+    cij: np.ndarray,
+    density_gcm3: float,
+    wavevectors_rad: np.ndarray
+):
     """Calculate the velocity of body waves in a material as a function
     of the direction of propagation, assuming that the elastic properties
     of the material have polar anisotropy, using the Anderson approach
@@ -101,11 +114,14 @@ def polar_anisotropy(elastic, wavevectors):
 
     Parameters
     ----------
-    elastic : elasticClass
-        The elastic properties of the material.
+    cij : numpy.ndarray
+        The elastic tensor of the material in 6x6 shape
 
-    wavevectors : numpy.ndarray
-        The wave vectors in spherical coordinates
+    density : float
+        The density of the material in g/cm3.
+
+    wavevectors_rad : numpy.ndarray
+        The wave vectors in spherical coordinates (radians)
 
     Returns
     -------
@@ -117,11 +133,11 @@ def polar_anisotropy(elastic, wavevectors):
     """
 
     # extract azimuths and polar angles
-    azimuths, polar = wavevectors
+    azimuths, polar = wavevectors_rad
 
     # unpack some elastic constants for readibility
-    c11, _, c33, c44, _, c66 = np.diag(elastic.Cij)
-    c13 = elastic.Cij[0, 2]
+    c11, _, c33, c44, _, c66 = np.diag(cij)
+    c13 = cij[0, 2]
 
     # estimate D value
     first_term = (c33 - c44) ** 2
@@ -139,12 +155,12 @@ def polar_anisotropy(elastic, wavevectors):
     sin_theta = np.sin(polar)
     cos_theta = np.cos(polar)
     Vp = np.sqrt(
-        (1 / (2 * elastic.density)) * (c33 + c44 + (c11 - c33) * sin_theta**2 + D)
+        (1 / (2 * density_gcm3)) * (c33 + c44 + (c11 - c33) * sin_theta**2 + D)
     )
     Vsv = np.sqrt(
-        (1 / (2 * elastic.density)) * (c33 + c44 + (c11 - c33) * sin_theta**2 - D)
+        (1 / (2 * density_gcm3)) * (c33 + c44 + (c11 - c33) * sin_theta**2 - D)
     )
-    Vsh = np.sqrt((1 / elastic.density) * (c44 * cos_theta**2 + c66 * sin_theta**2))
+    Vsh = np.sqrt((1 / density_gcm3) * (c44 * cos_theta**2 + c66 * sin_theta**2))
     
     # calc Vs1 (fast) and Vs2 (slow) shear waves
     Vs1 = np.maximum(Vsv, Vsh)
@@ -166,7 +182,11 @@ def polar_anisotropy(elastic, wavevectors):
     return pd.DataFrame(data)
 
 
-def orthotropic_azimuthal_anisotropy(elastic, wavevectors):
+def orthotropic_azimuthal_anisotropy(
+    cij: np.ndarray,
+    density_gcm3: float,
+    wavevectors_rad: np.ndarray
+):
     """Calculate the velocity of body P-waves in a material as a function
     of the direction of propagation, assuming that the elastic properties
     of the material have orthorhombic anisotropy (a.k.a. orthotropic),
@@ -175,11 +195,14 @@ def orthotropic_azimuthal_anisotropy(elastic, wavevectors):
 
     Parameters
     ----------
-    elastic : elasticClass
-        The elastic properties of the material.
+    cij : numpy.ndarray
+        The elastic tensor of the material in 6x6 shape
 
-    wavevectors : numpy.ndarray
-        The wave vectors in spherical coordinates
+    density : float
+        The density of the material in g/cm3.
+
+    wavevectors_rad : numpy.ndarray
+        The wave vectors in spherical coordinates (radians)
 
     Returns
     -------
@@ -189,10 +212,10 @@ def orthotropic_azimuthal_anisotropy(elastic, wavevectors):
         anisotropy model.
     """
     # extract azimuths and polar angles
-    azimuths, polar = wavevectors
+    azimuths, polar = wavevectors_rad
 
     # get Hao and Stovas parameters
-    Vp0, ε1, ε2, ε3, r1, r2 = HaoStovas_params(elastic.Cij, elastic.density)
+    Vp0, ε1, ε2, ε3, r1, r2 = HaoStovas_params(cij, density_gcm3)
 
     # estimate α(φ) and β(φ)
     alphaPhi = _calc_alphaPhi(azimuths, ε1, ε2, ε3, r1, r2)
