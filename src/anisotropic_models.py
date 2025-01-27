@@ -244,6 +244,16 @@ def Thomsen_params(cij: np.ndarray, density_gcm3: float):
     """Estimate the Thomsen parameters for
     weak polar anisotropy.
 
+    Thomsen parameters:
+    - Vp0: P-wave velocity in vertical direction.
+    - Vs0: V wave velocity in vertical direction.
+    - ε (Epsilon): Describes the difference in P-wave velocity
+    between the horizontal and vertical directions.
+    - δ (Delta): Relates to the angular dependence of P-wave
+    velocity near the vertical direction.
+    - γ (Gamma): Describes the difference in S-wave velocity
+    between the horizontal and vertical directions
+
     Parameters
     ----------
     cij : numpy.ndarray
