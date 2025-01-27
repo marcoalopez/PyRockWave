@@ -1,15 +1,17 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2025-01-24
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2025-01-27
 
 ## What is PyRockWave?
 
-PyRockWave is an open-source Python tool for reading single-crystal elastic databases and modeling and visualizing elastic properties of Earth materials. It allows you to create models of the physical properties of rocks or rock units and to simulate and illustrate how seismic waves propagate through them. The code is designed in a modular way to facilitate its development and the interaction with other codes. Application examples, created using Jupyter notebooks, promote ease of use and reproducible workflows.
+PyRockWave is a free and open-source Python code for reading single-crystal elastic databases and modelling and visualizing elastic properties of Earth materials. It allows you to calculate the physical properties of rocks or rock units (e.g. seismic waves propagating through them) using different available models and representing them. It focuses mainly on _seismic anisotropy_, which refers to the directional dependence of seismic wave velocities within a material.  This phenomenon is crucial in understanding the Earth's interior, as it provides insights into the orientation of minerals, stress fields, and flow patterns in the mantle and crust.
+
+PyRockWave code is designed in a modular way to facilitate its development and the interaction with other codes. Application examples, created using Jupyter notebooks, promote ease of use and reproducible workflows.
 
 View repository on GitHub: https://github.com/marcoalopez/PyRockWave
 
 > [!CAUTION]
-> PyRockWave is still under development (alpha state), so the functionality may be subject to major changes that break backwards compatibility, some of the code is untested, and there is no installation guide or specific documentation on how to use it yet. In any case, the code is (and always will be) open source and free, so even though there is no official release and very little documentation, you can have fun with it at your own risk.
+> PyRockWave is still under development (alpha state), so the functionality may be subject to major changes that break backwards compatibility. Most of the code is undertested, and there is no installation guide or specific documentation on how to use it yet. In any case, the code is (and always will be) open source and free, so even though there is no official release and very little documentation, you can have fun with it at your own risk.
 
 ## Requirements & Python installation
 
@@ -50,6 +52,6 @@ The seed of these codes has been made possible thanks to funding from the Govern
 *Copyright © 2025 Marco A. Lopez-Sanchez*  
 
 > [!WARNING]
->  _The information on this website and in the script documentation is provided without any warranty of any kind, either expressed or implied, and may include technical inaccuracies or typographical errors; the author reserves the right to make changes or improvements to the content of this website and the script documentation at any time without notice. This website and its documentation are not responsible for the content of external links. Notebook contents under [Creative Commons Attribution license CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) and codes under GNU General Public License v3 (https://www.gnu.org/licenses/gpl-3.0.en.html) unless otherwise indicated._
+>  _The information on this website and in the script documentation is provided without any warranty of any kind, either expressed or implied, and may include technical inaccuracies or typographical errors; the author reserves the right to make changes or improvements to the content of this website and the script documentation at any time without notice. This website and its documentation are not responsible for the content of external links. Notebook content is licensed under [Creative Commons Attribution license CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) and codes are licensed under GNU General Public License v3 (https://www.gnu.org/licenses/gpl-3.0.en.html) unless otherwise noted._
 
 _Hosted on GitHub Pages — This website was created with [Typora](https://typora.io/)_
