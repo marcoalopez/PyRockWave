@@ -4,14 +4,14 @@ This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.githu
 
 ## What is PyRockWave?
 
-PyRockWave is a free and open-source Python code for reading single-crystal elastic databases and modelling and visualizing elastic properties of Earth materials. It allows you to calculate the physical properties of rocks or rock units (e.g. seismic waves propagating through them) using different available models and representing them. It focuses mainly on _seismic anisotropy_, which refers to the directional dependence of seismic wave velocities within a material.  This phenomenon is crucial in understanding the Earth's interior, as it provides insights into the orientation of minerals, stress fields, and flow patterns in the mantle and crust.
+**PyRockWave** is a free, open-source Python tool for reading single-crystal elastic databases and modeling the elastic properties of Earth materials. It computes and visualizes physical properties of minerals, rocks, and layered rock units using various averaging models. The tool emphasizes seismic anisotropy —the directional variation of seismic wave velocities within materials— which provides insights into mineral orientation, stress fields, and flow patterns in Earth's mantle and crust.
 
-PyRockWave code is designed in a modular way to facilitate its development and the interaction with other codes. Application examples, created using Jupyter notebooks, promote ease of use and reproducible workflows.
+Designed with modularity in mind using Python functions, PyRockWave facilitates development and integration with other tools. Example applications, built using Jupyter notebooks, ensure ease of use and reproducible workflows.
 
 View repository on GitHub: https://github.com/marcoalopez/PyRockWave
 
 > [!CAUTION]
-> PyRockWave is still under development (alpha state), so the functionality may be subject to major changes that break backwards compatibility. Most of the code is undertested, and there is no installation guide or specific documentation on how to use it yet. In any case, the code is (and always will be) open source and free, so even though there is no official release and very little documentation, you can have fun with it at your own risk.
+> PyRockWave is still under development (alpha state). Functionality may change significantly, potentially breaking backward compatibility. Most of the code is undertested, and there is no installation guide or detailed documentation yet. However, the code is (and always will be) open source and free. While there is no official release or comprehensive documentation, you are welcome to explore and use it at your own risk.
 
 ## Requirements & Python installation
 
