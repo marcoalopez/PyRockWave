@@ -35,8 +35,10 @@ import numpy as np
 
 
 # Function definitions
-def voigt_volume_weighted_average(elastic_tensors: np.ndarray,
-                                  volume_fractions: np.ndarray):
+def voigt_volume_weighted_average(
+        elastic_tensors: np.ndarray,
+        volume_fractions: np.ndarray
+        ):
     """Calculates the Voigt average of a set of mineral
     phases, described by their elastic tensors and
     volume fractions.
@@ -74,6 +76,7 @@ def voigt_volume_weighted_average(elastic_tensors: np.ndarray,
 
     # Validate that volume fractions sums to unity
     if not np.isclose(np.sum(volume_fractions), 1):
+        print("Volume fractions do not add up to 1, recalculating...")
         volume_fractions = volume_fractions / np.sum(volume_fractions)
 
     # Calculate the Voigt average
@@ -82,8 +85,10 @@ def voigt_volume_weighted_average(elastic_tensors: np.ndarray,
     return Cij_voigt
 
 
-def reuss_volume_weighted_average(elastic_tensors: np.ndarray,
-                                  volume_fractions: np.ndarray):
+def reuss_volume_weighted_average(
+        elastic_tensors: np.ndarray,
+        volume_fractions: np.ndarray
+        ):
     """Calculates the Reuss average of a set of mineral
     phases, described by their elastic tensors and
     volume fractions.
@@ -123,6 +128,7 @@ def reuss_volume_weighted_average(elastic_tensors: np.ndarray,
 
     # Validate that volume fractions sums to unity
     if not np.isclose(np.sum(volume_fractions), 1):
+        print("Volume fractions do not add up to 1, recalculating...")
         volume_fractions = volume_fractions / np.sum(volume_fractions)
 
     # calculate compliance tensors
@@ -134,8 +140,10 @@ def reuss_volume_weighted_average(elastic_tensors: np.ndarray,
     return Sij_reuss
 
 
-def voigt_CPO_weighted_average(elastic_tensor: np.ndarray,
-                               ODF: np.ndarray):
+def voigt_CPO_weighted_average(
+        elastic_tensor: np.ndarray,
+        ODF: np.ndarray
+        ):
     """Calculates the elastic tensor Voigt average of a
     mineral phase considering the crystallographic
     preferred orientation of the aggregate
@@ -145,11 +153,7 @@ def voigt_CPO_weighted_average(elastic_tensor: np.ndarray,
 
     C_ij_voigt = Σ_n (ODF_n * C_nij)
 
-    This can be calculated using Einstein summation (np.einsum)
-    using the notation 'n, nij -> ij' where:
-    'n' represents the array with the orientation weights
-    'nij' represents the elastic tensors 3-d array, C_nij
-    'ij' represents the output array, 2-d array
+    TODO
 
     Parameters
     ----------
@@ -171,8 +175,10 @@ def voigt_CPO_weighted_average(elastic_tensor: np.ndarray,
     pass
 
 
-def reuss_CPO_weighted_average(compliance_tensor: np.ndarray,
-                               ODF: np.ndarray):
+def reuss_CPO_weighted_average(
+        compliance_tensor: np.ndarray,
+        ODF: np.ndarray
+        ):
     """Calculates the compliance tensor Reuss average of a
     mineral phase considering the crystallographic
     preferred orientation of the aggregate
@@ -197,71 +203,5 @@ def reuss_CPO_weighted_average(compliance_tensor: np.ndarray,
     """
     pass
 
-
-def rotate_tensor(rot_matrix, tensor):
-    """
-    Rotate a 6x6 elasticity tensor using a rotation matrix.
-
-    Parameters
-    ----------
-    rot_matrix :
-        3x3 rotation matrix
-    tensor :
-        6x6 elasticity tensor
-
-    Returns
-    -------
-    rotated_tensor :
-        6x6 rotated elasticity tensor
-    """
-    # Create a transformation matrix for tensor components
-    rot_tensor = np.kron(rot_matrix, rot_matrix)
-
-    # Rotate the tensor using the transformation matrix
-    rotated_tensor = np.dot(np.dot(rot_tensor, tensor), rot_tensor.T)
-
-    return rotated_tensor
-
-
-def weighted_average_rotated_tensors(rotation_matrices, elasticity_tensor, weights):
-    """
-    TODO
-    Calculate the weighted average of rotated elasticity tensors.
-
-    Parameters
-    ----------
-    rotation_matrices :
-        List of 3x3 rotation matrices
-    elasticity_tensor :
-        6x6 elasticity tensor
-    weights :
-        array of weights for rotation matrices
-
-    Returns
-    -------
-    weighted_average_tensor :
-        6x6 weighted average rotated elasticity tensor
-    """
-
-    # Ensure the weights sum up to 1
-    if not np.isclose(np.sum(weights), 1):
-        weights = weights / np.sum(weights)
-
-    # Stack the rotation matrices into a 3D array
-    rotation_matrices = np.array(rotation_matrices)  # shape: (num_matrices, 3, 3)
-
-    # Expand dimensions to enable broadcasting
-    expanded_rotation_matrices = rotation_matrices[:, np.newaxis, :, :]  # shape: (num_matrices, 1, 3, 3)
-
-    # Expand dimensions of the elasticity tensor for broadcasting
-    expanded_elasticity_tensor = elasticity_tensor[np.newaxis, :, :]  # shape: (1, 6, 6)
-
-    # Perform element-wise tensor multiplication
-    rotated_tensors = np.einsum('aijb,aik->akjb', expanded_rotation_matrices, expanded_elasticity_tensor)
-
-    # Calculate the weighted sum of the rotated tensors
-    weighted_average_tensor = np.sum(weights[:, np.newaxis, np.newaxis, np.newaxis] * rotated_tensors, axis=0)
-
-    return weighted_average_tensor
 
 # End of file
