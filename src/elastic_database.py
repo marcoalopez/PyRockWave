@@ -1,8 +1,9 @@
 # This file is part of the Open Database License (ODbL) - version 1.0
 #
 # Preamble:
-# The Mineral Elastic Database is an open database provided by the
-# Earth Materials Science Laboratory at the University of Oviedo.
+# The Mineral Elastic Database is an open database maintained by 
+# reasearcher Marco A. Lopez-Sanchez of the Andalusian Institute
+# of Earth Sciences IACT-CSIC.
 # It is licensed under the Open Database License (ODbL) version 1.0.
 #
 # License:
@@ -27,9 +28,9 @@
 # Attribution:
 # The attribution requirement under this license is satisfied by
 # including the following notice:
-# "Mineral Elastic Database by the Earth Materials Science Laboratory
-# at the University of Oviedo is licensed under the Open Database 
-# License (ODbL) version 1.0."
+# "Mineral Elastic Database by Marco A. Lopez-Sanchez at the
+# IACT-CSIC is licensed under the Open Database License (ODbL)  
+# version 1.0."
 # If you make any changes or adaptations to this database, you must
 # indicate so and not imply that the original database is endorsed
 # by the Earth Materials Science Laboratory at University of Oviedo.
@@ -1324,7 +1325,7 @@ def lizardite(P=1e-5):
         - The function does not account for temperature effects
         and assumes room temperature.
         - There is a dramatic change in elastic properties above
-        10 GPa, so the model here applies only for pressures below
+        10 GPa, so the returned tensor applies only for pressures below
         this threshold.
         - No experimental measures, atomic first-principles
         - C14 elastic term is worse constrained than the others.
@@ -1423,8 +1424,8 @@ def kyanite(model='DFT'):
     -------
         - The function does not account for temperature or
         pressure effects and assumes room conditions
-        - there is no experimental data that confirm the model
-        - Estimates were for 0K instead of room temperature?
+        - No experimental data to confirm the model
+        - Estimates calculated at 0K rather than room temperature
 
     Parameters
     ----------
@@ -1504,8 +1505,8 @@ def kyanite(model='DFT'):
 
 
 if __name__ == '__main__':
-    print('Mineral Elastic Database v.2024.2.01')
+    print('Mineral Elastic Database v.2025.2.07')
 else:
-    print('Mineral Elastic Database v.2024.2.01 imported')
+    print('Mineral Elastic Database v.2025.2.07 imported')
 
 # End of file
