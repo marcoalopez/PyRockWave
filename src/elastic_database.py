@@ -59,8 +59,13 @@ try:
 except ImportError:
     print("Warning: The ElasticClass.py file should be in the same folder as the database.")
 
+##################################################################
+# 1. SILICATES
+##################################################################
 
-# Function definitions
+##################################################################
+# 1.1 SILICA GROUP: SiO2
+
 def alpha_quartz(P=1e-5):
     """
     Returns the corresponding elastic tensor (GPa) and density
@@ -154,6 +159,8 @@ def alpha_quartz(P=1e-5):
 
     return properties
 
+##################################################################
+# 1.2 OLIVINE GROUP: M2SiO4, M = Ca, Fe, Mn, Ni, Mg
 
 def forsterite_ZB2016(P=1e-5, type='HT'):
     """
@@ -367,6 +374,9 @@ def forsterite_Mao(P=1e-5):
 
     return properties
 
+##################################################################
+# 1.3 PYROXENE GROUP: ADSi2O6
+# 1.3.1 Clinopyroxene Subgroup (monoclinic)
 
 def omphacite(P=1e-5):
     """
@@ -574,6 +584,7 @@ def diopside(P=1e-5):
 
     return properties
 
+# 1.3.2 Orthopyroxene Subgroup (monoclinic)
 
 def enstatite(P=1e-5):
     """
@@ -668,6 +679,8 @@ def enstatite(P=1e-5):
 
     return properties
 
+##################################################################
+# 1.4 GARNET GROUP: X3Z2(SiO4)3, X = Mg, Ca, Fe2+, Mn2+, etc., Z = Al, Fe3+, Cr3+, V3+ etc. 
 
 def pyrope(P=1e-5, T=476.85):
     """
@@ -772,6 +785,8 @@ def pyrope(P=1e-5, T=476.85):
 
     return properties
 
+##################################################################
+# 1.5 EPIDOTE SUPERGROUP: (A1A2)(M1M2M3)O4[Si2O7][SiO4]O10 
 
 def zoisite():
     """
@@ -842,113 +857,8 @@ def zoisite():
     return properties
 
 
-def chlorite(P=1e-5):
-    """
-    Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) and other derived elastic properties of chlorite as
-    a function of pressure based on a polynomial fit from first
-    principles simulation of Mookherjee and Mainprice (2014) [1]
-
-
-    Caveats
-    -------
-        - The function does not account for temperature effects
-        and assumes room temperature.
-        - The C11, C22 and c44 estimated elastic constant values
-        at 1.8 and 4.2 GPa do not follow the trend as the others.
-        - Based on first principles simulation
-
-    Parameters
-    ----------
-    P : numeric, optional
-        pressure in GPa, by default 1e-5
-
-    Returns
-    -------
-    properties : ElasticProps dataclass
-        An object containing the following properties:
-        - name: Name of the crystal ('alpha_quartz').
-        - crystal_system: Crystal system.
-        - temperature: Temperature in degrees Celsius (assumed 25).
-        - pressure: Pressure in GPa.
-        - density: Density in g/cm3.
-        - cijs: 6x6 array representing the elastic tensor.
-        - sijs: 6x6 array representing the compliance tensor
-        - reference: Reference to the source publication.
-        - decompose: the decomposition of the elastic tensor
-            into lower symmetriy classes
-        - Other average (seismic & elastic) properties
-        - Several anisotropy indexes
-
-    Examples
-    --------
-    >>> Chl = chlorite(1.0)
-
-    References
-    ----------
-    [1] Mookherjee, M., Mainprice, D., 2014. Unusually large shear wave
-    anisotropy for chlorite in subduction zone settings. Geophys. Res.
-    Lett. 41, 1506–1513. https://doi.org/10.1002/2014GL059334
-    """
-
-    if (P > 14) | (P <= 0):
-        raise ValueError('The pressure is out of the safe range of the model: 0 to 14 GPa')
-
-    np.set_printoptions(suppress=True)
-
-    # Polynomial coefficients of elastic independent terms
-    coeffs = {
-        'C11': [0.1674, 0.4206, 197.8],
-        'C22': [0.1771, -0.5058, 202.3],
-        'C33': [-0.1655, 15.499, 135.1],
-        'C44': [0.011, -0.28, 0.4944, 24.5],
-        'C55': [0.0154, -0.2914, 0.146, 24.4],
-        'C66': [-0.0241, 0.8613, 70.3],
-        'C12': [-0.0089, 0.371, -2.2729, 60.7],
-        'C13': [-0.0346, 0.765, 0.0758, 21.1],
-        'C23': [-0.0564, 1.294, -3.8639, 34.1],
-        'C15': [0.0039, -0.0312, 0.1809, 3.3],
-        'C25': [0.0024, -0.0082, -0.0769, 0.2],
-        'C35': [0.0027, -0.0047, 0.2115, 0.4],
-        'C46': [0.004, -0.0626, 0.225, 0.1],
-    }
-
-    # elastic independent terms
-    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9829
-    C22 = np.polyval(coeffs['C22'], P)  # R-squared=0.9890
-    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9945
-    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9973
-    C55 = np.polyval(coeffs['C55'], P)  # R-squared=0.9998
-    C66 = np.polyval(coeffs['C66'], P)  # R-squared=0.9937
-    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9985
-    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9959
-    C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.9856
-    C15 = np.polyval(coeffs['C15'], P)  # R-squared=0.9991
-    C25 = np.polyval(coeffs['C25'], P)  # R-squared=0.9986
-    C35 = np.polyval(coeffs['C35'], P)  # R-squared=0.9996
-    C46 = np.polyval(coeffs['C46'], P)  # R-squared=0.9829
-
-    Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
-                    [C12, C22, C23, 0.0, C25, 0.0],
-                    [C13, C23, C33, 0.0, C35, 0.0],
-                    [0.0, 0.0, 0.0, C44, 0.0, C46],
-                    [C15, C25, C35, 0.0, C55, 0.0],
-                    [0.0, 0.0, 0.0, C46, 0.0, C66]])
-
-    # estimate density, R-squared=0.9995
-    density = -0.0004 * P**2 + 0.0341 * P + 2.534
-
-    properties = ElasticProps(
-        mineral_name='Chlorite',
-        crystal_system='Monoclinic',
-        temperature=25,
-        pressure=P,
-        density=np.around(density, decimals=3),
-        Cij=np.around(Cij, decimals=2),
-        reference='https://doi.org/10.1002/2014GL059334')
-
-    return properties
-
+##################################################################
+# 1.6 AMPHIBOLE SUPERGROUP: AB2C5((Si,Al,Ti)8O22)(OH,F,Cl,O)2 
 
 def amphiboles(type='Hornblende'):
     """
@@ -1062,6 +972,8 @@ def amphiboles(type='Hornblende'):
 
     return properties
 
+##################################################################
+# 1.6 FELDSPAR GROUP: (k,Na,Ca)[(Si,Al)AlSi2]O8
 
 def plagioclase(type='An0'):
     """
@@ -1210,6 +1122,10 @@ def plagioclase(type='An0'):
 
     return properties
 
+
+##################################################################
+# 1.7 PHYLLOSILICATE GROUP
+# 1.7.1 Serpentine Subgroup: D3[Si2O5](OH)4, D = Mg, Fe, Ni, Mn, Al, Zn
 
 def antigorite(P=1e-5):
     """
@@ -1412,6 +1328,121 @@ def lizardite(P=1e-5):
 
     return properties
 
+
+# 1.7.2 Chlorite group: A5-6T4Z18
+# A group of mostly monoclinic (also triclinic or orthorhombic) micaceous
+# phyllosilicate minerals
+
+def chlorite(P=1e-5):
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) and other derived elastic properties of chlorite as
+    a function of pressure based on a polynomial fit from first
+    principles simulation of Mookherjee and Mainprice (2014) [1]
+
+
+    Caveats
+    -------
+        - The function does not account for temperature effects
+        and assumes room temperature.
+        - The C11, C22 and c44 estimated elastic constant values
+        at 1.8 and 4.2 GPa do not follow the trend as the others.
+        - Based on first principles simulation
+
+    Parameters
+    ----------
+    P : numeric, optional
+        pressure in GPa, by default 1e-5
+
+    Returns
+    -------
+    properties : ElasticProps dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system.
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
+        - reference: Reference to the source publication.
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
+
+    Examples
+    --------
+    >>> Chl = chlorite(1.0)
+
+    References
+    ----------
+    [1] Mookherjee, M., Mainprice, D., 2014. Unusually large shear wave
+    anisotropy for chlorite in subduction zone settings. Geophys. Res.
+    Lett. 41, 1506–1513. https://doi.org/10.1002/2014GL059334
+    """
+
+    if (P > 14) | (P <= 0):
+        raise ValueError('The pressure is out of the safe range of the model: 0 to 14 GPa')
+
+    np.set_printoptions(suppress=True)
+
+    # Polynomial coefficients of elastic independent terms
+    coeffs = {
+        'C11': [0.1674, 0.4206, 197.8],
+        'C22': [0.1771, -0.5058, 202.3],
+        'C33': [-0.1655, 15.499, 135.1],
+        'C44': [0.011, -0.28, 0.4944, 24.5],
+        'C55': [0.0154, -0.2914, 0.146, 24.4],
+        'C66': [-0.0241, 0.8613, 70.3],
+        'C12': [-0.0089, 0.371, -2.2729, 60.7],
+        'C13': [-0.0346, 0.765, 0.0758, 21.1],
+        'C23': [-0.0564, 1.294, -3.8639, 34.1],
+        'C15': [0.0039, -0.0312, 0.1809, 3.3],
+        'C25': [0.0024, -0.0082, -0.0769, 0.2],
+        'C35': [0.0027, -0.0047, 0.2115, 0.4],
+        'C46': [0.004, -0.0626, 0.225, 0.1],
+    }
+
+    # elastic independent terms
+    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9829
+    C22 = np.polyval(coeffs['C22'], P)  # R-squared=0.9890
+    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9945
+    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9973
+    C55 = np.polyval(coeffs['C55'], P)  # R-squared=0.9998
+    C66 = np.polyval(coeffs['C66'], P)  # R-squared=0.9937
+    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9985
+    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9959
+    C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.9856
+    C15 = np.polyval(coeffs['C15'], P)  # R-squared=0.9991
+    C25 = np.polyval(coeffs['C25'], P)  # R-squared=0.9986
+    C35 = np.polyval(coeffs['C35'], P)  # R-squared=0.9996
+    C46 = np.polyval(coeffs['C46'], P)  # R-squared=0.9829
+
+    Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
+                    [C12, C22, C23, 0.0, C25, 0.0],
+                    [C13, C23, C33, 0.0, C35, 0.0],
+                    [0.0, 0.0, 0.0, C44, 0.0, C46],
+                    [C15, C25, C35, 0.0, C55, 0.0],
+                    [0.0, 0.0, 0.0, C46, 0.0, C66]])
+
+    # estimate density, R-squared=0.9995
+    density = -0.0004 * P**2 + 0.0341 * P + 2.534
+
+    properties = ElasticProps(
+        mineral_name='Chlorite',
+        crystal_system='Monoclinic',
+        temperature=25,
+        pressure=P,
+        density=np.around(density, decimals=3),
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.1002/2014GL059334')
+
+    return properties
+
+
+##################################################################
+# 1.8 OTHER SILICATES
 
 def kyanite(model='DFT'):
     """
