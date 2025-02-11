@@ -160,19 +160,24 @@ def alpha_quartz(P=1e-5):
     return properties
 
 ##################################################################
-# 1.2 OLIVINE GROUP: M2SiO4, M = Ca, Fe, Mn, Ni, Mg
+# 1.2 OLIVINE GROUP: M2SiO4, where M = Ca, Fe, Mn, Ni, Mg
 
-def forsterite_ZB2016(P=1e-5, type='HT'):
+def forsterite(P=1e-5, type='RT'):
     """
     Returns the corresponding elastic tensor (GPa) and density
     (g/cm3) and other derived elastic properties of forsterite
     as a function of pressure based on a polynomial fit from
-    experimental data of Zhang and Bass (2016) [1]
+    experimental data of Zhang and Bass (2016) [1] and Mao et
+    al. (2015) [2]
 
     Caveats
     -------
-        - No temperature derivative, fixed at 1027°C (1300 K)
-        or 26°C (300 K)
+        - No temperature derivative, fixed at 1027°C (1300 K),
+        627°C (900 K), or 26°C (~300 K)
+        - Experimental data at 627 °C (Mao et al.) were obtained in
+        the pressure range from 4.5 to 13.3 GPa. The elastic properties
+        at pressures below 4.5 GPa are extrapolated from the polynomial
+        model.
 
     Parameters
     ----------
@@ -180,7 +185,7 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
         pressure in GPa, by default 1e-5 (RP)
 
     type : str, optional
-        either 'RT' or 'HT', default 'HT'
+        either 'RT', 'MT' or 'HT', default 'RT'
 
     Returns
     -------
@@ -201,17 +206,30 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
 
     Examples
     --------
-    >>> olivine_props = forsterite_ZB2016(1.0)
+    >>> olivine_props = forsterite(1.0)
 
     References
     ----------
     [1] Zhang, J.S., Bass, J.D., 2016. Sound velocities of olivine at high
     pressures and temperatures and the composition of Earth’s upper mantle.
     Geophys. Res. Lett. 43, 9611–9618. https://doi.org/10.1002/2016GL069949
+
+    [2] Mao, Z., Fan, D., Lin, J.-F., Yang, J., Tkachev, S.N., Zhuravlev, K.,
+    Prakapenka, V.B., 2015. Elasticity of single-crystal olivine at high
+    pressures and temperatures. Earth and Planetary Science Letters 426,
+    204–215. https://doi.org/10.1016/j.epsl.2015.06.045
     """
 
-    if (P > 12.8) | (P <= 0):
-        raise ValueError('The pressure is out of the safe range of the model: 0 to 12.8 GPa')
+    if type == "MT":
+        if (P > 13.3) | (P <= 0):
+            raise ValueError(
+                "The pressure is out of the safe range of the 'MT' model: 0 to 13.3 GPa"
+            )
+    if type == "RT" or type == "HT":
+        if (P > 12.8) | (P <= 0):
+            raise ValueError(
+                "The pressure is out of the safe range of the models 'RT' or 'HT': 0 to 12.8 GPa"
+            )
 
     # Polynomial coefficients of elastic independent terms
     if type == 'HT':
@@ -228,6 +246,23 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
         }
         T = 1027
         density = 0.0253 * P + 3.239  # R-squared=0.8772
+        reference = 'https://doi.org/10.1002/2016GL069949'
+    
+    elif type == 'MT':
+        coeffs = {
+            'C11': [-0.137, 8.1979, 296.02],  # R-squared=0.9990
+            'C22': [-0.0145, 5.2479, 179.72], # R-squared=0.9999
+            'C33': [-0.0763, 6.1763, 210.01], # R-squared=0.9947
+            'C44': [-0.0514, 2.2077, 56.418], # R-squared=0.9999
+            'C55': [-0.0455, 1.7866, 71.041], # R-squared=0.9968
+            'C66': [0.0037, 1.5318, 71.01],   # R-squared=0.9996
+            'C12': [-0.3446, 9.2276, 38.36],  # R-squared=0.9984
+            'C13': [-0.1367, 5.2602, 58.15],  # R-squared=0.9994
+            'C23': [0.0819, 1.6695, 75.026],  # R-squared=0.9924
+        }
+        T = 627
+        density = -0.0001 * P**2 + 0.0266 * P + 3.34 # R-squared=1
+        reference = 'https://doi.org/10.1016/j.epsl.2015.06.045'
 
     elif type == 'RT':
         coeffs = {
@@ -243,6 +278,7 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
         }
         T = 26
         density = -0.0002 * P**2 + 0.0253 * P + 3.3413  # R-squared=1
+        reference = 'https://doi.org/10.1002/2016GL069949'
 
     else:
         raise ValueError("type must be 'RT' (i.e. room T) or 'HT' (i.e. 1027°C)")
@@ -272,107 +308,10 @@ def forsterite_ZB2016(P=1e-5, type='HT'):
         pressure=P,
         density=np.around(density, decimals=3),
         Cij=np.around(Cij, decimals=2),
-        reference='https://doi.org/10.1002/2016GL069949')
+        reference=reference)
 
     return properties
 
-
-def forsterite_Mao(P=1e-5):
-    """
-    Returns the corresponding elastic tensor (GPa) and density
-    (g/cm3) and other derived elastic properties of forsterite
-    as a function of pressure based on a polynomial fit from
-    experimental data of Mao et al. (2015) [1]
-
-    Caveats
-    -------
-        - Temperature fixed at 627°C (900 K)
-        - Experimental data at 627 °C were obtained in the pressure
-        range from 4.5 to 13.3 GPa. The elastic properties at
-        pressures below 4.5 GPa are extrapolated from the polynomial
-        model.
-
-    Parameters
-    ----------
-    P : numeric, optional
-        pressure in GPa, by default 1e-5
-
-    Returns
-    -------
-    properties : ElasticProps dataclass
-        An object containing the following properties:
-        - name: Name of the crystal ('alpha_quartz').
-        - crystal_system: Crystal system.
-        - temperature: Temperature in degrees Celsius (assumed 25).
-        - pressure: Pressure in GPa.
-        - density: Density in g/cm3.
-        - cijs: 6x6 array representing the elastic tensor.
-        - sijs: 6x6 array representing the compliance tensor
-        - reference: Reference to the source publication.
-        - decompose: the decomposition of the elastic tensor
-            into lower symmetriy classes
-        - Other average (seismic & elastic) properties
-        - Several anisotropy indexes
-
-    Examples
-    --------
-    >>> olivine = forsterite_Mao(1.0)
-
-    References
-    ----------
-    [1] Mao, Z., Fan, D., Lin, J.-F., Yang, J., Tkachev, S.N., Zhuravlev, K.,
-    Prakapenka, V.B., 2015. Elasticity of single-crystal olivine at high
-    pressures and temperatures. Earth and Planetary Science Letters 426,
-    204–215. https://doi.org/10.1016/j.epsl.2015.06.045
-    """
-
-    if (P > 13.3) | (P <= 0):
-        raise ValueError('The pressure is out of the safe range of the model: 0 to 13.3 GPa')
-
-    # Polynomial coefficients of elastic independent terms
-    coeffs = {
-        'C11': [-0.137, 8.1979, 296.02],
-        'C22': [-0.0145, 5.2479, 179.72],
-        'C33': [-0.0763, 6.1763, 210.01],
-        'C44': [-0.0514, 2.2077, 56.418],
-        'C55': [-0.0455, 1.7866, 71.041],
-        'C66': [0.0037, 1.5318, 71.01],
-        'C12': [-0.3446, 9.2276, 38.36],
-        'C13': [-0.1367, 5.2602, 58.15],
-        'C23': [0.0819, 1.6695, 75.026],
-    }
-
-    # elastic independent terms
-    C11 = np.polyval(coeffs['C11'], P)  # R-squared=0.9990
-    C22 = np.polyval(coeffs['C22'], P)  # R-squared=0.9999
-    C33 = np.polyval(coeffs['C33'], P)  # R-squared=0.9947
-    C44 = np.polyval(coeffs['C44'], P)  # R-squared=0.9999
-    C55 = np.polyval(coeffs['C55'], P)  # R-squared=0.9968
-    C66 = np.polyval(coeffs['C66'], P)  # R-squared=0.9996
-    C12 = np.polyval(coeffs['C12'], P)  # R-squared=0.9984
-    C13 = np.polyval(coeffs['C13'], P)  # R-squared=0.9994
-    C23 = np.polyval(coeffs['C23'], P)  # R-squared=0.9924
-
-    Cij = np.array([[C11, C12, C13, 0.0, 0.0, 0.0],
-                    [C12, C22, C23, 0.0, 0.0, 0.0],
-                    [C13, C23, C33, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, C44, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, C55, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, C66]])
-
-    # estimate density, R-squared=0.9999  (4.5 - 13.3 interval)
-    density = -0.0005 * P**2 + 0.0314 * P + 3.2464
-
-    properties = ElasticProps(
-        mineral_name='Forsterite',
-        crystal_system='Orthorhombic',
-        temperature=627,
-        pressure=P,
-        density=np.around(density, decimals=3),
-        Cij=np.around(Cij, decimals=2),
-        reference='https://doi.org/10.1016/j.epsl.2015.06.045')
-
-    return properties
 
 ##################################################################
 # 1.3 PYROXENE GROUP: ADSi2O6
@@ -1536,8 +1475,8 @@ def kyanite(model='DFT'):
 
 
 if __name__ == '__main__':
-    print('Mineral Elastic Database v.2025.2.07')
+    print('Mineral Elastic Database v.2025.2.11')
 else:
-    print('Mineral Elastic Database v.2025.2.07 imported')
+    print('Mineral Elastic Database v.2025.2.11 imported')
 
 # End of file
