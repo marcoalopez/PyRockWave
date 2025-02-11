@@ -2,12 +2,12 @@
 #
 # Preamble:
 # The Mineral Elastic Database is an open database maintained by 
-# reasearcher Marco A. Lopez-Sanchez of the Andalusian Institute
-# of Earth Sciences IACT-CSIC.
-# It is licensed under the Open Database License (ODbL) version 1.0.
+# Marco A. Lopez-Sanchez of the Andalusian Institute of Earth
+# Sciences (IACT-CSIC) in Granada (Spain).
 #
 # License:
-# Copyright (c) 2024 Earth materials science laboratory at Uniovi.
+# It is licensed under the Open Database License (ODbL) version 1.0.
+# Copyright (c) 2024-Present.
 #
 # You are free:
 # 1. To Share: To copy, distribute, and use the database.
@@ -45,7 +45,7 @@
 # Contact:
 # If you have any questions or need further clarifications regarding
 # this license or the Mineral Elastic Database, you can contact
-# Marco A. Lopez-Sanchez at lopezmarco [to be found at] uniovi.es.
+# Marco A. Lopez-Sanchez at marcoalopez [to be found at] outlook.com
 #
 # End of License.
 
