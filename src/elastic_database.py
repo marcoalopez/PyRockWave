@@ -725,7 +725,84 @@ def pyrope(P=1e-5, T=476.85):
     return properties
 
 ##################################################################
-# 1.5 EPIDOTE SUPERGROUP: (A1A2)(M1M2M3)O4[Si2O7][SiO4]O10 
+# 1.5 EPIDOTE SUPERGROUP: (A1A2)(M1M2M3)O4[Si2O7][SiO4]O10
+
+def epidote():
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) and other derived elastic properties of epidote
+    based on experimental data of Ryzhova et al.(1966) [1] and
+    Bass (1995) [2]
+
+    Caveats
+    -------
+        - The function does not account for temperature or
+        pressure effects and assumes room conditions
+
+    Returns
+    -------
+    properties : ElasticProps dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('alpha_quartz').
+        - crystal_system: Crystal system.
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
+        - reference: Reference to the source publication.
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
+
+    Examples
+    --------
+    >>> Ep_props = epidote()
+
+    References
+    ----------
+    [1] Ryzhova TV, Aleksandrov KS, and Korobkova VM (1966) The elastic
+    properties of rock-forming minerals V. Additional data on silicates,
+    Izv. Earth Phys., 2, 63-65
+    [2] Bass, J.D., (1995) Elasticity of Minerals, Glasses, and Melts,
+    in: Ahrens, T.J. (Ed.), AGU Reference Shelf. American Geophysical
+    Union, Washington, D. C., pp. 45–63. https://doi.org/10.1029/RF002p0045
+    """
+
+    # elastic independent terms
+    C11 = 211.8
+    C22 = 238.7
+    C33 = 202.0
+    C44 = 39.1
+    C55 = 43.2
+    C66 = 77.5
+    C12 = 66.3
+    C13 = 45.2
+    C15 = 0.0
+    C23 = 45.6
+    C25 = -8.2
+    C35 = -14.3
+    C46 = -3.4
+
+    Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
+                    [C12, C22, C23, 0.0, C25, 0.0],
+                    [C13, C23, C33, 0.0, C35, 0.0],
+                    [0.0, 0.0, 0.0, C44, 0.0, C46],
+                    [C15, C25, C35, 0.0, C55, 0.0],
+                    [0.0, 0.0, 0.0, C46, 0.0, C66]])
+
+    properties = ElasticProps(
+        mineral_name='Epidote',
+        crystal_system='Monoclinic',
+        temperature=25,
+        pressure=1e-4,
+        density=3.44,
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.1029/RF002p0045')
+
+    return properties
+
 
 def zoisite():
     """
@@ -757,7 +834,7 @@ def zoisite():
 
     Examples
     --------
-    >>> Zo_props = zoisite(1.0)
+    >>> Zo_props = zoisite()
 
     References
     ----------
@@ -936,7 +1013,7 @@ def plagioclase(type='An0'):
     -------
     properties : ElasticProps dataclass
         An object containing the following properties:
-        - name: Name of the crystal ('alpha_quartz').
+        - name: Name of the crystal (e.g. 'plagioclase_48').
         - crystal_system: Crystal system.
         - temperature: Temperature in degrees Celsius (assumed 25).
         - pressure: Pressure in GPa.
@@ -1058,6 +1135,80 @@ def plagioclase(type='An0'):
         density=density,
         Cij=Cij,
         reference='https://doi.org/10.1002/2015JB012736')
+
+    return properties
+
+
+def kfeldspar():
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) and other derived elastic properties of K-feldspar
+    K(orthoclase) based on experimental data of Waeselmann et al.
+    (2016) [1]
+
+    Caveats
+    -------
+        - The function does not account for temperature or
+        pressure effects and assumes room conditions
+
+    Returns
+    -------
+    properties : ElasticProps dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('K-feldspar (orthoclase)').
+        - crystal_system: Crystal system.
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
+        - reference: Reference to the source publication.
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
+
+    Examples
+    --------
+    >>> plag = plagioclase(type='An37')
+
+    References
+    ----------
+    [1] Waeselmann, N., Brown, J.M., Angel, R.J., Ross, N., Zhao, J.,
+    Kaminsky, W., 2016. The elastic tensor of monoclinic alkali feldspars.
+    American Mineralogist 101, 1228–1231. https://doi.org/10.2138/am-2016-5583
+    """
+
+    # elastic independent terms
+    C11 = 67.8
+    C22 = 181.2
+    C33 = 158.4
+    C44 = 21.1
+    C55 = 19.4
+    C66 = 33.1
+    C12 = 40.4
+    C13 = 25.0
+    C15 = -1.1
+    C23 = 20.6
+    C25 = -12.9
+    C35 = 10.6
+    C46 = -11.6
+
+    Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
+                    [C12, C22, C23, 0.0, C25, 0.0],
+                    [C13, C23, C33, 0.0, C35, 0.0],
+                    [0.0, 0.0, 0.0, C44, 0.0, C46],
+                    [C15, C25, C35, 0.0, C55, 0.0],
+                    [0.0, 0.0, 0.0, C46, 0.0, C66]])
+
+    properties = ElasticProps(
+        mineral_name='K-feldspar (orthoclase)',
+        crystal_system='Monoclinic',
+        temperature=25,
+        pressure=1e-4,
+        density=2.555,
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.2138/am-2016-5583')
 
     return properties
 
@@ -1380,6 +1531,161 @@ def chlorite(P=1e-5):
     return properties
 
 
+# 1.7.3 Mica group: 
+# A  large group of sheet silicates
+
+def muscovite():
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) and other derived elastic properties of muscovite
+    based on experimental data of Vaughan and Guggenheim (1986) [1]
+
+    Caveats
+    -------
+        - The function does not account for temperature or
+        pressure effects and assumes room conditions
+
+    Returns
+    -------
+    properties : ElasticProps dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('muscovite').
+        - crystal_system: Crystal system.
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
+        - reference: Reference to the source publication.
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
+
+    Examples
+    --------
+    >>> ms = muscovite()
+
+    References
+    ----------
+    [1] Vaughan, M.T., Guggenheim, S., 1986. Elasticity of muscovite and
+    its relationship to crystal structure. J. Geophys. Res. 91, 4657–4664.
+    https://doi.org/10.1029/JB091iB05p04657 
+    """
+
+    # elastic independent terms
+    C11 = 180.9
+    C22 = 170.0
+    C33 = 60.3
+    C44 = 18.4
+    C55 = 23.8
+    C66 = 70.5
+    C12 = 53.4
+    C13 = 27.2
+    C15 = -14.7
+    C23 = 23.5
+    C25 = 1.4
+    C35 = -1.0
+    C46 = -1.8
+
+    Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
+                    [C12, C22, C23, 0.0, C25, 0.0],
+                    [C13, C23, C33, 0.0, C35, 0.0],
+                    [0.0, 0.0, 0.0, C44, 0.0, C46],
+                    [C15, C25, C35, 0.0, C55, 0.0],
+                    [0.0, 0.0, 0.0, C46, 0.0, C66]])
+
+    properties = ElasticProps(
+        mineral_name='muscovite',
+        crystal_system='Monoclinic',
+        temperature=25,
+        pressure=1e-4,
+        density=2.830,
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.3389/feart.2021.644958')
+
+    return properties
+
+
+def phlogopite():
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) and other derived elastic properties of phlogopite
+    based on ab initio calculations Chheda et al. (2014) [1]
+    
+    Caveats
+    -------
+        - The function does not account for temperature effects
+        and assumes room temperature. TODO
+        - Based on first principles simulation
+
+    Returns
+    -------
+    properties : ElasticProps dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('phlogopite').
+        - crystal_system: Crystal system.
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
+        - reference: Reference to the source publication.
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
+
+    Examples
+    --------
+    >>> phl = phlogopite()
+
+    References
+    ----------
+    [1] Chheda, T.D., Mookherjee, M., Mainprice, D., Dos Santos, A.M.,
+    Molaison, J.J., Chantel, J., Manthilake, G., Bassett, W.A., 2014.
+    Structure and elasticity of phlogopite under compression: Geophysical
+    implications. Physics of the Earth and Planetary Interiors 233, 1–12.
+    https://doi.org/10.1016/j.pepi.2014.05.004
+    """
+
+    # Polynomial coefficients of elastic independent terms
+    # TODO
+
+    # elastic independent terms at RP
+    C11 = 177.9
+    C22 = 181.7
+    C33 = 57.7
+    C44 = 11.1
+    C55 = 16.6
+    C66 = 66.7
+    C12 = 45.5
+    C13 = 10.6
+    C15 = -16.0
+    C23 = 9.6
+    C25 = -4.6
+    C35 = -1.0
+    C46 = -5.9
+
+    Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
+                    [C12, C22, C23, 0.0, C25, 0.0],
+                    [C13, C23, C33, 0.0, C35, 0.0],
+                    [0.0, 0.0, 0.0, C44, 0.0, C46],
+                    [C15, C25, C35, 0.0, C55, 0.0],
+                    [0.0, 0.0, 0.0, C46, 0.0, C66]])
+
+    properties = ElasticProps(
+        mineral_name='phlogopite',
+        crystal_system='Monoclinic',
+        temperature=25,
+        pressure=1e-4,
+        density=2.790,
+        Cij=np.around(Cij, decimals=2),
+        reference='10.1016/j.pepi.2014.05.004')
+
+    return properties
+
+
 ##################################################################
 # 1.8 OTHER SILICATES
 
@@ -1474,9 +1780,82 @@ def kyanite(model='DFT'):
     return properties
 
 
+def chloritoid():
+    """
+    Returns the corresponding elastic tensor (GPa) and density
+    (g/cm3) and other derived elastic properties of chloritoid
+    based on experimental data of Lee et al. (2021) [1]
+
+    Caveats
+    -------
+        - The function does not account for temperature or
+        pressure effects and assumes room conditions
+
+    Returns
+    -------
+    properties : ElasticProps dataclass
+        An object containing the following properties:
+        - name: Name of the crystal ('chloritoid').
+        - crystal_system: Crystal system.
+        - temperature: Temperature in degrees Celsius (assumed 25).
+        - pressure: Pressure in GPa.
+        - density: Density in g/cm3.
+        - cijs: 6x6 array representing the elastic tensor.
+        - sijs: 6x6 array representing the compliance tensor
+        - reference: Reference to the source publication.
+        - decompose: the decomposition of the elastic tensor
+            into lower symmetriy classes
+        - Other average (seismic & elastic) properties
+        - Several anisotropy indexes
+
+    Examples
+    --------
+    >>> cld = chloritoid()
+
+    References
+    ----------
+    [1] Lee, J., Mookherjee, M., Kim, T., Jung, H., Klemd, R., 2021.
+    Seismic Anisotropy in Subduction Zones: Evaluating the Role of Chloritoid.
+    Front. Earth Sci. 9, 644958. https://doi.org/10.3389/feart.2021.644958 
+    """
+
+    # elastic independent terms
+    C11 = 297.7
+    C22 = 275.2
+    C33 = 262.4
+    C44 = 45.8
+    C55 = 44.2
+    C66 = 112.6
+    C12 = 72.1
+    C13 = 45.1
+    C15 = 11.2
+    C23 = 36.6
+    C25 = -4.4
+    C35 = 3.1
+    C46 = -7.5
+
+    Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
+                    [C12, C22, C23, 0.0, C25, 0.0],
+                    [C13, C23, C33, 0.0, C35, 0.0],
+                    [0.0, 0.0, 0.0, C44, 0.0, C46],
+                    [C15, C25, C35, 0.0, C55, 0.0],
+                    [0.0, 0.0, 0.0, C46, 0.0, C66]])
+
+    properties = ElasticProps(
+        mineral_name='chloritoid',
+        crystal_system='Monoclinic',
+        temperature=25,
+        pressure=1e-4,
+        density=3.100,
+        Cij=np.around(Cij, decimals=2),
+        reference='https://doi.org/10.3389/feart.2021.644958')
+
+    return properties
+
+
 if __name__ == '__main__':
-    print('Mineral Elastic Database v.2025.2.11')
+    print('Mineral Elastic Database v.2025.4.11')
 else:
-    print('Mineral Elastic Database v.2025.2.11 imported')
+    print('Mineral Elastic Database v.2025.4.11 imported')
 
 # End of file
