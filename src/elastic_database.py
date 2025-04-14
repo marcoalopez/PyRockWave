@@ -1538,7 +1538,8 @@ def muscovite():
     """
     Returns the corresponding elastic tensor (GPa) and density
     (g/cm3) and other derived elastic properties of muscovite
-    based on experimental data of Vaughan and Guggenheim (1986) [1]
+    based on atomic first-principles using local density approximation,
+    see Table 2 in Militzer et al. (2011) [1]
 
     Caveats
     -------
@@ -1568,9 +1569,10 @@ def muscovite():
 
     References
     ----------
-    [1] Vaughan, M.T., Guggenheim, S., 1986. Elasticity of muscovite and
-    its relationship to crystal structure. J. Geophys. Res. 91, 4657–4664.
-    https://doi.org/10.1029/JB091iB05p04657 
+    [1] Militzer, B., Wenk, H.-R., Stackhouse, S., Stixrude, L.,
+    2011. First-principles calculation of the elastic moduli of
+    sheet silicates and their application to shale anisotropy.
+    American Mineralogist 96, 125–137. https://doi.org/10.2138/am.2011.3558 
     """
 
     # elastic independent terms
@@ -1602,7 +1604,7 @@ def muscovite():
         pressure=1e-4,
         density=2.830,
         Cij=np.around(Cij, decimals=2),
-        reference='https://doi.org/10.3389/feart.2021.644958')
+        reference='https://doi.org/10.2138/am.2011.3558')
 
     return properties
 
