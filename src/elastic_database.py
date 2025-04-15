@@ -1751,7 +1751,7 @@ def kyanite(model='DFT'):
         C24, C25, C26 = -22, -3, 3     # ...
         C34, C35, C36 = -30, 3, 0      # ...
 
-    elif type == 'THB':
+    elif model == 'THB':
         C11, C22, C33 = 363, 428, 490
         C44, C55, C66 = 203, 117, 110
         C12, C13, C23 = 124, 100, 175
@@ -1782,16 +1782,23 @@ def kyanite(model='DFT'):
     return properties
 
 
-def chloritoid():
+def chloritoid(model='GGA'):
     """
     Returns the corresponding elastic tensor (GPa) and density
     (g/cm3) and other derived elastic properties of chloritoid
-    based on experimental data of Lee et al. (2021) [1]
+    based on atomic first-principles as calculated in Lee et al.
+    (2021) [1] using density functional theory (DFT).
 
     Caveats
     -------
         - The function does not account for temperature or
         pressure effects and assumes room conditions
+    
+    Parameters
+    ----------
+    model : str
+        whether DFT is local density approximation (LDA) or
+        generalized gradient approximation (GGA). Default is GGA.
 
     Returns
     -------
@@ -1821,20 +1828,23 @@ def chloritoid():
     Front. Earth Sci. 9, 644958. https://doi.org/10.3389/feart.2021.644958 
     """
 
-    # elastic independent terms
-    C11 = 297.7
-    C22 = 275.2
-    C33 = 262.4
-    C44 = 45.8
-    C55 = 44.2
-    C66 = 112.6
-    C12 = 72.1
-    C13 = 45.1
-    C15 = 11.2
-    C23 = 36.6
-    C25 = -4.4
-    C35 = 3.1
-    C46 = -7.5
+    # elastic independent terms (in GPa) and densities in g/cm3
+    if model == 'GGA':
+        C11, C22, C33 = 297.7, 275.2, 262.4  # diagonal pure shear
+        C44, C55, C66 = 45.8, 44.2, 112.6    # diagonal simple shear
+        C12, C13, C23 = 72.1, 45.1, 36.6     # off-diagonal pure shear
+        C46 = -7.5                           # off-diagonal simple shear
+        C15, C25, C35= 11.2, -4.4, 3.1       # pure-simple shear relations
+    
+    elif model == 'LDA':
+        C11, C22, C33 = 336.0, 319.6, 320.2  # diagonal pure shear
+        C44, C55, C66 = 51.8, 46.8, 126.2    # diagonal simple shear
+        C12, C13, C23 = 82.0, 63.0, 56.0     # off-diagonal pure shear
+        C46 = -8.0                           # off-diagonal simple shear
+        C15, C25, C35= 12.9, -6.7, 2.1       # pure-simple shear relations
+
+    else:
+        raise ValueError("Model must be: 'GGA' (default) or 'LDA'")
 
     Cij = np.array([[C11, C12, C13, 0.0, C15, 0.0],
                     [C12, C22, C23, 0.0, C25, 0.0],
@@ -1856,8 +1866,8 @@ def chloritoid():
 
 
 if __name__ == '__main__':
-    print('Mineral Elastic Database v.2025.4.11')
+    print('Mineral Elastic Database v.2025.4.15')
 else:
-    print('Mineral Elastic Database v.2025.4.11 imported')
+    print('Mineral Elastic Database v.2025.4.15 imported')
 
 # End of file
