@@ -797,7 +797,7 @@ def epidote():
         crystal_system='Monoclinic',
         temperature=25,
         pressure=1e-4,
-        density=3.44,
+        density=3.434,
         Cij=np.around(Cij, decimals=2),
         reference='https://doi.org/10.1029/RF002p0045')
 
