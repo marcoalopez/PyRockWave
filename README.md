@@ -1,6 +1,6 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2025-01-27
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2025-07-15
 
 ## What is PyRockWave?
 
@@ -11,13 +11,13 @@ Designed with modularity in mind using Python functions, PyRockWave facilitates 
 View repository on GitHub: https://github.com/marcoalopez/PyRockWave
 
 > [!CAUTION]
-> PyRockWave is still under development (alpha state). Functionality may change significantly, potentially breaking backward compatibility. Most of the code is undertested, and there is no installation guide or detailed documentation yet. However, the code is (and always will be) open source and free. While there is no official release or comprehensive documentation, you are welcome to explore and use it at your own risk.
+> PyRockWave is still under development (alpha state). Functionality may change significantly, potentially breaking backward compatibility. Most of the code is undertested, and there is no installation guide or detailed documentation yet. However, the code is free and open source and always will be. Although there is no official release or comprehensive documentation, you are welcome to explore and use the software at your own risk..
 
 ## Requirements & Python installation
 
 TODO
 
-## How to use it?
+## Examples
 
 - [Interacting with the mineral elastic data](https://github.com/marcoalopez/PyRockWave/blob/main/src/example_database.ipynb)
 
@@ -46,7 +46,7 @@ The GitHub website hosting the project provides several options (you will need a
 
 ## Funding
 
-The seed of these codes has been made possible thanks to funding from the Government of the Principality of Asturias and the Foundation for the Promotion of Applied Research in Asturias (FICYT) (grant: SV-PA-21-AYUD/2021/57163) under the Asturias Plan for Science, Technology and Innovation 2018-2022 (PCTI-Asturias). 
+The seed of these codes has been made possible thanks to funding from the Government of the Principality of Asturias and the Foundation for the Promotion of Applied Research in Asturias (FICYT) (grant: SV-PA-21-AYUD/2021/57163) under the Asturias Plan for Science, Technology and Innovation (PCTI-Asturias) 2018-2022. I am currently seeking further funding to complete this project.
 
 ---
 *Copyright © 2025 Marco A. Lopez-Sanchez*  
