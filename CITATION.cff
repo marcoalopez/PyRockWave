@@ -11,7 +11,7 @@ authors:
   - orcid: 'https://orcid.org/0000-0002-0261-9267'
     given-names: Marco Antonio
     family-names: Lopez-Sanchez
-    email: marcoalopez@outlook.com
+    email: marco.lopez@cic.es
 identifiers:
   - type: url
     value: 'https://github.com/marcoalopez/PyRockWave'
