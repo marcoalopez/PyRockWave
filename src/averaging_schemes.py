@@ -34,9 +34,9 @@ import numpy as np
 
 # Function definitions
 def voigt_volume_weighted_average(
-        elastic_tensors: np.ndarray,
-        volume_fractions: np.ndarray
-        ):
+    elastic_tensors: np.ndarray,
+    volume_fractions: np.ndarray
+):
     """Calculates the Voigt average of a set of mineral
     phases, described by their elastic tensors and
     volume fractions.
@@ -84,9 +84,9 @@ def voigt_volume_weighted_average(
 
 
 def reuss_volume_weighted_average(
-        elastic_tensors: np.ndarray,
-        volume_fractions: np.ndarray
-        ):
+    elastic_tensors: np.ndarray,
+    volume_fractions: np.ndarray
+):
     """Calculates the Reuss average of a set of mineral
     phases, described by their elastic tensors and
     volume fractions.
@@ -139,9 +139,9 @@ def reuss_volume_weighted_average(
 
 
 def voigt_CPO_weighted_average(
-        elastic_tensor: np.ndarray,
-        ODF: np.ndarray
-        ):
+    elastic_tensor: np.ndarray,
+    ODF: np.ndarray
+):
     """Calculates the elastic tensor Voigt average of a
     mineral phase considering the crystallographic
     preferred orientation of the aggregate
@@ -174,9 +174,9 @@ def voigt_CPO_weighted_average(
 
 
 def reuss_CPO_weighted_average(
-        compliance_tensor: np.ndarray,
-        ODF: np.ndarray
-        ):
+    compliance_tensor: np.ndarray,
+    ODF: np.ndarray
+):
     """Calculates the compliance tensor Reuss average of a
     mineral phase considering the crystallographic
     preferred orientation of the aggregate

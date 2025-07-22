@@ -119,7 +119,10 @@ def christoffel_wave_speeds(
         pass
 
 
-def _christoffel_matrix(wavevectors: np.ndarray, Cijkl: np.ndarray) -> np.ndarray:
+def _christoffel_matrix(
+    wavevectors: np.ndarray,
+    Cijkl: np.ndarray
+) -> np.ndarray:
     """Calculate the Christoffel matrix for a given wave vector
     and elastic tensor Cij.
 
@@ -199,7 +202,7 @@ def _calc_eigen(Mil: np.ndarray):
 def calc_phase_velocities(eigenvalues: np.ndarray) -> np.ndarray:
     """Estimate the material's sound velocities of a monochromatic
     plane wave, referred to as the phase velocity, as a function of
-    crystal/aggreagte orientation from the Christoffel matrix (M).
+    crystal/aggregate orientation from the Christoffel matrix (M).
     It returns three velocities, one primary (P wave) and two
     secondary (S waves). It is assumed that the Christoffel tensor
     provided is already normalised to the density of the material.
@@ -296,7 +299,8 @@ def _christoffel_gradient_matrix(
 
 
 def _eigenvalue_derivatives(
-    eigenvectors: np.ndarray, gradient_matrix: np.ndarray
+    eigenvectors: np.ndarray,
+    gradient_matrix: np.ndarray
 ) -> np.ndarray:
     """Calculate the derivatives of eigenvectors with respect to
     the gradient matrix.
