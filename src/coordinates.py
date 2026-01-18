@@ -147,10 +147,11 @@ def equispaced_S2_grid(num_points=20809, degrees=False, hemisphere=None):
     theta = 2 * np.pi * i / golden_ratio
     phi = np.arccos(1 - 2 * (i + epsilon) / (num_points - 1 + 2 * epsilon))
 
-    # place a datapoint at each pole, it adds two datapoints removed before
+    # place one datapoint at each pole, it adds two datapoints removed before
     theta, phi = np.insert(theta, 0, 0), np.insert(phi, 0, 0)
+    theta, phi = np.append(theta, 0), np.append(phi, np.pi)
 
-    # 
+    # check options and apply
     if degrees is False:
         if hemisphere == 'upper':
             azimuth, polar_ang = theta[phi <= np.pi/2] % (2*np.pi), phi[phi <= np.pi/2]
