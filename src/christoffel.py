@@ -24,7 +24,6 @@
 #                                                                             #
 # Author: Marco A. Lopez-Sanchez                                              #
 # ORCID: http://orcid.org/0000-0002-0261-9267                                 #
-# Email: lopezmarco [to be found at] uniovi dot es                            #
 # Website: https://marcoalopez.github.io/PyRockWave/                          #
 # Repository: https://github.com/marcoalopez/PyRockWave                       #
 ###############################################################################
@@ -32,99 +31,237 @@
 # Import statements
 import numpy as np
 import pandas as pd
+from tensor_tools import _rearrange_tensor
+from coordinates import sph2cart
 
 
 # Function definitions
-def christoffel_wave_speeds(
+def phase_seismic_properties(
     Cij: np.ndarray,
     density_gcm3: float,
-    wavevectors: np.ndarray,
-    type="phase"
-):
-    """_summary_
+    azimuths_deg: np.ndarray,
+    polar_deg: np.ndarray,
+) -> pd.DataFrame:
+    """
+    Compute phase/group velocities, enhancement factors,
+    and power flow angles.
 
     Parameters
     ----------
     Cij : numpy.ndarray
         The 6x6 elastic tensor in Voigt notation.
+    
+    density : float
+        density in g/cm^3
 
-    density : _type_
-        _description_
+    azimuths_deg, phi_deg : numpy.ndarray
+        1D arrays describing wavevector directions
 
-    wavevectors : numpy.ndarray
-        The wave vectors normalized to lie on the unit sphere as a
-        1D or 2D NumPy array.
-        If 1D, shape must be (3,).
-        If 2D, shape must be (n, 3).
-
-    type : str, optional
-        _description_, by default 'phase'
-
-    Raises
-    ------
-    ValueError
-        If Cij is not a 6x6 symmetric NumPy array.
-    TODO
+    Returns
+    -------
+    pd.DataFrame
+        One row per direction, with columns for:
+        - input angles, wavevector components
+        - phase velocities (Vs2, Vs1, Vp)
+        - group speed and direction (per mode)
+        - group spherical angles (per mode)
+        - power flow angles (per mode)
+        - enhancement factors (per mode)
     """
-
     # Sanity checks on inputs
     validate_cijs(Cij)
-    validate_wavevectors(wavevectors)
-        
-    # rearrange in case wavevectors have a shape (3,)
-    if wavevectors.ndim == 1 and wavevectors.shape[0] == 3:
-        wavevectors = wavevectors.reshape(1, 3)
+
+    azimuths_deg = np.asarray(azimuths_deg, dtype=float)
+    polar_deg = np.asarray(polar_deg, dtype=float)
+    if azimuths_deg.shape != polar_deg.shape:
+        raise ValueError("azimuths_deg and polar_deg must have the same shape.")
+    if azimuths_deg.ndim != 1:
+        raise ValueError("azimuths_deg and polar_deg must be 1D arrays.")
+
+    if not np.isfinite(density_gcm3) or density_gcm3 <= 0:
+        raise ValueError("density_gcm3 must be a positive finite float.")
+
+    # Build unit wavevectors q (n, 3)
+    azimuths_rad = np.deg2rad(azimuths_deg)
+    polar_rad = np.deg2rad(polar_deg)
+    x, y, z = sph2cart(azimuths_rad, polar_rad)
+    q = np.column_stack((x, y, z))
 
     # rearrange tensor Cij → Cijkl
     Cijkl = _rearrange_tensor(Cij)
 
-    # estimate the normalized Christoffel matrix (M) for
-    # every wavevector
-    Mij = _christoffel_matrix(wavevectors, Cijkl)
-    scaling_factor = 1 / density_gcm3
-    norm_Mij = Mij * scaling_factor
+    # normalize Cijkl with density, with Cijkl in GPa and ρ in g/cm^3 gives (km/s)^2
+    Cijkl_norm = Cijkl / density_gcm3
 
-    # estimate the eigenvalues and eigenvectors
-    eigenvalues, eigenvectors = _calc_eigen(norm_Mij)
+    # estimate the Christoffel matrix (M) for every wavevector (n,3,3)
+    M = _christoffel_matrix(q, Cijkl_norm)
 
-    # CALCULATE PHASE VELOCITIES (km/s)
-    phase_velocities = calc_phase_velocities(eigenvalues)
+    # estimate the eigenvalues and eigenvectors, (n,3), (n,3,3)
+    eigenvalues, eigenvectors = _calc_eigen(M)
 
-    if type == "phase":
-        # calculate shear wave splitting
+    # COMPUTE PHASE VELOCITIES   
+    phase_vel = calc_phase_velocities(eigenvalues)  # (n,3)
 
-        # return a dataframe with phase velocities
+    # compute shear wave splitting
+    sws = (phase_vel[:, 1] - phase_vel[:, 0]) / ((phase_vel[:, 1] + phase_vel[:, 0]) / 2)
 
-        pass
+    # Assemble DataFrame
+    df = pd.DataFrame(
+        {
+            "azimuths_deg": azimuths_deg,
+            "polar_deg": polar_deg,
+            "qx": q[:, 0],
+            "qy": q[:, 1],
+            "qz": q[:, 2],
+            # phase velocities
+            "Vs2_phase_kms": phase_vel[:, 0],
+            "Vs1_phase_kms": phase_vel[:, 1],
+            "Vp_phase_kms": phase_vel[:, 2],
+            # Vp/Vs
+            "VpVs1": phase_vel[:, 2] / phase_vel[:, 1],
+            "VpVs2": phase_vel[:, 2] / phase_vel[:, 0],
+            # polarization anisotropy (shear-wave splitting)
+            "SWS_perc": 100 * sws,
+            # deviation from the isotropic average
+            # TODO
+        }
+    )
 
-    else:
-        # calculate the derivative of the Christoffel matrix (∇M)
-        dMijk = _christoffel_gradient_matrix(wavevectors, Cijkl)
+    return df, eigenvectors
 
-        # calculate the derivative of the Christoffel matrix eigenvalues.
-        dλ = _eigenvalue_derivatives(eigenvectors, dMijk)
+def full_seismic_properties(
+    Cij: np.ndarray,
+    density_gcm3: float,
+    azimuths_deg: np.ndarray,
+    polar_deg: np.ndarray,
+) -> pd.DataFrame:
+    """
+    Compute phase/group velocities, enhancement factors,
+    and power flow angles.
 
-        # CALCULATE GROUP VELOCITIES (km/s)
-        Vs2, Vs1, Vp = calc_group_velocities(
-            phase_velocities, eigenvectors, dMijk, wavevectors
-        )
+    Parameters
+    ----------
+    Cij : numpy.ndarray
+        The 6x6 elastic tensor in Voigt notation.
+    
+    density : float
+        density in g/cm^3
 
-        # CALCULATE THE ENHANCEMENT FACTOR
-        H = _christoffel_matrix_hessian(Cijkl)
-        Hλ = _hessian_eigen(H, dλ)
-        A = _calc_enhancement_factor(Hλ)
+    azimuths_deg, phi_deg : numpy.ndarray
+        1D arrays describing wavevector directions
 
-        # return a dataframe with group velocities
+    Returns
+    -------
+    pd.DataFrame
+        One row per direction, with columns for:
+        - input angles, wavevector components
+        - phase velocities (Vs2, Vs1, Vp)
+        - group speed and direction (per mode)
+        - group spherical angles (per mode)
+        - power flow angles (per mode)
+        - enhancement factors (per mode)
+    """
+    # Sanity checks on inputs
+    validate_cijs(Cij)
 
-        pass
+    azimuths_deg = np.asarray(azimuths_deg, dtype=float)
+    polar_deg = np.asarray(polar_deg, dtype=float)
+    if azimuths_deg.shape != polar_deg.shape:
+        raise ValueError("azimuths_deg and polar_deg must have the same shape.")
+    if azimuths_deg.ndim != 1:
+        raise ValueError("azimuths_deg and polar_deg must be 1D arrays.")
+
+    if not np.isfinite(density_gcm3) or density_gcm3 <= 0:
+        raise ValueError("density_gcm3 must be a positive finite float.")
+
+    # Build unit wavevectors q (n, 3)
+    azimuths_rad = np.deg2rad(azimuths_deg)
+    polar_rad = np.deg2rad(polar_deg)
+    x, y, z = sph2cart(azimuths_rad, polar_rad)
+    q = np.column_stack((x, y, z))
+
+    # rearrange tensor Cij → Cijkl
+    Cijkl = _rearrange_tensor(Cij)
+
+    # normalize Cijkl with density
+    # with Cijkl in GPa and density in g/cm^3 gives (km/s)^2
+    Cijkl_norm = Cijkl / density_gcm3
+
+    # estimate the Christoffel matrix (M) for every wavevector (n,3,3)
+    M = _christoffel_matrix(q, Cijkl_norm)
+
+    # estimate the eigenvalues and eigenvectors, (n,3), (n,3,3)
+    eigenvalues, eigenvectors = _calc_eigen(M)
+
+    # COMPUTE PHASE VELOCITIES   
+    phase_vel = calc_phase_velocities(eigenvalues)  # (n,3)
+
+    # COMPUTE GROUP VELOCITIES
+    gradM = _christoffel_gradient_matrix(q, Cijkl_norm)
+    group = calc_group_velocities(phase_vel, eigenvectors, gradM, q)
+
+    # COMPUTE ENHANCEMENT FACTOR
+    hessM = _christoffel_matrix_hessian(Cijkl_norm)
+    Hλ = _get_hessian_eigen(eigenvalues, eigenvectors, gradM, hessM)
+    enh = calc_enhancement_factor(
+        Hλ, phase_vel, group["group_velocity"], group["group_speed"], q
+    )
+
+    # Power flow (already computed in group dict, but keep a dedicated function too)
+    pf_deg = calc_power_flow_angles(group["group_dir"], q)
+
+    # Assemble DataFrame
+    df = pd.DataFrame(
+        {
+            "azimuths_deg": azimuths_deg,
+            "polar_deg": polar_deg,
+            "qx": q[:, 0],
+            "qy": q[:, 1],
+            "qz": q[:, 2],
+            # phase velocities
+            "Vs2_phase_kms": phase_vel[:, 0],
+            "Vs1_phase_kms": phase_vel[:, 1],
+            "Vp_phase_kms": phase_vel[:, 2],
+            # group speeds
+            "Vs2_group_kms": group["group_speed"][:, 0],
+            "Vs1_group_kms": group["group_speed"][:, 1],
+            "Vp_group_kms": group["group_speed"][:, 2],
+            # power flow angles
+            "Vs2_powerflow_deg": pf_deg[:, 0],
+            "Vs1_powerflow_deg": pf_deg[:, 1],
+            "Vp_powerflow_deg": pf_deg[:, 2],
+            # enhancement factors
+            "Vs2_enhancement": enh[:, 0],
+            "Vs1_enhancement": enh[:, 1],
+            "Vp_enhancement": enh[:, 2],
+            # group spherical angles
+            "Vs2_group_azimuths_deg": group["group_azimuths_deg"][:, 0],
+            "Vs1_group_azimuths_deg": group["group_azimuths_deg"][:, 1],
+            "Vp_group_azimuths_deg": group["group_azimuths_deg"][:, 2],
+            "Vs2_group_polar_deg": group["group_polar_deg"][:, 0],
+            "Vs1_group_polar_deg": group["group_polar_deg"][:, 1],
+            "Vp_group_polar_deg": group["group_polar_deg"][:, 2],
+        }
+    )
+
+    # Optional: add group direction components (often useful)
+    for mode_name, mode_idx in [("Vs2", 0), ("Vs1", 1), ("Vp", 2)]:
+        df[f"{mode_name}_group_dir_x"] = group["group_dir"][:, mode_idx, 0]
+        df[f"{mode_name}_group_dir_y"] = group["group_dir"][:, mode_idx, 1]
+        df[f"{mode_name}_group_dir_z"] = group["group_dir"][:, mode_idx, 2]
+
+    return df, eigenvectors
 
 
 def _christoffel_matrix(
     wavevectors: np.ndarray,
     Cijkl: np.ndarray
 ) -> np.ndarray:
-    """Calculate the Christoffel matrix for a given wave vector
+    """
+    Calculate the Christoffel matrix for a given wave vector
     and elastic tensor Cij.
+
+    Christoffel matrix:  M_il = q_j @ C_ijkl @ q_k
 
     Parameters
     ----------
@@ -133,34 +270,22 @@ def _christoffel_matrix(
         Numpy array of shape (n, 3).
 
     Cijkl : numpy.ndarray
-        The elastic tensor as a 4D NumPy array of shape (3, 3, 3, 3).
+        The elastic tensor as a 4D NumPy array of shape (3, 3, 3, 3)
+        with indices (i, j, k, l).
 
     Returns
     -------
     numpy.ndarray
-        The Christoffel matri(x)ces as a 2D NumPy array of shape (n, 3, 3).
+        The Christoffel matri(x)ces of shape (n, 3, 3).
 
     Notes
     -----
     The Christoffel matrix is calculated using the formula
-    Mil = qj @ Cijkl @ qk, where M is the Christoffel matrix, q is a
-    wave vector, and Cijkl is the elastic tensor (stiffness matrix).
+    Mil = qj @ Cijkl @ qk, where Mil is the Christoffel matrix,
+    q is a wave vector, and Cijkl is the elastic tensor.
     """
 
-    # Validate input parameters
-    if not isinstance(Cijkl, np.ndarray) or Cijkl.shape != (3, 3, 3, 3):
-        raise ValueError("Cijkl should be a 4D NumPy array of shape (3, 3, 3, 3).")
-
-    # get the number of wave vectors
-    n = wavevectors.shape[0]
-
-    # initialize array (pre-allocate)
-    Mil = np.zeros((n, 3, 3))
-
-    for i in range(n):
-        Mil[i, :, :] = np.dot(wavevectors[i, :], np.dot(wavevectors[i, :], Cijkl))
-
-    return Mil
+    return np.einsum("nj,ijkl,nk->nil", wavevectors, Cijkl, wavevectors)
 
 
 def _calc_eigen(Mil: np.ndarray):
@@ -169,8 +294,8 @@ def _calc_eigen(Mil: np.ndarray):
     primary (P) and secondary (S-fast, S-slow) wave speeds. The
     eigenvectors provide the unsigned polarization directions,
     which are orthogonal to each other. It is assumed that the
-    Christoffel tensor provided is already normalised to the
-    density of the material.
+    Christoffel tensor provided is normalised to the density
+    of the material.
 
     Parameters
     ----------
@@ -185,27 +310,19 @@ def _calc_eigen(Mil: np.ndarray):
         a (n, 3, 3) array with the eigenvectors of each matrix
     """
 
-    # get the number of Christoffel matrices to proccess
-    n = Mil.shape[0]
-
-    # preallocate arrays
-    eigen_values = np.zeros((n, 3))
-    eigen_vectors = np.zeros((n, 3, 3))
-
-    # TO REIMPLEMENT ASSUMING A SHAPE (n, 3, 3).
-    for i in range(n):
-        eigen_values[i, :], eigen_vectors[i, :, :] = np.linalg.eigh(Mil[i, :, :])
+    eigen_values, eigen_vectors = np.linalg.eigh(Mil)  # v columns are eigenvectors
+    # eigen_vectors = np.swapaxes(eigen_vectors, 1, 2)   # rows are eigenvectors (mode, cart)
 
     return eigen_values, eigen_vectors
 
 
 def calc_phase_velocities(eigenvalues: np.ndarray) -> np.ndarray:
-    """Estimate the material's sound velocities of a monochromatic
+    """
+    Compute the material's sound velocities of a monochromatic
     plane wave, referred to as the phase velocity, as a function of
     crystal/aggregate orientation from the Christoffel matrix (M).
     It returns three velocities, one primary (P wave) and two
-    secondary (S waves). It is assumed that the Christoffel tensor
-    provided is already normalised to the density of the material.
+    secondary (S waves).
 
     Parameters
     ----------
@@ -250,9 +367,10 @@ def _christoffel_gradient_matrix(
     wavevectors: np.ndarray,
     Cijkl: np.ndarray
 ) -> np.ndarray:
-    """Calculate the derivative of the Christoffel matrix. The
-    derivative of the Christoffel matrix is computed using
-    the formula (e.g. Jaeken and Cottenier, 2016):
+    """
+    Gradient of Christoffel matrix with respect to
+    wavevector components computed using the formula
+    (e.g. Jaeken and Cottenier, 2016):
 
     ∂Mij / ∂q_k = ∑m (Cikmj + Cimkj) *  q_m
 
@@ -268,9 +386,9 @@ def _christoffel_gradient_matrix(
 
     Returns
     -------
-    numpy.ndarray
-        The gradient matrix of the Christoffel matrix with respect
-        to x_n, reshaped as a 3D NumPy array of shape (n, 3, 3, 3).
+    numpy.ndarray (n, 3, 3, 3)
+        The Christoffel gradient matrix
+        gradM[n, a, i, l] = ∂M_il / ∂q_a
 
     Notes
     -----
@@ -278,70 +396,52 @@ def _christoffel_gradient_matrix(
     vector and the elastic tensor Cijkl. The derivative of the
     Christoffel matrix with respect a wave vector is given by the
     summation of the products of q_k (wave vector component)
-    and the terms (Cikmj + Cimkj). The final result is reshaped to a
+    and the terms (Cikmj + Cimkj). The final result is a
     3D matrix with shape (3, 3, 3).
     """
 
-    # get the number of wave vectors
-    n = wavevectors.shape[0]
+    q = wavevectors
+    term1 = np.einsum("nm,iaml->nail", q, Cijkl)
+    term2 = np.einsum("nm,imal->nail", q, Cijkl)
 
-    # initialize array (pre-allocate)
-    M_ilk = np.zeros((n, 3, 3, 3))
-
-    # calculate the gradient matrices from the Christoffel matrices
-    for i in range(n):
-        Milk_temp = np.dot(
-            wavevectors[i, :], Cijkl + np.transpose(Cijkl, (0, 2, 1, 3))
-        )
-        M_ilk[i, :, :, :] = np.transpose(Milk_temp, (1, 0, 2))
-
-    return M_ilk
+    return term1 + term2
 
 
 def _eigenvalue_derivatives(
     eigenvectors: np.ndarray,
     gradient_matrix: np.ndarray
 ) -> np.ndarray:
-    """Calculate the derivatives of eigenvectors with respect to
-    the gradient matrix.
+    """
+    Calculate the derivatives of eigenvectors with respect to
+    the gradient matrix:
+        dλ_mode/dq_a = v_mode^T (∂M/∂q_a) v_mode
 
     Parameters
     ----------
     eigenvectors : numpy.ndarray
         Array of shape (n, 3, 3) representing three eigenvectors
-        for each Christoffel matrix calculated.
+        for each Christoffel matrix calculated, rows=modes.
 
     gradient_matrix : numpy.ndarray
         The derivative of the Christoffel matrix, which has a
-        shape of (n, 3, 3, 3)
+        shape of (n, 3, 3, 3) [a, i, j]
 
     Returns
     -------
     numpy.ndarray:
         Array of shape (n, 3, 3), where the i-th index
         corresponds to the i-th eigenvector, and each element
-        (i, j, k) represents the derivative of the i-th
-        eigenvector with respect to the j-th component of
-        the k-th eigenvector.
+        (a, i, j) represents the derivative of the a-th
+        eigenvector with respect to the i-th component of
+        the j-th eigenvector. [n, mode, a]
     """
 
-    # get the number of wave vectors
-    n = eigenvectors.shape[0]
+    if eigenvectors.ndim != 3 or eigenvectors.shape[1:] != (3, 3):
+        raise ValueError("eigenvectors must have shape (n, 3, 3).")
+    if gradient_matrix.ndim != 4 or gradient_matrix.shape[1:] != (3, 3, 3):
+        raise ValueError("gradient_matrix must have shape (n, 3, 3, 3).")
 
-    # initialize array (pre-allocate)
-    eigen_derivatives = np.zeros((n, 3, 3))
-
-    # calculate the derivatives
-    for ori in range(n):
-        temp = np.zeros((3, 3))
-
-        for i in range(3):
-            for j in range(3):
-                temp[i, j] = np.dot(eigenvectors[ori, i], np.dot(gradient_matrix[ori, j], eigenvectors[ori, i]))
-
-        eigen_derivatives[ori] = temp
-
-    return eigen_derivatives
+    return np.einsum("nmi,ndij,nmj->nmd", eigenvectors, gradient_matrix, eigenvectors)
 
 
 def group_velocities(
@@ -419,94 +519,131 @@ def group_velocities(
     )
 
 
-def calc_spherical_angles(group_directions: np.ndarray) -> np.ndarray:
-    """ Calculate spherical angles (polar, azimuthal) for a given
-    velocity group directions (3D vectors).
+def calc_spherical_angles(vectors: np.ndarray) -> np.ndarray:
+    """
+    Convert unit vectors to spherical angles (theta, phi)
+    in degrees.
 
     Parameters
     ----------
-    group_directions : np.ndarray of shape (n, 3, 3)
-        _description_
+    vectors : np.ndarray, shape (n, 3, 3)
+        Direction vectors (need not be perfectly normalized).
 
     Returns
     -------
-    np.ndarray
-        _description_
+    theta_deg, phi_deg : np.ndarray
     """
     
-    # get the number of wave vectors
-    n = group_directions.shape[0]
+    v = vectors / np.linalg.norm(vectors, axis=-1, keepdims=True)
 
-    # initialize array (pre-allocate)
-    angles = np.zeros((n, 2))
+    x = v[..., 0]
+    y = v[..., 1]
+    z = np.clip(v[..., 2], -1.0, 1.0)
 
-    # calculate the derivatives
-    for ori in range(n):
-        x, z = group_directions[ori, : 0], group_directions[ori, : 2]
+    theta = np.arccos(z)                  # polar
+    phi = np.arctan2(y, x)                # [-pi, pi]
+    phi = np.mod(phi, 2.0 * np.pi)        # [0, 2pi)
 
-        # handle edge cases for z near ±1
-        # near_pole
+    return np.rad2deg(theta), np.rad2deg(phi)
 
 
-# TODO (UNTESTED!)
 def calc_group_velocities(
     phase_velocities: np.ndarray,
     eigenvectors: np.ndarray,
     christoffel_gradient: np.ndarray,
-    wave_vectors: np.ndarray
-) -> np.ndarray:
-    """Calculates the group velocities and power flow angles
-    of seismic waves as a funtion of direction.
+    wave_vectors: np.ndarray,
+) -> dict:
+    """
+    Calculate group velocity vectors, magnitudes, directions, and power flow angles.
 
-    Group velocity is the velocity with which the overall energy of the wave
-    propagates. It's calculated as the gradient of the phase velocity with
-    respect to the wave vector. The power flow angle is the angle between
-    the group velocity (energy direction) and the wave direction.
-
-    This function takes the phase velocities, eigenvectors of the Christoffel matrix,
-    derivative of the Christoffel matrix, and propagation direction as input and returns
-    the group velocity tensor, group velocity magnitude and direction for each wave mode,
-    and the power flow angle.
+    Matches Jaeken & Cottenier (2016) implementation logic.
 
     Parameters
     ----------
-    phase_velocities : numpy.ndarray
-        Phase velocities for a particular direction or directions
+    phase_velocities : (n, 3)
+        [Vs2, Vs1, Vp] phase velocities (km/s).
+    eigenvectors : (n, 3, 3)
+        eigenvectors[n, mode, cart].
+    christoffel_gradient : (n, 3, 3, 3)
+        gradM[n, a, i, j] = ∂M_ij/∂q_a
+    wave_vectors : (n, 3)
+        Unit phase directions q.
 
-    eigenvectors : numpy.ndarray
-        Eigenvectors of the Christoffel matrix.
-
-    christoffel_gradient : numpy.ndarray
-        Gradient of the Christoffel matrix (∇M)
+    Returns
+    -------
+    dict with keys:
+        grad_eigenvalues : (n, 3, 3)
+        group_velocity   : (n, 3, 3)   (mode, cart)
+        group_speed      : (n, 3)
+        group_dir        : (n, 3, 3)
+        group_theta_deg  : (n, 3)
+        group_phi_deg    : (n, 3)
+        cos_powerflow    : (n, 3)
+        powerflow_deg    : (n, 3)
     """
+    if phase_velocities.shape != (wave_vectors.shape[0], 3):
+        raise ValueError("phase_velocities must have shape (n, 3).")
+    if eigenvectors.shape != (wave_vectors.shape[0], 3, 3):
+        raise ValueError("eigenvectors must have shape (n, 3, 3).")
+    if christoffel_gradient.shape != (wave_vectors.shape[0], 3, 3, 3):
+        raise ValueError("christoffel_gradient must have shape (n, 3, 3, 3).")
+    if wave_vectors.shape[1] != 3:
+        raise ValueError("wave_vectors must have shape (n, 3).")
 
-    pass
+    # dλ/dq
+    grad_lam = _eigenvalue_derivatives(eigenvectors, christoffel_gradient)  # (n, mode, a)
+
+    # v_g = (dλ/dq) / (2 v_p)
+    denom = 2.0 * phase_velocities  # (n, mode)
+    group_vel = grad_lam / denom[:, :, None]  # (n, mode, cart)
+
+    group_speed = np.linalg.norm(group_vel, axis=-1)  # (n, mode)
+    group_dir = group_vel / group_speed[:, :, None]
+
+    # power flow angle between group direction and phase direction
+    cos_pf = np.einsum("nmi,ni->nm", group_dir, wave_vectors)
+    cos_pf = np.clip(cos_pf, -1.0, 1.0)
+    pf_rad = np.arccos(np.around(cos_pf, 10))
+    pf_deg = np.rad2deg(pf_rad)
+
+    # group direction spherical angles
+    gtheta_deg, gphi_deg = calc_spherical_angles(group_dir)
+
+    return {
+        "grad_eigenvalues": grad_lam,
+        "group_velocity": group_vel,
+        "group_speed": group_speed,
+        "group_dir": group_dir,
+        "group_theta_deg": gtheta_deg,
+        "group_phi_deg": gphi_deg,
+        "cos_powerflow": cos_pf,
+        "powerflow_deg": pf_deg,
+    }
 
 
 def _christoffel_matrix_hessian(Cijkl: np.ndarray) -> np.ndarray:
-    """Compute the Hessian of the Christoffel matrix. The Hessian
-    of the Christoffel matrix, denoted as hessianmat[i, j, k, L]
-    here represents the second partial derivatives of the Christoffel
-    matrix Mij with respect to the spatial coordinates q_k and q_m
-    Can be calculated directly from the stiffness tensor using the
-    formulas (e.g. Jaeken and Cottenier, 2016):
+    """
+    Hessian of Christoffel matrix (independent of q):
 
-    hessianmat[i, j, k, L] = ∂^2Mij / ∂q_k * ∂q_m
-    hessianmat[i, j, k, L] = Cikmj + Cimkj
+        H_ab,ij = ∂²M_ij / ∂q_a ∂q_b = C_iabj + C_ibaj
+        (index placement depends on chosen convention)
 
-    Note that the Hessian of the Christoffel matrix is independent
-    of q (wavevectors)
+    This matches the Jaeken & Cottenier construction:
+        hessmat[a][b][i][j] = C[i][a][b][j] + C[i][b][a][j]
+    once tensor index conventions are consistent.
 
     Parameters
     ----------
     Cijkl : numpy.ndarray
-        The elastic tensor as a 4D NumPy array of shape (3, 3, 3, 3).
+        NumPy array of shape (3, 3, 3, 3)
+        with indices (i,j,k,l)
 
     Returns
     -------
     numpy.ndarray
-        The Hessian of the Christoffel matrix as a
-        4D NumPy array of shape (3, 3, 3, 3).
+        The Hessian of the Christoffel matrix
+        (3, 3, 3, 3), hessM[a,b,i,j]
+        
 
     Notes
     -----
@@ -516,26 +653,28 @@ def _christoffel_matrix_hessian(Cijkl: np.ndarray) -> np.ndarray:
     """
 
     # initialize array (pre-allocate)
-    hessianmat = np.zeros((3, 3, 3, 3))
+    hessM = np.zeros((3, 3, 3, 3))
 
-    for i in range(3):
-        for j in range(3):
-            for k in range(3):
-                for L in range(3):
-                    hessianmat[i, j, k, L] = Cijkl[k, i, j, L] + Cijkl[k, j, i, L]
+    for a in range(3):
+        for b in range(3):
+            hessM[a, b, :, :] = Cijkl[:, a, b, :] + Cijkl[:, b, a, :]
 
-    return hessianmat
+    return hessM
 
 
-def _hessian_eigen(
+def _get_hessian_eigen(
     eigenvalues: np.ndarray,
     eigenvectors: np.ndarray,
     delta_Mij: np.ndarray,
     hess_matrix: np.ndarray,
+    tol: float = 1e-10,
 ) -> np.ndarray:
-    """Compute the hessian of eigenvalues.
+    """
+    Hessian of eigenvalues (per direction and mode):
 
-    Hessian[n][i][j] = d^2 lambda_n / dx_i dx_j
+        Hess(λ_mode) = v^T (Hess(M)) v  +  2 * (dM v) * pinv * (dM v)^T
+    
+    This follows Jaeken & Cottenier (2016) implementation.
 
     Parameters
     ----------
@@ -545,76 +684,130 @@ def _hessian_eigen(
 
     eigenvectors : numpy.ndarray
         The eigenvectors of the normalized Christoffel matrices,
-        which has a shape of (n, 3, 3)
+        which has a shape of (n, 3, 3), rows=modes
 
     delta_Mij : numpy.ndarray
         The derivatives of the Christoffel matrices, which has a
-        shape of (n, 3, 3)
+        shape of (n, 3, 3, 3), [n, a, i, j]
 
     hess_matrix : numpy.ndarray
         The Hessian matrix, which has a shape of (3, 3, 3, 3)
+        [a, b, i, j]
+    
+    tol : float
+        Degeneracy tolerance for eigenvalue differences.
 
     Returns
     -------
-    np.ndarray
-        _description_
+    Hlam : (n, 3, 3, 3)
+        Hlam[n, mode, a, b] = ∂²λ_mode / ∂q_a ∂q_b
     """
 
-    # get the number of orientations
-    n = eigenvectors.shape[0]
+    n = eigenvalues.shape[0]
 
-    # initialize array (pre-allocate)
-    hessian = np.zeros((n, 3, 3, 3))
+    # Term 1: v^T Hess(M) v  -> (n, mode, a, b)
+    term1 = np.einsum("abij,nmi,nmj->nmab", hess_matrix, eigenvectors, eigenvectors)
 
-    # procedure
-    for wavevector in range(n):
-        diag = np.zeros((n, 3, 3))  # initialize array
+    # Pseudoinverse term: pinv = V^T diag(1/(λ_m-λ_i)) V, with diag_mm = 0
+    denom = eigenvalues[:, :, None] - eigenvalues[:, None, :]  # (n, mode_target, mode_i)
+    w = np.zeros_like(denom)
+    mask = np.abs(denom) >= tol
+    w[mask] = 1.0 / denom[mask]
 
-        for j in range(3):
-            hessian[j] += np.dot(
-                np.dot(hess_matrix, eigenvectors[wavevector, j]), eigenvectors[wavevector, j]
-            )
+    diagmat = np.zeros((n, 3, 3, 3), dtype=eigenvalues.dtype)  # (n, mode_target, 3, 3)
+    idx = np.arange(3)
+    diagmat[:, :, idx, idx] = w
 
-            for i in range(3):
-                x = eigenvalues[wavevector, j] - eigenvalues[wavevector, i]
-                if abs(x) < 1e-10:
-                    diag[i, i] = 0.0
-                else:
-                    diag[i, i] = 1.0 / x
+    V = eigenvectors                       # (n, mode, cart)
+    VT = np.transpose(V, (0, 2, 1))        # (n, cart, mode)
+    tmp = VT[:, None, :, :] @ diagmat      # (n, mode_target, cart, mode)
+    pinv = tmp @ V[:, None, :, :]          # (n, mode_target, cart, cart)
 
-            pseudoinv = np.dot(np.dot(eigenvectors[wavevector].T, diag), eigenvectors[wavevector])
-            deriv_vec = np.dot(delta_Mij[wavevector], eigenvectors[wavevector, j])
+    # deriv_vec = gradM @ v  -> (n, mode, a, cart)
+    deriv = np.einsum("naij,nmj->nmai", delta_Mij, eigenvectors)
 
-            # Take derivative of eigenvectors into account: 2 * (d/dx s_i) * pinv_ij * (d_dy s_j)
-            hessian[j] += 2.0 * np.dot(np.dot(deriv_vec, pseudoinv), deriv_vec.T)
-    
-    return hessian
+    # Term 2: 2 * deriv * pinv * deriv^T  -> (n, mode, a, b)
+    term2 = 2.0 * np.einsum("nmai,nmij,nmbj->nmab", deriv, pinv, deriv)
+
+    return term1 + term2
 
 
-def _calc_enhancement_factor(Hλ):
-    pass
-
-
-############################################################################################
-def validate_cijs(Cij) -> bool:
-    """Input validation
+def calc_enhancement_factor(
+    hessian_eigenvalues: np.ndarray,
+    phase_velocities: np.ndarray,
+    group_velocity: np.ndarray,
+    group_speed: np.ndarray,
+    wave_vectors: np.ndarray,
+) -> np.ndarray:
+    """
+    Enhancement factor (exact, analytical)
+    as in Jaeken & Cottenier (2016).
 
     Parameters
     ----------
-    Cij : np.ndarray
-        The input array to validate.
+    hessian_eigenvalues : (n, 3, 3, 3)
+        Hlam[n, mode, a, b]
+    phase_velocities : (n, 3)
+    group_velocity : (n, 3, 3)
+        vg[n, mode, cart]
+    group_speed : (n, 3)
+        |vg|
+    wave_vectors : (n, 3)
+        q
 
     Returns
     -------
-    bool : True if the array is of the correct shape and type,
-    otherwise raises a ValueError.
+    enhancement : (n, 3)
     """
+    H = hessian_eigenvalues
+    vp = phase_velocities
+    vg = group_velocity
+    vg_abs = group_speed
+    q = wave_vectors
+
+    # grad_group = d(vg)/dq from paper’s algebra (implemented in reference code)
+    Hv = np.einsum("nmab,nmb->nma", H, vg)              # (n, mode, a)
+    outer = vg[..., :, None] * Hv[..., None, :]         # (n, mode, a, b)
+
+    grad_group = H / vg_abs[..., None, None] - outer / (vg_abs[..., None, None] ** 3)
+    grad_group = grad_group / (2.0 * vp[..., None, None])
+
+    cof = _cofactor_3x3(grad_group)                     # (n, mode, 3, 3)
+    vec = np.einsum("nmij,nj->nmi", cof, q)             # (n, mode, 3)
+
+    denom = np.linalg.norm(vec, axis=-1)
+    return np.where(denom > 0.0, 1.0 / denom, np.inf)
+
+
+def calc_power_flow_angles(group_dir: np.ndarray, wave_vectors: np.ndarray) -> np.ndarray:
+    """
+    Power flow angle (degrees) between group direction
+    and phase direction.
+
+    Parameters
+    ----------
+    group_dir : (n, 3, 3)
+        Unit group directions, group_dir[n, mode, cart]
+    wave_vectors : (n, 3)
+        Unit phase directions
+
+    Returns
+    -------
+    angles_deg : (n, 3)
+    """
+    cosang = np.einsum("nmi,ni->nm", group_dir, wave_vectors)
+    cosang = np.clip(cosang, -1.0, 1.0)
+
+    return np.rad2deg(np.arccos(np.around(cosang, 10)))
+
+
+############################################################################################
+def validate_cijs(Cij: np.ndarray) -> bool:
+    """Input validation for 6x6 Voigt stiffness matrix."""
     if not isinstance(Cij, np.ndarray) or Cij.shape != (6, 6):
         raise ValueError("Cij should be a 6x6 NumPy array.")
-
-    if Cij is not np.allclose(Cij, Cij.T):
+    if not np.allclose(Cij, Cij.T):
         raise ValueError("Cij should be symmetric.")
-
     return True
 
 
@@ -645,5 +838,35 @@ def validate_wavevectors(wavevectors) -> bool:
 
     return True
 
+
+def _cofactor_3x3(A: np.ndarray) -> np.ndarray:
+    """
+    Vectorized cofactor for 3x3 matrices.
+
+    Parameters
+    ----------
+    A : np.ndarray (n, 3, 3)
+
+    Returns
+    -------
+    np.ndarray (n, 3, 3)
+        Cofactor matrices.
+    """
+    a, b, c = A[..., 0, 0], A[..., 0, 1], A[..., 0, 2]
+    d, e, f = A[..., 1, 0], A[..., 1, 1], A[..., 1, 2]
+    g, h, i = A[..., 2, 0], A[..., 2, 1], A[..., 2, 2]
+
+    cof = np.empty_like(A)
+    cof[..., 0, 0] = e * i - f * h
+    cof[..., 0, 1] = f * g - d * i
+    cof[..., 0, 2] = d * h - e * g
+    cof[..., 1, 0] = c * h - b * i
+    cof[..., 1, 1] = a * i - c * g
+    cof[..., 1, 2] = b * g - a * h
+    cof[..., 2, 0] = b * f - c * e
+    cof[..., 2, 1] = c * d - a * f
+    cof[..., 2, 2] = a * e - b * d
+
+    return cof
 
 # End of file
