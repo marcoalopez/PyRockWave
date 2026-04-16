@@ -35,139 +35,169 @@ import numpy as np
 
 
 # Function definitions
-def snell(vp1, vp2, vs1, vs2, theta1):
+def snell(
+    vp_upper_layer: float | np.ndarray,
+    vp_lower_layer: float | np.ndarray,
+    vs_upper_layer: float | np.ndarray,
+    vs_lower_layer: float | np.ndarray,
+    theta1: float | np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculates the angles of refraction and reflection for an incident
     P-wave in a two-layered system.
 
     Parameters
     ----------
-    vp1 : float or array-like
+    vp_upper_layer : float or array-like
         P-wave velocity of upper layer.
-    vs1 : float or array-like
-        S-wave velocity of upper layer.
-    vp2 : float or array-like
+    vp_lower_layer : float or array-like
         P-wave velocity of lower layer.
-    vs2 : float or array-like
+    vs_upper_layer : float or array-like
+        S-wave velocity of upper layer.
+    vs_lower_layer : float or array-like
         S-wave velocity of lower layer.
     theta1 : float or array-like
-        Angle of incidence of P-wave in upper layer in degrees.
+        Angle(s) of incidence of P-wave in upper layer in degrees.
+        Must be in [0, 90).
 
     Returns
     -------
     theta2 : float or array-like
-        Angle of refraction for P-wave in lower layer in degrees.
+        Angle(s) of refraction for P-wave in lower layer in degrees.
     phi1 : float or array-like
-        Angle of reflection for S-wave in upper layer in degrees.
+        Angle(s) of reflection for S-wave in upper layer in degrees.
     phi2 : float or array-like
-        Angle of refraction for S-wave in lower layer in degrees.
+        Angle(s) of refraction for S-wave in lower layer in degrees.
     p : float or array-like
-        Ray parameter.
+        Ray parameter(s).
 
+    Notes
+    -----
+    At and beyond the critical angle np.arcsin returns nan silently;
+    no exception is raised.
     """
-    
+    if (np.any(np.asarray(vp_upper_layer) <= 0) or np.any(np.asarray(vp_lower_layer) <= 0)
+            or np.any(np.asarray(vs_upper_layer) <= 0) or np.any(np.asarray(vs_lower_layer) <= 0)):
+        raise ValueError("All velocities must be positive.")
+    if np.any(np.asarray(theta1) < 0) or np.any(np.asarray(theta1) >= 90):
+        raise ValueError("theta1 must be in [0, 90).")
+
     # Convert angles to radians
     theta1 = np.deg2rad(theta1)
-    
+
     # Calculate ray parameter using Snell's law
-    p = np.sin(theta1) / vp1
-    
+    p = np.sin(theta1) / vp_upper_layer
+
     # Calculate reflection and refraction angles using Snell's law
-    phi1 = np.arcsin(p * vs1)
-    theta2 = np.arcsin(p * vp2)
-    phi2 = np.arcsin(p * vs2)
+    phi1 = np.arcsin(p * vs_upper_layer)
+    theta2 = np.arcsin(p * vp_lower_layer)
+    phi2 = np.arcsin(p * vs_lower_layer)
 
     return theta2, phi1, phi2, p
 
 
 def calc_reflectivity(
-    cij_upper: np.ndarray,
-    cij_lower: np.ndarray,
-    density_upper: float,
-    density_lower: float,
-    incident_angles: np.ndarray,
-):
-    """_summary_
+    cij_upper_layer: np.ndarray,
+    cij_lower_layer: np.ndarray,
+    upper_density_gcm3: float,
+    lower_density_gcm3: float,
+    incident_angles_deg: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Convenience wrapper that computes PP reflectivity in both symmetry
+    planes for an interface between two orthorhombic media.
+
+    Extracts Tsvankin parameters from the input stiffness tensors and
+    calls :func:`reflectivity`.
 
     Parameters
     ----------
-    cij_upper : float
-        _description_
-    cij_lower : np.ndarray
-        _description_
-    density_upper : float
-        _description_
-    density_lower : float
-        _description_
-    incident_angles : _type_
-        _description_
+    cij_upper_layer : np.ndarray
+        The 6x6 elastic stiffness tensor of the upper layer in GPa.
+    cij_lower_layer : np.ndarray
+        The 6x6 elastic stiffness tensor of the lower layer in GPa.
+    upper_density_gcm3 : float
+        The density of the upper layer in g/cm³.
+    lower_density_gcm3 : float
+        The density of the lower layer in g/cm³.
+    incident_angles_deg : np.ndarray
+        Incident angles in degrees.
 
     Returns
     -------
-    _type_
-        _description_
+    Rxz : np.ndarray
+        PP reflectivity as a function of angle of incidence in the xz plane.
+    Ryz : np.ndarray
+        PP reflectivity as a function of angle of incidence in the yz plane.
     """
-    # compute Tsvankin params
-    # Vp0, Vs0, epsilon1, delta1, gamma1, epsilon2, delta2, gamma2, delta3
-    upper_layer_params = Tsvankin_params(cij_upper, density_upper)
-    lower_layer_params = Tsvankin_params(cij_lower, density_lower)
+    # Compute Tsvankin params for both layers
+    upper_layer_params = tsvankin_params(cij_upper_layer, upper_density_gcm3)
+    lower_layer_params = tsvankin_params(cij_lower_layer, lower_density_gcm3)
 
-    # calc reflectivity
-    return reflectivity(upper_layer_params, lower_layer_params, incident_angles)
+    # Delegate to reflectivity, converting angles from degrees to radians
+    return reflectivity(
+        upper_layer_params,
+        lower_layer_params,
+        upper_density_gcm3,
+        lower_density_gcm3,
+        np.deg2rad(incident_angles_deg),
+    )
 
 
 def reflectivity(
-    upper_layer_Tsvankin_params,
-    lower_layer_Tsvankin_params,
-    upper_rho: float,
-    lower_rho: float,
-    theta_rad: float,
-):
+    upper_layer_tsvankin_params: np.ndarray,
+    lower_layer_tsvankin_params: np.ndarray,
+    upper_density_gcm3: float,
+    lower_density_gcm3: float,
+    incident_angles_rad: float | np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates the P-wave reflectivity in the symmetry plane for interfaces
     between 2 orthorhombic media using the approach of Ruger (1998).
-    
+
     This is Python reimplementation with improved readability and
-    documentation from srb toolbox (see Rorsym.m file) originally
-    written by Diana Sava. 
-    
+    documentation from srb toolbox (https://github.com/StanfordRockPhysics/SRBToolbox)
+    In particular, a reimplementation of the  Rorsym.m file) originally
+    written by Diana Sava
+
     Parameters
     ----------
-    upper_layer_Tsvankin_params : array-like of shape (,8)
-        The Tsvankin params of the upper medium.
+    upper_layer_tsvankin_params : array-like of shape (9,)
+        The Tsvankin params of the upper medium (output of
+        :func:`tsvankin_params`).
+    lower_layer_tsvankin_params : array-like of shape (9,)
+        The Tsvankin params of the lower medium (output of
+        :func:`tsvankin_params`).
+    upper_density_gcm3 : float
+        Density of the upper medium in g/cm³.
+    lower_density_gcm3 : float
+        Density of the lower medium in g/cm³.
+    incident_angles_rad : float or array-like
+        Incident angle(s) in radians.
 
-    lower_layer_Tsvankin_params: array-like of shape (,8)
-        The Tsvankin params of the lower medium.
-
-    upper_rho, lower_rho : float
-        Density of the upper and lower medium.
-
-    theta_rad : float or array-like
-        Incident angle in radians
-
-    Arrays with Tsvankin params includes the following params in this
-    specific order (for details refer to Tsvankin_params function):
+    Arrays with Tsvankin params include the following params in this
+    specific order (for details refer to :func:`tsvankin_params`):
     -----------------------------------------------------------------
-    Vp0 : P-wave vertical velocities of medium.
-    Vs0 : S-wave vertical velocities of medium.
-    epsilon1 (e1) : Epsilon in the first symmetry plane of
-        the orthorhombic medium (normal to x).
+    Vp0 : P-wave vertical velocity of medium (km/s).
+    Vs0 : S-wave vertical velocity of medium (km/s).
+    epsilon1 (e1) : Epsilon in the first symmetry plane of the
+        orthorhombic medium (normal to x).
     delta1 (d1) : Delta in the first symmetry plane of the
         orthorhombic medium (normal to x).
-    epsilon2 (e2) : Epsilon in the second symmetry plane of
-        the orthorhombic medium (normal to y).
+    epsilon2 (e2) : Epsilon in the second symmetry plane of the
+        orthorhombic medium (normal to y).
     delta2 (d2) : Delta in the second symmetry plane of the
         orthorhombic medium (normal to y).
-    gamma1 (g1) : Vertical shear wave splitting parameter
-         of the medium.
+    gamma1 (g1) : Vertical shear wave splitting parameter of the medium.
+    gamma2, delta3 : Present in the array but not used in this
+        reflectivity calculation.
 
     Returns
     -------
-    tuple of array-like
-        Rxy: PP reflectivity as a function of angle of incidence
-        in xz plane.
-        Ryz: PP reflectivity as a function of angle of incidence
-        in yz plane.
+    Rxz : np.ndarray
+        PP reflectivity as a function of angle of incidence in the xz plane.
+    Ryz : np.ndarray
+        PP reflectivity as a function of angle of incidence in the yz plane.
 
     Reference
     ---------
@@ -175,42 +205,45 @@ def reflectivity(
     with offset and azimuth in anisotropic media. Geophysics,
     Vol 63, No 3, p935. https://doi.org/10.1190/1.1444405
     """
+    if (len(upper_layer_tsvankin_params) < 7
+            or len(lower_layer_tsvankin_params) < 7):
+        raise ValueError("Tsvankin parameter arrays must have at least 7 elements.")
+    if upper_density_gcm3 <= 0 or lower_density_gcm3 <= 0:
+        raise ValueError("Densities must be positive.")
 
-    # extract Tsvankin params
-    # Vp0, Vs0, epsilon1, delta1, epsilon2, delta2, gamma1, gamma2, delta3
-    Vp0_up, Vs0_up, e1_up, d1_up, e2_up, d2_up, g1_up, *_ = upper_layer_Tsvankin_params
-    Vp0_low, Vs0_low, e1_low, d1_low, e2_low, d2_low, g1_low, *_ = lower_layer_Tsvankin_params
-    
+    # Extract Tsvankin params
+    # Order: Vp0, Vs0, epsilon1, delta1, epsilon2, delta2, gamma1, gamma2, delta3
+    Vp0_up, Vs0_up, e1_up, d1_up, e2_up, d2_up, g1_up, *_ = upper_layer_tsvankin_params
+    Vp0_low, Vs0_low, e1_low, d1_low, e2_low, d2_low, g1_low, *_ = lower_layer_tsvankin_params
+
     # Calculate impedance for both media
-    Z1 = upper_rho * Vp0_up
-    Z2 = lower_rho * Vp0_low
+    Z1 = upper_density_gcm3 * Vp0_up
+    Z2 = lower_density_gcm3 * Vp0_low
 
-    # Calculate shear modulus for both media and their
-    # average and difference
-    G1 = upper_rho * Vs0_up**2
-    G2 = lower_rho * Vs0_low**2
+    # Calculate shear modulus for both media and their average and difference
+    G1 = upper_density_gcm3 * Vs0_up**2
+    G2 = lower_density_gcm3 * Vs0_low**2
     G_avg = (G1 + G2) / 2.0
     G_diff = G2 - G1
 
-    # Calculate average and difference for P-wave and
-    # S-wave velocities 
+    # Calculate average and difference for P-wave and S-wave velocities
     a_avg = (Vp0_up + Vp0_low) / 2.0
     a_diff = Vp0_low - Vp0_up
     b_avg = (Vs0_up + Vs0_low) / 2.0
 
-    # Calculate sin^2(theta) and tan^2(theta)
-    sin_sq_theta = np.sin(theta_rad)**2
-    tan_sq_theta = np.tan(theta_rad)**2
+    # Calculate sin²(θ) and tan²(θ)
+    sin_sq_theta = np.sin(incident_angles_rad)**2
+    tan_sq_theta = np.tan(incident_angles_rad)**2
 
-    # Calculate factor f 
+    # Calculate factor f
     f = (2 * b_avg / a_avg)**2
 
-    # Calculate reflectivity in xz plane (Rxz)
+    # Calculate reflectivity in xz plane (Rxz) — Ruger (1998) Eq. 7
     Rxz = ((Z2 - Z1) / (Z2 + Z1) +
-           0.5 * (a_diff / a_avg - f * (G_diff / G_avg - 2 * (g1_low - g1_up)) + d2_low - d2_up) * sin_sq_theta +
+           0.5 * (a_diff / a_avg - f * (G_diff / G_avg + 2 * (g1_low - g1_up)) + d2_low - d2_up) * sin_sq_theta +
            0.5 * (a_diff / a_avg + e2_low - e2_up) * sin_sq_theta * tan_sq_theta)
 
-    # Calculate reflectivity in yz plane (Ryz)
+    # Calculate reflectivity in yz plane (Ryz) — Ruger (1998) Eq. 7
     Ryz = ((Z2 - Z1) / (Z2 + Z1) +
            0.5 * (a_diff / a_avg - f * G_diff / G_avg + d1_low - d1_up) * sin_sq_theta +
            0.5 * (a_diff / a_avg + e1_low - e1_up) * sin_sq_theta * tan_sq_theta)
@@ -218,74 +251,133 @@ def reflectivity(
     return Rxz, Ryz
 
 
-def Tsvankin_params(cij: np.ndarray, density: float):
-    """Estimate the Tsvankin parameters for weak
+def tsvankin_params(
+    cij: np.ndarray,
+    density: float,
+) -> tuple[float, float, float, float, float, float, float, float, float]:
+    """
+    Estimate the Tsvankin parameters for weak
     azimuthal orthotropic anisotropy.
 
     Parameters
     ----------
     cij : numpy.ndarray
-        The elastic stiffness tensor of the material
-        in GPa.
+        The 6x6 elastic stiffness tensor of the material in GPa.
     density : float
-        The density of the material in g/cm3.
+        The density of the material in g/cm³.
 
     Returns
     -------
-    [float, float, float, float, float, float, float, float, float]
-        List containing Vp0, Vs0, epsilon, delta, and gamma.
+    Vp0 : float
+        P-wave vertical velocity in km/s.
+    Vs0 : float
+        S-wave vertical velocity in km/s.
+    epsilon1 : float
+        Epsilon in the first symmetry plane (normal to x).
+    delta1 : float
+        Delta in the first symmetry plane (normal to x).
+    epsilon2 : float
+        Epsilon in the second symmetry plane (normal to y).
+    delta2 : float
+        Delta in the second symmetry plane (normal to y).
+    gamma1 : float
+        Shear-wave splitting parameter for the yz plane.
+    gamma2 : float
+        Shear-wave splitting parameter for the xz plane.
+    delta3 : float
+        Delta in the xy symmetry plane.
     """
+    if not isinstance(cij, np.ndarray) or cij.shape != (6, 6):
+        raise ValueError("cij must be a 6x6 numpy array.")
+    if not np.allclose(cij, cij.T):
+        raise ValueError("cij must be symmetric.")
+    if density <= 0:
+        raise ValueError("density must be positive.")
 
-    # unpack some elastic constants for readibility
+    # Unpack some elastic constants for readability
     c11, c22, c33, c44, c55, c66 = np.diag(cij)
-    c12, c13, c23 = cij[0, 1], cij[0, 2],  cij[1, 2]
+    c12, c13, c23 = cij[0, 1], cij[0, 2], cij[1, 2]
 
-    # estimate the vertical propagating speeds
+    # Estimate the vertically propagating speeds
     Vp0 = np.sqrt(c33 / density)
     Vs0 = np.sqrt(c55 / density)
 
-    # estimate Tsvankin dimensionless parameters
+    # Estimate Tsvankin dimensionless parameters
     # VTI parameters in the YZ plane
     epsilon1 = (c22 - c33) / (2 * c33)
-    delta1 = ((c23 + c44)**2 - (c33 - c44)**2) / (2*c33 * (c33 - c44))
+    delta1 = ((c23 + c44) ** 2 - (c33 - c44) ** 2) / (2 * c33 * (c33 - c44))
     gamma1 = (c66 - c55) / (2 * c55)
     # VTI parameters in the XZ plane
     epsilon2 = (c11 - c33) / (2 * c33)
-    delta2 = ((c13 + c55)**2 - (c33 - c55)**2) / (2*c33 * (c33 - c55))
+    delta2 = ((c13 + c55) ** 2 - (c33 - c55) ** 2) / (2 * c33 * (c33 - c55))
     gamma2 = (c66 - c44) / (2 * c44)
     # VTI parameter in the XY plane
-    delta3 = (c12 + c66)**2 - (c11 - c66)**2 / (2*c11 * (c11 - c66))
+    delta3 = ((c12 + c66) ** 2 - (c11 - c66) ** 2) / (2 * c11 * (c11 - c66))
 
     return Vp0, Vs0, epsilon1, delta1, epsilon2, delta2, gamma1, gamma2, delta3
 
 
-def schoenberg_muir_layered_medium(cij_layer1: np.ndarray,
-                                   cij_layer2: np.ndarray,
-                                   vfrac1: float,
-                                   vfrac2: float):
-    """Calculate the effective stiffness and compliance tensors for
-    a layered medium using the Schoenberg & Muir approach.This
+def _validate_schoenberg_muir_layered_medium(
+    cij_layer1: np.ndarray,
+    cij_layer2: np.ndarray,
+    vfrac1: float,
+    vfrac2: float,
+) -> None:
+    """Validate inputs for :func:`schoenberg_muir_layered_medium`."""
+    if not isinstance(cij_layer1, np.ndarray) or not isinstance(cij_layer2, np.ndarray):
+        raise TypeError("cij_layer1 and cij_layer2 must be numpy arrays.")
+
+    if cij_layer1.shape != (6, 6) or cij_layer2.shape != (6, 6):
+        raise ValueError("cij_layer1 and cij_layer2 must be 6x6 arrays.")
+
+    if not np.allclose(cij_layer1, cij_layer1.T):
+        raise ValueError("the elastic tensor 1 is not symmetric!")
+
+    if not np.allclose(cij_layer2, cij_layer2.T):
+        raise ValueError("the elastic tensor 2 is not symmetric!")
+
+    if not isinstance(vfrac1, (int, float)) or not isinstance(vfrac2, (int, float)):
+        raise TypeError("vfrac1 and vfrac2 must be numbers.")
+
+    if not (0 <= vfrac1 <= 1) or not (0 <= vfrac2 <= 1):
+        raise ValueError("Volume fractions must be between 0 and 1.")
+
+    if not np.isclose(vfrac1 + vfrac2, 1, rtol=1e-03):
+        raise ValueError("Volume fractions must sum (approximately) to 1.")
+
+
+def schoenberg_muir_layered_medium(
+    cij_layer1: np.ndarray,
+    cij_layer2: np.ndarray,
+    vfrac1: float,
+    vfrac2: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Calculate the effective stiffness and compliance tensors for
+    a layered medium using the Schoenberg & Muir approach. This
     function computes the effective stiffness and compliance
     tensors for a medium composed of two alternating thin layers.
 
     Parameters
     ----------
     cij_layer1 : numpy.ndarray
-        6x6 stiffness tensor of the first layer
+        6x6 stiffness tensor of the first layer.
     cij_layer2 : numpy.ndarray
-        6x6 stiffness tensor of the second layer
-    vfrac1 : float between 0 and 1
-        Volume (thickness) fraction of the first layer (0 <= vfrac1 <= 1)
-    vfrac2 : float between 0 and 1
-        Volume (thickness) fraction of the first layer (0 <= vfrac2 <= 1)
+        6x6 stiffness tensor of the second layer.
+    vfrac1 : float
+        Volume (thickness) fraction of the first layer (0 <= vfrac1 <= 1).
+    vfrac2 : float
+        Volume (thickness) fraction of the second layer (0 <= vfrac2 <= 1).
 
     Returns
     -------
-    - effective_stiffness (numpy.ndarray): 6x6 effective stiffness tensor.
-    - effective_compliance (numpy.ndarray): 6x6 effective compliance tensor.
-    - effective_stiffness_from_compliance (numpy.ndarray): 6x6 effective
-    stiffness tensor computed from the effective compliance
-    
+    effective_stiffness : numpy.ndarray of shape (6, 6)
+        Effective stiffness tensor.
+    effective_compliance : numpy.ndarray of shape (6, 6)
+        Effective compliance tensor.
+    effective_stiffness_from_compliance : numpy.ndarray of shape (6, 6)
+        Effective stiffness tensor computed from the effective compliance.
+
     References
     ----------
     Schoenberg, M., & Muir, F. (1989). A calculus for finely layered
@@ -303,59 +395,37 @@ def schoenberg_muir_layered_medium(cij_layer1: np.ndarray,
     documentation from srb toolbox (see sch_muir_bckus.m file)
     originally written by Kaushik Bandyopadhyay in 2008.
     """
-
-    # Input Error handling
-    if not isinstance(cij_layer1, np.ndarray) or not isinstance(cij_layer2, np.ndarray):
-        raise TypeError("cij_layer1 and cij_layer2 must be numpy arrays.")
-    
-    if cij_layer1.shape != (6, 6) or cij_layer2.shape != (6, 6):
-        raise ValueError("cij_layer1 and cij_layer2 must be 6x6 arrays.")
-    
-    if not np.allclose(cij_layer1, cij_layer1.T):
-        raise Exception("the elastic tensor 1 is not symmetric!")
-
-    if not np.allclose(cij_layer2, cij_layer2.T):
-        raise Exception("the elastic tensor 2 is not symmetric!")
-
-    if not isinstance(vfrac1, (int, float)) or not isinstance(vfrac2, (int, float)):
-        raise TypeError("vfrac1 and vfrac2 must be numbers.")
-
-    if not (0 <= vfrac1 <= 1) or not (0 <= vfrac2 <= 1):
-        raise ValueError("Volume fractions must be between 0 and 1.")
-
-    if not np.isclose(vfrac1 + vfrac2, 1, rtol=1e-03):
-        raise ValueError("Volume fractions must sum (approximately) to 1.")
+    _validate_schoenberg_muir_layered_medium(cij_layer1, cij_layer2, vfrac1, vfrac2)
 
     # Extract submatrices (partition) for Cnn, Ctn, Ctt from the stiffness tensor
     # normal
     Cnn1 = cij_layer1[2:5, 2:5]
     Cnn2 = cij_layer2[2:5, 2:5]
     # tangential-normal
-    Ctn1 = cij_layer1[[0,1,5], 2:5]
-    Ctn2 = cij_layer2[[0,1,5], 2:5]
+    Ctn1 = cij_layer1[[0, 1, 5], 2:5]
+    Ctn2 = cij_layer2[[0, 1, 5], 2:5]
     # tangential -> np.ix_(row_indices, col_indices)
     Ctt1 = cij_layer1[np.ix_([0, 1, 5], [0, 1, 5])]
     Ctt2 = cij_layer2[np.ix_([0, 1, 5], [0, 1, 5])]
- 
+
+    # Pre-compute inverses used multiple times
+    Cnn1_inv = np.linalg.inv(Cnn1)
+    Cnn2_inv = np.linalg.inv(Cnn2)
+
     # Compute effective normal stiffness
-    Cnn = np.linalg.inv(vfrac1 * np.linalg.inv(Cnn1) + vfrac2 * np.linalg.inv(Cnn2))
+    Cnn = np.linalg.inv(vfrac1 * Cnn1_inv + vfrac2 * Cnn2_inv)
 
     # Compute effective tangential-normal stiffness
-    Ctn = (
-        vfrac1 * Ctn1 @ np.linalg.inv(Cnn1) + vfrac2 * Ctn2 @ np.linalg.inv(Cnn2)
-    ) @ Cnn
+    Ctn = (vfrac1 * Ctn1 @ Cnn1_inv + vfrac2 * Ctn2 @ Cnn2_inv) @ Cnn
 
     # Compute effective tangential stiffness
     term1 = vfrac1 * Ctt1 + vfrac2 * Ctt2
-    term2 = (vfrac1 * Ctn1 @ np.linalg.inv(Cnn1) @ Ctn1.T +
-             vfrac2 * Ctn2 @ np.linalg.inv(Cnn2) @ Ctn2.T)
-    term3 = (vfrac1 * Ctn1 @ np.linalg.inv(Cnn1) +
-             vfrac2 * Ctn2 @ np.linalg.inv(Cnn2)) @ Cnn @ (
-                    vfrac1 * np.linalg.inv(Cnn1) @ Ctn1.T +
-                    vfrac2 * np.linalg.inv(Cnn2) @ Ctn2.T)
+    term2 = vfrac1 * Ctn1 @ Cnn1_inv @ Ctn1.T + vfrac2 * Ctn2 @ Cnn2_inv @ Ctn2.T
+    term3 = (vfrac1 * Ctn1 @ Cnn1_inv + vfrac2 * Ctn2 @ Cnn2_inv) @ Cnn @ (
+                vfrac1 * Cnn1_inv @ Ctn1.T + vfrac2 * Cnn2_inv @ Ctn2.T)
 
     Ctt = term1 - term2 + term3
-    
+
     # Assemble effective stiffness tensor in full Voigt notation
     effective_stiffness = np.array(
         [
@@ -372,34 +442,33 @@ def schoenberg_muir_layered_medium(cij_layer1: np.ndarray,
     sij_layer1 = np.linalg.inv(cij_layer1)
     sij_layer2 = np.linalg.inv(cij_layer2)
 
-    # Extract submatrices (partition) for Snn, Stn, Snt, Stt from the compliance tensor
+    # Extract submatrices (partition) for Snn, Stn, Stt from the compliance tensor
     # normal
     Snn1 = sij_layer1[2:5, 2:5]
     Snn2 = sij_layer2[2:5, 2:5]
     # tangential-normal
-    Stn1 = sij_layer1[[0,1,5], 2:5]
-    Stn2 = sij_layer2[[0,1,5], 2:5]
-    # normal-tangential
-    Snt1 = Stn1.T
-    Snt2 = Stn2.T
+    Stn1 = sij_layer1[[0, 1, 5], 2:5]
+    Stn2 = sij_layer2[[0, 1, 5], 2:5]
     # tangential -> np.ix_(row_indices, col_indices)
     Stt1 = sij_layer1[np.ix_([0, 1, 5], [0, 1, 5])]
     Stt2 = sij_layer2[np.ix_([0, 1, 5], [0, 1, 5])]
 
-    # Compute effective normal compliance
-    Snn = ((vfrac1 * Snn1 + vfrac2 * Snn2)
-          - (vfrac1 * Snt1 @ np.linalg.inv(Stt1) @ Stn1 + vfrac2 * Snt2 @ np.linalg.inv(Stt2) @ Stn2)
-          + (vfrac1 * Snt1 @ np.linalg.inv(Stt1) + vfrac2 * Snt2 @ np.linalg.inv(Stt2))
-          @ np.linalg.inv(vfrac1 * np.linalg.inv(Stt1) + vfrac2 * np.linalg.inv(Stt2))
-          @ (vfrac1 * np.linalg.inv(Stt1) @ Stn1 + vfrac2 * np.linalg.inv(Stt2) @ Stn2))
+    # Pre-compute inverses used multiple times
+    Stt1_inv = np.linalg.inv(Stt1)
+    Stt2_inv = np.linalg.inv(Stt2)
+
+    # Compute effective tangential compliance (needed by Stn and Snn below)
+    Stt = np.linalg.inv(vfrac1 * Stt1_inv + vfrac2 * Stt2_inv)
 
     # Compute effective tangential-normal compliance
-    Stn = (
-        np.linalg.inv(vfrac1 * np.linalg.inv(Stt1) + vfrac2 * np.linalg.inv(Stt2))
-    ) @ (vfrac1 * np.linalg.inv(Stt2) @ Stn2 + vfrac2 * np.linalg.inv(Stt2) @ Stn2)
+    Stn = Stt @ (vfrac1 * Stt1_inv @ Stn1 + vfrac2 * Stt2_inv @ Stn2)
 
-    # Compute effective tangential compliance
-    Stt = np.linalg.inv(vfrac1 * np.linalg.inv(Stt1) + vfrac2 * np.linalg.inv(Stt2))
+    # Compute effective normal compliance
+    Snn = ((vfrac1 * Snn1 + vfrac2 * Snn2)
+           - (vfrac1 * Stn1.T @ Stt1_inv @ Stn1 + vfrac2 * Stn2.T @ Stt2_inv @ Stn2)
+           + (vfrac1 * Stn1.T @ Stt1_inv + vfrac2 * Stn2.T @ Stt2_inv)
+           @ Stt
+           @ (vfrac1 * Stt1_inv @ Stn1 + vfrac2 * Stt2_inv @ Stn2))
 
     # Assemble effective compliance matrix
     effective_compliance = np.array(
