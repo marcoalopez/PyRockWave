@@ -228,7 +228,8 @@ def _normalize_vector(vector: np.ndarray) -> np.ndarray:
 
 
 def _rotate_Cijkl(
-    stiffness_tensor: np.ndarray, rotation_matrix: np.ndarray
+    stiffness_tensor: np.ndarray,
+    rotation_matrix: np.ndarray
 ) -> np.ndarray:
     """Rotate a 3x3x3x3 symmetric stiffness tensor using a rotation
     matrix and Einstein summation (numpy.einsum). The operation is
@@ -267,13 +268,14 @@ def _rotate_Cijkl(
 
     return rotated_tensor
 
+
 def rotate_stiffness_tensor(
     stiffness_tensor: np.ndarray,
     angle_degrees: float,
     rotation_axis: str = "z"
-    ) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Rotates a stiffness matrix (Voigt notation) or a
-    stiffness tensor aabout a specified axis. The rotation
+    stiffness tensor along the principal axis. The rotation
     is performed in the right-handed coordinate system taking
     into account the following reference frame:
 
