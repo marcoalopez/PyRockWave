@@ -39,7 +39,8 @@ def weak_polar_anisotropy(
     density_gcm3: float,
     wavevectors_rad: np.ndarray
 ):
-    """Calculate the velocity of body waves in a material as a function
+    """
+    Calculate the velocity of body waves in a material as a function
     of the direction of propagation, assuming that the elastic properties
     of the material have a weak polar anisotropy, using the Thomsen
     approach (Thomsen, 1986: https://doi.org/10.1190/1.1442051).
@@ -105,7 +106,8 @@ def polar_anisotropy(
     density_gcm3: float,
     wavevectors_rad: np.ndarray
 ):
-    """Calculate the velocity of body waves in a material as a function
+    """
+    Calculate the velocity of body waves in a material as a function
     of the direction of propagation, assuming that the elastic properties
     of the material have polar anisotropy, using the Anderson approach
     (Anderson, 1961: https://doi.org/10.1029/JZ066i009p02953).
@@ -185,7 +187,8 @@ def orthotropic_azimuthal_anisotropy(
     density_gcm3: float,
     wavevectors_rad: np.ndarray
 ):
-    """Calculate the velocity of body P-waves in a material as a function
+    """
+    Calculate the velocity of body P-waves in a material as a function
     of the direction of propagation, assuming that the elastic properties
     of the material have orthorhombic anisotropy (a.k.a. orthotropic),
     using the procedure described in Wang et al. (2023):
@@ -282,45 +285,70 @@ def Thomsen_params(cij: np.ndarray, density_gcm3: float):
     return Vp0, Vs0, epsilon, delta, gamma
 
 
-def Tsvankin_params(cij: np.ndarray, density_gcm3: float):
-    """Estimate the Tsvankin parameters for weak
+def tsvankin_params(
+    cij: np.ndarray,
+    density: float,
+) -> tuple[float, float, float, float, float, float, float, float, float]:
+    """
+    Estimate the Tsvankin parameters for weak
     azimuthal orthotropic anisotropy.
 
     Parameters
     ----------
     cij : numpy.ndarray
-        The elastic stiffness tensor of the material
-        in GPa.
+        The 6x6 elastic stiffness tensor of the material in GPa.
     density : float
-        The density of the material in g/cm3.
+        The density of the material in g/cm³.
 
     Returns
     -------
-    [float, float, float, float, float, float, float, float, float]
-        List containing Vp0, Vs0, epsilon, delta, and gamma.
+    Vp0 : float
+        P-wave vertical velocity in km/s.
+    Vs0 : float
+        S-wave vertical velocity in km/s.
+    epsilon1 : float
+        Epsilon in the first symmetry plane (normal to x).
+    delta1 : float
+        Delta in the first symmetry plane (normal to x).
+    epsilon2 : float
+        Epsilon in the second symmetry plane (normal to y).
+    delta2 : float
+        Delta in the second symmetry plane (normal to y).
+    gamma1 : float
+        Shear-wave splitting parameter for the yz plane.
+    gamma2 : float
+        Shear-wave splitting parameter for the xz plane.
+    delta3 : float
+        Delta in the xy symmetry plane.
     """
+    if not isinstance(cij, np.ndarray) or cij.shape != (6, 6):
+        raise ValueError("cij must be a 6x6 numpy array.")
+    if not np.allclose(cij, cij.T):
+        raise ValueError("cij must be symmetric.")
+    if density <= 0:
+        raise ValueError("density must be positive.")
 
-    # unpack some elastic constants for readibility
+    # Unpack some elastic constants for readability
     c11, c22, c33, c44, c55, c66 = np.diag(cij)
-    c12, c13, c23 = cij[0, 1], cij[0, 2],  cij[1, 2]
+    c12, c13, c23 = cij[0, 1], cij[0, 2], cij[1, 2]
 
-    # estimate the vertically propagating speeds
-    Vp0 = np.sqrt(c33 / density_gcm3)
-    Vs0 = np.sqrt(c55 / density_gcm3)
+    # Estimate the vertically propagating speeds
+    Vp0 = np.sqrt(c33 / density)
+    Vs0 = np.sqrt(c55 / density)
 
-    # estimate Tsvankin dimensionless parameters
+    # Estimate Tsvankin dimensionless parameters
     # VTI parameters in the YZ plane
     epsilon1 = (c22 - c33) / (2 * c33)
-    delta1 = ((c23 + c44)**2 - (c33 - c44)**2) / (2*c33 * (c33 - c44))
+    delta1 = ((c23 + c44) ** 2 - (c33 - c44) ** 2) / (2 * c33 * (c33 - c44))
     gamma1 = (c66 - c55) / (2 * c55)
     # VTI parameters in the XZ plane
     epsilon2 = (c11 - c33) / (2 * c33)
-    delta2 = ((c13 + c55)**2 - (c33 - c55)**2) / (2*c33 * (c33 - c55))
+    delta2 = ((c13 + c55) ** 2 - (c33 - c55) ** 2) / (2 * c33 * (c33 - c55))
     gamma2 = (c66 - c44) / (2 * c44)
     # VTI parameter in the XY plane
-    delta3 = (c12 + c66)**2 - (c11 - c66)**2 / (2*c11 * (c11 - c66))
+    delta3 = ((c12 + c66) ** 2 - (c11 - c66) ** 2) / (2 * c11 * (c11 - c66))
 
-    return Vp0, Vs0, epsilon1, delta1, gamma1, epsilon2, delta2, gamma2, delta3
+    return Vp0, Vs0, epsilon1, delta1, epsilon2, delta2, gamma1, gamma2, delta3
 
 
 def HaoStovas_params(cij: np.ndarray, density_gcm3: float):
@@ -338,7 +366,7 @@ def HaoStovas_params(cij: np.ndarray, density_gcm3: float):
     Returns
     -------
     [float, float, float, float, float, float]
-        TList containing the parameters
+        List containing the parameters
     """
 
     # unpack some elastic constants for readibility
