@@ -1,9 +1,10 @@
-###############################################################################
+#=============================================================================#
 # PyRockWave: A Python Module for modelling elastic properties                #
 # of Earth materials.                                                         #
 #                                                                             #
 # Filename: ElasticClass.py                                                   #
-# Description: TODO                                                           #
+# Description: Defines the ElasticProps dataclass and supporting functions    #
+# for computing and decomposing the elastic properties of materials.          #
 #                                                                             #
 # SPDX-License-Identifier: GPL-3.0-or-later                                   #
 # Copyright (c) 2023-2025, Marco A. Lopez-Sanchez. All rights reserved.       #
@@ -26,7 +27,7 @@
 # Email: lopezmarco [to be found at] uniovi dot es                            #
 # Website: https://marcoalopez.github.io/PyRockWave/                          #
 # Repository: https://github.com/marcoalopez/PyRockWave                       #
-###############################################################################
+# =============================================================================#
 
 
 # Import statements
@@ -39,8 +40,69 @@ from typing import Optional
 # Class definitions
 @dataclass
 class ElasticProps:
-    """A class that encapsulates and calculates various elastic
-    properties of materials."""
+    """
+    Encapsulates elastic properties of a crystalline material at a given
+    pressure and temperature.
+
+    Computes Voigt, Reuss, and Hill averages of the bulk and shear moduli,
+    isotropic wave speeds and ratios, anisotropy indices, and a Browaeys &
+    Chevrot (2004) symmetry-class decomposition from the stiffness tensor and
+    density supplied at construction time.
+
+    Parameters
+    ----------
+    temperature : float
+        Temperature in degrees Celsius.
+    pressure : float
+        Pressure in GPa.
+    density : float
+        Density in g/cm³.  Must be strictly positive.
+    Cij : np.ndarray, shape (6, 6)
+        Elastic stiffness tensor in Voigt notation (GPa).  Must be symmetric.
+    mineral_name : str, optional
+        Name of the mineral or phase.
+    crystal_system : str, optional
+        Crystal system (case-insensitive).  Accepted values: cubic, tetragonal,
+        orthorhombic, rhombohedral, trigonal, hexagonal, monoclinic, triclinic.
+    rock_type : str, optional
+        Rock-type descriptor (e.g. "mantle peridotite").
+    reference : str, optional
+        Bibliographic reference for the elastic data.
+
+    Attributes
+    ----------
+    Sij : np.ndarray, shape (6, 6)
+        Compliance tensor (GPa⁻¹), computed as the inverse of Cij.
+    K_voigt, K_reuss, K_hill : float
+        Bulk modulus Voigt, Reuss, and Hill averages (GPa).
+    G_voigt, G_reuss, G_hill : float
+        Shear modulus Voigt, Reuss, and Hill averages (GPa).
+    universal_anisotropy : float
+        Universal elastic anisotropy index (Ranganathan & Ostoja-Starzewski 2008).
+    Kube_anisotropy : float
+        Log-Euclidean anisotropy index (Kube & de Jong 2016).
+    isotropic_poisson_voigt, isotropic_poisson_reuss, isotropic_poisson_hill : float
+        Isotropic Poisson's ratio for each averaging scheme.
+    isotropic_vp_voigt, isotropic_vp_reuss, isotropic_vp_hill : float
+        Isotropic P-wave velocity for each averaging scheme (km/s).
+    isotropic_vs_voigt, isotropic_vs_reuss, isotropic_vs_hill : float
+        Isotropic S-wave velocity for each averaging scheme (km/s).
+    isotropic_vpvs_voigt, isotropic_vpvs_reuss, isotropic_vpvs_hill : float
+        Isotropic Vp/Vs ratio for each averaging scheme.
+    elastic : pd.DataFrame
+        Summary table of bulk modulus, shear modulus, and Poisson's ratio
+        (columns) for each averaging scheme (rows).
+    wavespeeds : pd.DataFrame
+        Summary table of Vp, Vs, and Vp/Vs (columns) for each averaging
+        scheme (rows).
+    decompose : dict[str, np.ndarray]
+        Browaeys & Chevrot (2004) symmetry-class component tensors keyed by
+        class name: ``"isotropic"``, ``"hexagonal"``, ``"tetragonal"``,
+        ``"orthorhombic"``, ``"monoclinic"``, ``"others"``.
+    percent : dict[str, float]
+        Percentage contribution of each symmetry class (same keys as
+        ``decompose``) plus ``"anisotropic"`` (100 − isotropic percentage).
+    """
 
     # dataclass compulsory fields
     temperature: float  # in °C
@@ -78,28 +140,32 @@ class ElasticProps:
     isotropic_vpvs_hill: float = field(init=False)
     elastic: pd.DataFrame = field(init=False)
     wavespeeds: pd.DataFrame = field(init=False)
-    decompose: dict = field(init=False)
-    percent: dict = field(init=False)
+    decompose: dict[str, np.ndarray] = field(init=False)
+    percent: dict[str, float] = field(init=False)
 
     def __post_init__(self):
-        # Validate crystal system
-        valid_crystal_systems = ["Cubic", "cubic",
-                                 "Tetragonal", "tetragonal",
-                                 "Orthorhombic", "orthorhombic",
-                                 "Rhombohedral", "rhombohedral",
-                                 "Trigonal", "trigonal",
-                                 "Hexagonal", "hexagonal",
-                                 "Monoclinic", "monoclinic",
-                                 "Triclinic", "triclinic"]
-        if self.crystal_system is not None:
-            if self.crystal_system not in valid_crystal_systems:
-                raise ValueError("Invalid crystal system. Please choose one of the following: "
-                                 "Cubic, Tetragonal, Orthorhombic, Rhombohedral, Hexagonal, "
-                                 "Trigonal, Monoclinic, or Triclinic")
+        # Validate Cij shape and type
+        if not isinstance(self.Cij, np.ndarray) or self.Cij.shape != (6, 6):
+            raise ValueError("Cij must be a (6, 6) NumPy array.")
 
-        # check the symmetry of the elastic tensor
+        # Validate density
+        if self.density <= 0:
+            raise ValueError("density must be a positive number.")
+
+        # Validate crystal system (case-insensitive)
+        valid_crystal_systems = {
+            "cubic", "tetragonal", "orthorhombic", "rhombohedral",
+            "trigonal", "hexagonal", "monoclinic", "triclinic"
+        }
+        if self.crystal_system is not None:
+            if self.crystal_system.lower() not in valid_crystal_systems:
+                raise ValueError("Invalid crystal system. Please choose one of the following: "
+                                 "cubic, tetragonal, orthorhombic, rhombohedral, hexagonal, "
+                                 "trigonal, monoclinic, or triclinic (case-insensitive).")
+
+        # Validate symmetry of the elastic tensor
         if not np.allclose(self.Cij, self.Cij.T):
-            raise Exception("the elastic tensor is not symmetric!")
+            raise ValueError("The elastic tensor is not symmetric.")
 
         # Calculate the compliance tensor
         self.Sij = np.linalg.inv(self.Cij)
@@ -217,7 +283,7 @@ class ElasticProps:
 
 
 # Function definitions
-def decompose_Cij(Cij: np.ndarray) -> dict:
+def decompose_Cij(Cij: np.ndarray) -> dict[str, np.ndarray]:
     """
     Decomposes an elastic tensor after the formulation set out in
     Browaeys and Chevrot (2004). They propose a decomposition of the
@@ -237,8 +303,11 @@ def decompose_Cij(Cij: np.ndarray) -> dict:
 
     Returns
     -------
-    decomposed_elements : dict
-        Dictionary containing constitutive symmetry components as key, value pairs.
+    decomposed_elements : dict[str, np.ndarray]
+        Dictionary with keys ``"isotropic"``, ``"hexagonal"``,
+        ``"tetragonal"``, ``"orthorhombic"``, ``"monoclinic"``, and
+        ``"others"``.  Each value is the corresponding (6, 6) component
+        tensor in GPa, ordered from highest to lowest symmetry.
     """
 
     # Check if Cij is a 6x6 symmetric matrix
@@ -259,29 +328,24 @@ def decompose_Cij(Cij: np.ndarray) -> dict:
         "others": None
     }
 
-    for symmetry_class, _ in decomposed_elements.items():
+    for symmetry_class in decomposed_elements:
 
         if symmetry_class != "others":
-
             X_total = tensor_to_vector(Cij_copy)
-        
+
             # compute the vector X on a specific symmetry subspace
             M = orthogonal_projector(symmetry_class)
             X_symmetry_class = np.dot(M, X_total)  # X_h = M*X
 
-            C_symmetry_class = np.around(vector_to_tensor(X_symmetry_class), decimals=2)
+            C_symmetry_class = vector_to_tensor(X_symmetry_class)
 
-            # store and subtract
+            # store and subtract to build the residual for the next step
             decomposed_elements[symmetry_class] = C_symmetry_class
             Cij_copy -= C_symmetry_class
-        
+
         else:
-            C_symmetry_class = Cij - (decomposed_elements['isotropic'] +
-                                      decomposed_elements['hexagonal'] +
-                                      decomposed_elements['tetragonal'] +
-                                      decomposed_elements['orthorhombic'] +
-                                      decomposed_elements['monoclinic'])
-            decomposed_elements[symmetry_class] = C_symmetry_class 
+            # Cij_copy now holds the triclinic residual after all projections
+            decomposed_elements["others"] = Cij_copy.copy()
 
     return decomposed_elements
 
@@ -296,14 +360,22 @@ def tensor_to_vector(Cij: np.ndarray) -> np.ndarray:
     Cij : numpy.ndarray, shape(6, 6)
         The 6x6 elastic tensor in Voigt notation.
 
+    Raises
+    ------
+    ValueError
+        If Cij is not a (6, 6) NumPy array.
+
     Returns
     -------
     X : numpy.ndarray
         Elastic vector representation of the elastic tensor in GPa.
 
     """
+    if not isinstance(Cij, np.ndarray) or Cij.shape != (6, 6):
+        raise ValueError("Cij must be a (6, 6) NumPy array.")
+
     rt2 = np.sqrt(2)
-    rt22 = rt2 * 2
+    two_rt2 = rt2 * 2
     X = np.zeros(21)
 
     # Diagonal components: C11 , C22 , C33
@@ -323,7 +395,7 @@ def tensor_to_vector(Cij: np.ndarray) -> np.ndarray:
     X[15:18] = 2 * Cij[1, 3], 2 * Cij[2, 4], 2 * Cij[0, 5]
 
     # Others: 2*√2*C56 , 2*√2*C46 , 2*√2*C45
-    X[18:21] = rt22 * Cij[4, 5], rt22 * Cij[3, 5], rt22 * Cij[3, 4]
+    X[18:21] = two_rt2 * Cij[4, 5], two_rt2 * Cij[3, 5], two_rt2 * Cij[3, 4]
 
     return X
 
@@ -351,11 +423,11 @@ def vector_to_tensor(X: np.ndarray) -> np.ndarray:
         If the length of the input vector X is not (21,).
     """
 
-    if X.shape != (21,):
-        raise ValueError("Input vector X must have a shape of (21,)")
+    if not isinstance(X, np.ndarray) or X.shape != (21,):
+        raise ValueError("Input vector X must be a NumPy array with shape (21,).")
 
     rt2 = np.sqrt(2)
-    rt22 = rt2 * 2
+    two_rt2 = rt2 * 2
 
     # set equivalence Xi → Cij
     # Diagonal components
@@ -379,9 +451,9 @@ def vector_to_tensor(X: np.ndarray) -> np.ndarray:
     C35 = X[16] / 2
     C16 = X[17] / 2
     # Others:
-    C56 = X[18] / rt22
-    C46 = X[19] / rt22
-    C45 = X[20] / rt22    
+    C56 = X[18] / two_rt2
+    C46 = X[19] / two_rt2
+    C45 = X[20] / two_rt2
 
     Cij = np.array(
         [[ C11, C12, C13, C14, C15, C16],
@@ -406,16 +478,22 @@ def orthogonal_projector(symmetry_class: str) -> np.ndarray:
     Journal International 159, 667–678.
     https://doi.org/10.1111/j.1365-246X.2004.02415.x
 
-
     Parameters
     ----------
     symmetry_class : str
-        Name of symmetry class required.
+        Name of the symmetry class.  Accepted values: ``"isotropic"``,
+        ``"hexagonal"``, ``"tetragonal"``, ``"orthorhombic"``,
+        ``"monoclinic"``.
+
+    Raises
+    ------
+    ValueError
+        If ``symmetry_class`` is not one of the accepted values.
 
     Returns
     -------
     M : np.ndarray, shape(21, 21)
-        Projection matrix for the specified symmetry class.
+        Orthogonal projection matrix for the specified symmetry class.
     """
 
     rt2 = np.sqrt(2)
@@ -461,38 +539,68 @@ def orthogonal_projector(symmetry_class: str) -> np.ndarray:
         M[:, 9:11] = M[:, 12:14] = M[:, 15:17] = M[:, 18:20] = 0
 
     else:
-        print('symmetry class not valid')
+        raise ValueError(
+            f"Invalid symmetry class '{symmetry_class}'. "
+            "Expected one of: isotropic, hexagonal, tetragonal, "
+            "orthorhombic, monoclinic."
+        )
 
     return M
 
 
-def calc_percentages(decomposition: dict) -> dict:
-    """Calculate the percentage of isotropy, anisotropy,
-    and symmetry classes of the elastic tensor.
+def calc_percentages(decomposition: dict[str, np.ndarray]) -> dict[str, float]:
+    """
+    Calculate the percentage contribution of each symmetry class to the
+    elastic tensor, following the squared-norm definition of Browaeys and
+    Chevrot (2004).
 
     Parameters
     ----------
-    decomposition : dict
-        A dictionary with the decomposed elastic tensors
+    decomposition : dict[str, np.ndarray]
+        Dictionary of (6, 6) component tensors as returned by
+        :func:`decompose_Cij`.  Must contain the keys ``"isotropic"``,
+        ``"hexagonal"``, ``"tetragonal"``, ``"orthorhombic"``,
+        ``"monoclinic"``, and ``"others"``.
+
+    Raises
+    ------
+    ValueError
+        If any required key is missing from ``decomposition``.
 
     Returns
     -------
-    dict
-        A dictionary with the calculated percentages
+    percentages : dict[str, float]
+        Percentage contribution of each symmetry class, with keys
+        ``"isotropic"``, ``"hexagonal"``, ``"tetragonal"``,
+        ``"orthorhombic"``, ``"monoclinic"``, ``"others"``, and
+        ``"anisotropic"`` (= 100 − isotropic percentage).
     """
 
-    percentages = {}
+    tensor_classes = [
+        "isotropic",
+        "hexagonal",
+        "tetragonal",
+        "orthorhombic",
+        "monoclinic",
+        "others",
+    ]
 
-    tensor_classes = ['isotropic', 'hexagonal', 'tetragonal', 'orthorhombic', 'monoclinic', 'others']
+    required = set(tensor_classes)
+    if not required.issubset(decomposition):
+        missing = required - decomposition.keys()
+        raise ValueError(f"decomposition dict is missing keys: {missing}")
 
-    # estimate the sum of the norm of all elastic vectors
-    sum_norms = np.sum([np.linalg.norm(tensor_to_vector(decomposition[tensor_class])) for tensor_class in tensor_classes])
+    # Compute elastic vectors once; percentages use squared norms so that the
+    # decomposition satisfies Parseval's identity (||X||² = Σ||X_class||²).
+    sq_norms = {tc: np.linalg.norm(tensor_to_vector(decomposition[tc])) ** 2
+                for tc in tensor_classes}
+    total_sq_norm = sum(sq_norms.values())
 
-    for tensor_class in tensor_classes:
-        norm = np.linalg.norm(tensor_to_vector(decomposition[tensor_class]))
-        percentages[tensor_class] = np.around(100 * norm / sum_norms, decimals=2)
-
-    percentages['anisotropic'] = np.around(100 - percentages['isotropic'], decimals=2)
+    percentages: dict[str, float] = {
+        tc: float(np.around(100 * sq_norms[tc] / total_sq_norm, decimals=2))
+        for tc in tensor_classes
+    }
+    percentages["anisotropic"] = float(np.around(100 - percentages["isotropic"], decimals=2))
 
     return percentages
 
