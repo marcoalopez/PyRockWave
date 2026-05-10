@@ -1,4 +1,4 @@
-###############################################################################
+# =========================================================================== #
 # PyRockWave: A Python Module for modelling elastic properties                #
 # of Earth materials.                                                         #
 #                                                                             #
@@ -26,7 +26,7 @@
 # Email: lopezmarco [to be found at] uniovi dot es                            #
 # Website: https://marcoalopez.github.io/PyRockWave/                          #
 # Repository: https://github.com/marcoalopez/PyRockWave                       #
-###############################################################################
+# =========================================================================== #
 
 # Import statements
 import numpy as np
@@ -35,73 +35,8 @@ from scipy.spatial.transform import Rotation as R
 from tensor_tools import _rearrange_tensor, _tensor_in_voigt
 
 
-# Private helpers
-def _validate_volume_weighted_average(
-    elastic_tensors: np.ndarray,
-    volume_fractions: np.ndarray
-) -> np.ndarray:
-    """Validate and normalise inputs shared by both volume-weighted
-    averaging functions. Returns a normalised copy of volume_fractions.
-
-    Raises
-    ------
-    ValueError
-        If shapes are incompatible, any fraction is negative, or
-        elastic_tensors is not a 3-D array of (6, 6) matrices.
-    """
-    if elastic_tensors.ndim != 3 or elastic_tensors.shape[1:] != (6, 6):
-        raise ValueError(
-            f"elastic_tensors must have shape (n, 6, 6), got {elastic_tensors.shape}"
-        )
-    if volume_fractions.ndim != 1:
-        raise ValueError(
-            f"volume_fractions must be 1-D, got shape {volume_fractions.shape}"
-        )
-    if elastic_tensors.shape[0] != volume_fractions.shape[0]:
-        raise ValueError(
-            f"Number of tensors ({elastic_tensors.shape[0]}) must match "
-            f"number of volume fractions ({volume_fractions.shape[0]})"
-        )
-    if np.any(volume_fractions < 0):
-        raise ValueError("All volume fractions must be non-negative")
-    if not np.isclose(volume_fractions.sum(), 1.0):
-        print("Volume fractions do not add up to 1, recalculating...")
-        volume_fractions = volume_fractions / volume_fractions.sum()
-    return volume_fractions
-
-
-def _validate_CPO_weighted_average(
-    elastic_tensor: np.ndarray,
-    ODF: pd.DataFrame
-) -> np.ndarray:
-    """Validate inputs shared by both CPO-weighted averaging functions.
-    Returns a normalised 1-D array of ODF volume fractions.
-
-    Raises
-    ------
-    ValueError
-        If elastic_tensor is not a (6, 6) array, ODF is not a DataFrame
-        with at least 4 columns, or any weight is negative.
-    """
-    if not isinstance(elastic_tensor, np.ndarray) or elastic_tensor.shape != (6, 6):
-        raise ValueError(
-            f"elastic_tensor must have shape (6, 6), got {elastic_tensor.shape}"
-        )
-    if not isinstance(ODF, pd.DataFrame):
-        raise TypeError("ODF must be a pandas DataFrame")
-    if ODF.shape[1] < 4:
-        raise ValueError(
-            f"ODF DataFrame must have at least 4 columns, got {ODF.shape[1]}"
-        )
-    weights = ODF.iloc[:, 3].to_numpy(dtype=float)
-    if np.any(weights < 0):
-        raise ValueError("All ODF volume fractions must be non-negative")
-    if not np.isclose(weights.sum(), 1.0):
-        weights = weights / weights.sum()
-    return weights
-
-
 # Function definitions
+
 def voigt_volume_weighted_average(
     elastic_tensors: np.ndarray,
     volume_fractions: np.ndarray
@@ -322,6 +257,76 @@ def reuss_CPO_weighted_average(
     S_weighted = np.einsum('n,nijkl->ijkl', weights, S_rotated)
 
     return np.linalg.inv(_tensor_in_voigt(S_weighted))
+
+
+# =================================================================
+# Private helpers for internal use only
+
+def _validate_volume_weighted_average(
+    elastic_tensors: np.ndarray,
+    volume_fractions: np.ndarray
+) -> np.ndarray:
+    """
+    Validate and normalise inputs shared by both volume-weighted
+    averaging functions. Returns a normalised copy of volume_fractions.
+
+    Raises
+    ------
+    ValueError
+        If shapes are incompatible, any fraction is negative, or
+        elastic_tensors is not a 3-D array of (6, 6) matrices.
+    """
+    if elastic_tensors.ndim != 3 or elastic_tensors.shape[1:] != (6, 6):
+        raise ValueError(
+            f"elastic_tensors must have shape (n, 6, 6), got {elastic_tensors.shape}"
+        )
+    if volume_fractions.ndim != 1:
+        raise ValueError(
+            f"volume_fractions must be 1-D, got shape {volume_fractions.shape}"
+        )
+    if elastic_tensors.shape[0] != volume_fractions.shape[0]:
+        raise ValueError(
+            f"Number of tensors ({elastic_tensors.shape[0]}) must match "
+            f"number of volume fractions ({volume_fractions.shape[0]})"
+        )
+    if np.any(volume_fractions < 0):
+        raise ValueError("All volume fractions must be non-negative")
+    if not np.isclose(volume_fractions.sum(), 1.0):
+        print("Volume fractions do not add up to 1, recalculating...")
+        volume_fractions = volume_fractions / volume_fractions.sum()
+    return volume_fractions
+
+
+def _validate_CPO_weighted_average(
+    elastic_tensor: np.ndarray,
+    ODF: pd.DataFrame
+) -> np.ndarray:
+    """
+    Validate inputs shared by both CPO-weighted averaging functions.
+    Returns a normalised 1-D array of ODF volume fractions.
+
+    Raises
+    ------
+    ValueError
+        If elastic_tensor is not a (6, 6) array, ODF is not a DataFrame
+        with at least 4 columns, or any weight is negative.
+    """
+    if not isinstance(elastic_tensor, np.ndarray) or elastic_tensor.shape != (6, 6):
+        raise ValueError(
+            f"elastic_tensor must have shape (6, 6), got {elastic_tensor.shape}"
+        )
+    if not isinstance(ODF, pd.DataFrame):
+        raise TypeError("ODF must be a pandas DataFrame")
+    if ODF.shape[1] < 4:
+        raise ValueError(
+            f"ODF DataFrame must have at least 4 columns, got {ODF.shape[1]}"
+        )
+    weights = ODF.iloc[:, 3].to_numpy(dtype=float)
+    if np.any(weights < 0):
+        raise ValueError("All ODF volume fractions must be non-negative")
+    if not np.isclose(weights.sum(), 1.0):
+        weights = weights / weights.sum()
+    return weights
 
 
 # End of file
