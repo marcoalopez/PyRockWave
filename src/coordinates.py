@@ -1,4 +1,4 @@
-###############################################################################
+# =========================================================================== #
 # PyRockWave: A Python Module for modelling elastic properties                #
 # of Earth materials.                                                         #
 #                                                                             #
@@ -6,7 +6,7 @@
 # Description: TODO                                                           #
 #                                                                             #
 # SPDX-License-Identifier: GPL-3.0-or-later                                   #
-# Copyright (c) 2023-2025, Marco A. Lopez-Sanchez. All rights reserved.       #
+# Copyright (c) 2023-present, Marco A. Lopez-Sanchez. All rights reserved.    #
 #                                                                             #
 # PyRockWave is free software: you can redistribute it and/or modify          #
 # it under the terms of the GNU General Public License as published by        #
@@ -26,7 +26,7 @@
 # Email: lopezmarco [to be found at] uniovi dot es                            #
 # Website: https://marcoalopez.github.io/PyRockWave/                          #
 # Repository: https://github.com/marcoalopez/PyRockWave                       #
-###############################################################################
+# =========================================================================== #
 
 # Import statements
 import numpy as np
@@ -34,7 +34,8 @@ import numpy as np
 
 # Function definitions
 def sph2cart(azimuth_rad, polar_rad, r=1):
-    """ Convert from spherical/polar (magnitude, azimuth, polar) to
+    """
+    Convert from spherical/polar (magnitude, azimuth, polar) to
     cartesian coordinates. Azimuth and polar angles are as used in
     physics (ISO 80000-2:2019) and in radians. If the polar angle is
     not given, the coordinate is assumed to lie on the XY plane.
@@ -63,7 +64,8 @@ def sph2cart(azimuth_rad, polar_rad, r=1):
 
 
 def cart2sph(x, y, z):
-    """Converts 3D rectangular cartesian coordinates to spherical
+    """
+    Converts 3D rectangular cartesian coordinates to spherical
     coordinates.
 
     Parameters
@@ -93,8 +95,13 @@ def cart2sph(x, y, z):
     return r, phi, theta
 
 
-def equispaced_S2_grid(num_points=20809, degrees=False, hemisphere=None):
-    """Returns an approximately equispaced spherical grid in
+def equispaced_S2_grid(
+    num_points=20809,
+    degrees=False,
+    hemisphere=None
+):
+    """
+    Returns an approximately equispaced spherical grid in
     spherical coordinates (azimuthal and polar angles) using
     a modified version of the offset Fibonacci lattice algorithm.
     The Fibonacci Lattice algorithm is often considered one of the
@@ -230,11 +237,8 @@ def equispaced_S2_grid_eap(num_points: int) -> np.ndarray:
     return sphere_points
 
 
-####################################################################
-# The following functions, starting with an underscore, are for
-# internal use only, i.e. not intended to be used directly by
-# the user.
-####################################################################
+# =================================================================
+# Private helpers for internal use only
 
 def _set_epsilon(n):
     """Internal method used by the funtion
