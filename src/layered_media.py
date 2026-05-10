@@ -1,14 +1,13 @@
-# -*- coding: utf-8 -*-
-###############################################################################
+# =========================================================================== #
 # PyRockWave: A Python Module for modelling elastic properties                #
 # of Earth materials.                                                         #
 #                                                                             #
 # Filename: layered_media.py                                                  #
 # Description: This module calculates seismic reflectivity in layered media.  #
 #                                                                             #
-# Copyright (c) 2023-Present                                                  #
+# SPDX-License-Identifier: GPL-3.0-or-later                                   #
+# Copyright (c) 2023-present, Marco A. Lopez-Sanchez. All rights reserved.    #
 #                                                                             #
-# License:                                                                    #
 # PyRockWave is free software: you can redistribute it and/or modify          #
 # it under the terms of the GNU General Public License as published by        #
 # the Free Software Foundation, either version 3 of the License, or           #
@@ -22,13 +21,12 @@
 # You should have received a copy of the GNU General Public License           #
 # along with PyRockWave. If not, see <http://www.gnu.org/licenses/>.          #
 #                                                                             #
-# Author:                                                                     #
-# Marco A. Lopez-Sanchez                                                      #
+# Author: Marco A. Lopez-Sanchez                                              #
 # ORCID: http://orcid.org/0000-0002-0261-9267                                 #
-# Email: lopezmarco [to be found at] uniovi.es                                #
+# Email: lopezmarco [to be found at] uniovi dot es                            #
 # Website: https://marcoalopez.github.io/PyRockWave/                          #
 # Repository: https://github.com/marcoalopez/PyRockWave                       #
-###############################################################################
+# =========================================================================== #
 
 # Import statements
 import numpy as np
@@ -76,6 +74,7 @@ def snell(
     At and beyond the critical angle np.arcsin returns nan silently;
     no exception is raised.
     """
+
     if (np.any(np.asarray(vp_upper_layer) <= 0) or np.any(np.asarray(vp_lower_layer) <= 0)
             or np.any(np.asarray(vs_upper_layer) <= 0) or np.any(np.asarray(vs_lower_layer) <= 0)):
         raise ValueError("All velocities must be positive.")
@@ -130,6 +129,7 @@ def calc_reflectivity(
     Ryz : np.ndarray
         PP reflectivity as a function of angle of incidence in the yz plane.
     """
+
     # Compute Tsvankin params for both layers
     upper_layer_params = tsvankin_params(cij_upper_layer, upper_density_gcm3)
     lower_layer_params = tsvankin_params(cij_lower_layer, lower_density_gcm3)
@@ -205,6 +205,7 @@ def reflectivity(
     with offset and azimuth in anisotropic media. Geophysics,
     Vol 63, No 3, p935. https://doi.org/10.1190/1.1444405
     """
+
     if (len(upper_layer_tsvankin_params) < 7
             or len(lower_layer_tsvankin_params) < 7):
         raise ValueError("Tsvankin parameter arrays must have at least 7 elements.")
@@ -317,35 +318,6 @@ def tsvankin_params(
     return Vp0, Vs0, epsilon1, delta1, epsilon2, delta2, gamma1, gamma2, delta3
 
 
-def _validate_schoenberg_muir_layered_medium(
-    cij_layer1: np.ndarray,
-    cij_layer2: np.ndarray,
-    vfrac1: float,
-    vfrac2: float,
-) -> None:
-    """Validate inputs for :func:`schoenberg_muir_layered_medium`."""
-    if not isinstance(cij_layer1, np.ndarray) or not isinstance(cij_layer2, np.ndarray):
-        raise TypeError("cij_layer1 and cij_layer2 must be numpy arrays.")
-
-    if cij_layer1.shape != (6, 6) or cij_layer2.shape != (6, 6):
-        raise ValueError("cij_layer1 and cij_layer2 must be 6x6 arrays.")
-
-    if not np.allclose(cij_layer1, cij_layer1.T):
-        raise ValueError("the elastic tensor 1 is not symmetric!")
-
-    if not np.allclose(cij_layer2, cij_layer2.T):
-        raise ValueError("the elastic tensor 2 is not symmetric!")
-
-    if not isinstance(vfrac1, (int, float)) or not isinstance(vfrac2, (int, float)):
-        raise TypeError("vfrac1 and vfrac2 must be numbers.")
-
-    if not (0 <= vfrac1 <= 1) or not (0 <= vfrac2 <= 1):
-        raise ValueError("Volume fractions must be between 0 and 1.")
-
-    if not np.isclose(vfrac1 + vfrac2, 1, rtol=1e-03):
-        raise ValueError("Volume fractions must sum (approximately) to 1.")
-
-
 def schoenberg_muir_layered_medium(
     cij_layer1: np.ndarray,
     cij_layer2: np.ndarray,
@@ -395,6 +367,7 @@ def schoenberg_muir_layered_medium(
     documentation from srb toolbox (see sch_muir_bckus.m file)
     originally written by Kaushik Bandyopadhyay in 2008.
     """
+
     _validate_schoenberg_muir_layered_medium(cij_layer1, cij_layer2, vfrac1, vfrac2)
 
     # Extract submatrices (partition) for Cnn, Ctn, Ctt from the stiffness tensor
@@ -486,6 +459,38 @@ def schoenberg_muir_layered_medium(
     effective_stiffness_from_compliance = np.linalg.inv(effective_compliance)
 
     return effective_stiffness, effective_compliance, effective_stiffness_from_compliance
+
+
+# =================================================================
+# Private helpers for internal use only
+
+def _validate_schoenberg_muir_layered_medium(
+    cij_layer1: np.ndarray,
+    cij_layer2: np.ndarray,
+    vfrac1: float,
+    vfrac2: float,
+) -> None:
+    """Validate inputs for :func:`schoenberg_muir_layered_medium`."""
+    if not isinstance(cij_layer1, np.ndarray) or not isinstance(cij_layer2, np.ndarray):
+        raise TypeError("cij_layer1 and cij_layer2 must be numpy arrays.")
+
+    if cij_layer1.shape != (6, 6) or cij_layer2.shape != (6, 6):
+        raise ValueError("cij_layer1 and cij_layer2 must be 6x6 arrays.")
+
+    if not np.allclose(cij_layer1, cij_layer1.T):
+        raise ValueError("the elastic tensor 1 is not symmetric!")
+
+    if not np.allclose(cij_layer2, cij_layer2.T):
+        raise ValueError("the elastic tensor 2 is not symmetric!")
+
+    if not isinstance(vfrac1, (int, float)) or not isinstance(vfrac2, (int, float)):
+        raise TypeError("vfrac1 and vfrac2 must be numbers.")
+
+    if not (0 <= vfrac1 <= 1) or not (0 <= vfrac2 <= 1):
+        raise ValueError("Volume fractions must be between 0 and 1.")
+
+    if not np.isclose(vfrac1 + vfrac2, 1, rtol=1e-03):
+        raise ValueError("Volume fractions must sum (approximately) to 1.")
 
 
 # End of file
