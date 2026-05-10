@@ -1,4 +1,4 @@
-#=============================================================================#
+# =========================================================================== #
 # PyRockWave: A Python Module for modelling elastic properties                #
 # of Earth materials.                                                         #
 #                                                                             #
@@ -7,7 +7,7 @@
 # for computing and decomposing the elastic properties of materials.          #
 #                                                                             #
 # SPDX-License-Identifier: GPL-3.0-or-later                                   #
-# Copyright (c) 2023-2025, Marco A. Lopez-Sanchez. All rights reserved.       #
+# Copyright (c) 2023-present, Marco A. Lopez-Sanchez. All rights reserved.    #
 #                                                                             #
 # PyRockWave is free software: you can redistribute it and/or modify          #
 # it under the terms of the GNU General Public License as published by        #
@@ -27,7 +27,7 @@
 # Email: lopezmarco [to be found at] uniovi dot es                            #
 # Website: https://marcoalopez.github.io/PyRockWave/                          #
 # Repository: https://github.com/marcoalopez/PyRockWave                       #
-# =============================================================================#
+# =========================================================================== #
 
 
 # Import statements

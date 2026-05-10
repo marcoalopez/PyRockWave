@@ -1,4 +1,4 @@
-###############################################################################
+# =========================================================================== #
 # PyRockWave: A Python Module for modelling elastic properties                #
 # of Earth materials.                                                         #
 #                                                                             #
@@ -26,7 +26,7 @@
 # ORCID: http://orcid.org/0000-0002-0261-9267                                 #
 # Website: https://marcoalopez.github.io/PyRockWave/                          #
 # Repository: https://github.com/marcoalopez/PyRockWave                       #
-###############################################################################
+# =========================================================================== #
 
 # Import statements
 import numpy as np
@@ -36,6 +36,7 @@ from coordinates import sph2cart
 
 
 # Function definitions
+
 def phase_seismic_properties(
     Cij: np.ndarray,
     density_gcm3: float,
@@ -768,6 +769,9 @@ def calc_power_flow_angles(
 
     return np.rad2deg(np.arccos(np.around(cosang, 10)))
 
+
+# =================================================================
+# Private helpers for internal use only
 
 def validate_cij(Cij: np.ndarray) -> bool:
     """
