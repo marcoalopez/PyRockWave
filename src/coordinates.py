@@ -3,7 +3,8 @@
 # of Earth materials.                                                         #
 #                                                                             #
 # Filename: coordinates.py                                                    #
-# Description: TODO                                                           #
+# Description: Functions for converting between coordinate systems and        #
+# generating equispaced spherical grids.                                      #
 #                                                                             #
 # SPDX-License-Identifier: GPL-3.0-or-later                                   #
 # Copyright (c) 2023-present, Marco A. Lopez-Sanchez. All rights reserved.    #
@@ -30,10 +31,15 @@
 
 # Import statements
 import numpy as np
+import numpy.typing as npt
 
 
 # Function definitions
-def sph2cart(azimuth_rad, polar_rad, r=1):
+def sph2cart(
+    azimuth_rad: npt.ArrayLike,
+    polar_rad: npt.ArrayLike,
+    r: npt.ArrayLike = 1
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Convert from spherical/polar (magnitude, azimuth, polar) to
     cartesian coordinates. Azimuth and polar angles are as used in
@@ -42,18 +48,23 @@ def sph2cart(azimuth_rad, polar_rad, r=1):
 
     Parameters
     ----------
-    azimuth_rad : int, float or array with values between 0 and 2*pi
-        azimuth angle respect to the x-axis direction in radians
-    polar_rad : int, float or array with values between 0 and pi,
-        polar angle respect to the zenith (z) direction in radians
-        optional. Optional, defaults to np.deg2rad(90)
-    r : int, float or array, optional
-        radial distance (magnitud of the vector), defaults to 1
+    azimuth_rad : int, float or array_like
+        Azimuth angle with respect to the x-axis direction in radians,
+        values between 0 and 2*pi.
+    polar_rad : int, float or array_like
+        Polar angle with respect to the zenith (z) direction in radians,
+        values between 0 and pi.
+    r : int, float or array_like, optional
+        Radial distance (magnitude of the vector), defaults to 1.
 
     Returns
     -------
-    numpy ndarrays (1d)
-        three numpy 1d arrays with the cartesian x, y, and z coordinates
+    x : np.ndarray
+        Cartesian x coordinates.
+    y : np.ndarray
+        Cartesian y coordinates.
+    z : np.ndarray
+        Cartesian z coordinates.
     """
 
     x = r * np.sin(polar_rad) * np.cos(azimuth_rad)
@@ -63,7 +74,11 @@ def sph2cart(azimuth_rad, polar_rad, r=1):
     return x, y, z
 
 
-def cart2sph(x, y, z):
+def cart2sph(
+    x: npt.ArrayLike,
+    y: npt.ArrayLike,
+    z: npt.ArrayLike
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Converts 3D rectangular cartesian coordinates to spherical
     coordinates.
@@ -75,31 +90,35 @@ def cart2sph(x, y, z):
 
     Returns
     -------
-    r, theta, phi : float or array_like
-        Spherical coordinates:
-        - r: radial distance,
-        - theta: inclination/polar angle (range from 0 to π),
-        - phi: azimuthal angle (range from 0 to 2π).
+    r : np.ndarray
+        Radial distance.
+    theta : np.ndarray
+        Inclination/polar angle in radians, range [0, pi].
+    phi : np.ndarray
+        Azimuthal angle in radians, range [0, 2*pi].
 
     Notes
     -----
     This function follows the ISO 80000-2:2019 norm (physics convention).
     The input coordinates (x, y, z) are assumed to be in a right-handed
     Cartesian system. The spherical coordinates are returned in the order
-    (r, phi, theta). The angles theta and phi are in radians.
+    (r, theta, phi). The angles theta and phi are in radians.
+
+    When the input is the origin (0, 0, 0), r is 0 and theta returns NaN.
     """
+
     r = np.sqrt(x**2 + y**2 + z**2)
     theta = np.arccos(z / r)
-    phi = np.arctan2(y, x)
+    phi = np.arctan2(y, x) % (2 * np.pi)
 
-    return r, phi, theta
+    return r, theta, phi
 
 
 def equispaced_S2_grid(
-    num_points=20809,
-    degrees=False,
-    hemisphere=None
-):
+    num_points: int = 20809,
+    degrees: bool = False,
+    hemisphere: str | None = None
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Returns an approximately equispaced spherical grid in
     spherical coordinates (azimuthal and polar angles) using
@@ -109,7 +128,7 @@ def equispaced_S2_grid(
     and ease of implementation. It's particularly good for large
     numbers of points.
 
-    Note: Matemathically speaking, you cannot put more than 20
+    Note: Mathematically speaking, you cannot put more than 20
     perfectly evenly spaced points on a sphere. However, there
     are good-enough ways to approximately position evenly
     spaced points on a sphere.
@@ -121,59 +140,76 @@ def equispaced_S2_grid(
     Parameters
     ----------
     num_points : int, optional
-        the number of points, by default 20809
-
+        The number of points, by default 20809.
     degrees : bool, optional
-        whether you want angles in degrees or radians,
-        by default False (=radians)
-
-    hemisphere : None, 'upper' or 'lower'
-        whether you want the grid to be distributed
-        over the entire sphere, over the upper
-        hemisphere, or over the lower hemisphere.
+        Whether you want angles in degrees or radians,
+        by default False (=radians).
+    hemisphere : None, 'upper' or 'lower', optional
+        Whether you want the grid to be distributed over the entire
+        sphere, the upper hemisphere, or the lower hemisphere.
+        Defaults to None (full sphere).
 
     Returns
     -------
-    _type_
-        _description_
+    azimuth : np.ndarray
+        Azimuthal angles sorted by polar angle. In radians if
+        degrees=False, in degrees otherwise.
+    polar_ang : np.ndarray
+        Polar angles sorted in ascending order. In radians if
+        degrees=False, in degrees otherwise.
+
+    Raises
+    ------
+    ValueError
+        If num_points is not a positive integer, or if hemisphere
+        is not one of None, 'upper', or 'lower'.
     """
 
-    # set sample size
+    if not isinstance(num_points, int) or num_points < 1:
+        raise ValueError(f"num_points must be a positive integer, got {num_points!r}")
+    if hemisphere not in (None, "upper", "lower"):
+        raise ValueError(
+            f"hemisphere must be None, 'upper', or 'lower', got {hemisphere!r}"
+        )
+
+    # Subtract 2 to account for the two pole points added manually below.
+    # When filtering to a hemisphere, double first so the filtered half
+    # still contains the requested number of points.
     if hemisphere is None:
-        num_points = num_points - 2
+        n = num_points - 2
     else:
-        num_points = (num_points * 2) - 2
+        n = (num_points * 2) - 2
 
-    # get epsilon value based on sample size
-    epsilon = _set_epsilon(num_points)
+    epsilon = _set_epsilon(n)
 
-    golden_ratio = (1 + 5 ** 0.5) / 2
-    i = np.arange(0, num_points)
+    golden_ratio = (1 + 5**0.5) / 2
+    i = np.arange(0, n)
 
-    # estimate polar (phi) and theta (azimutal) angles in radians
-    theta = 2 * np.pi * i / golden_ratio
-    phi = np.arccos(1 - 2 * (i + epsilon) / (num_points - 1 + 2 * epsilon))
+    # compute azimuthal and polar angles in radians
+    azimuth = 2 * np.pi * i / golden_ratio
+    polar_ang = np.arccos(1 - 2 * (i + epsilon) / (n - 1 + 2 * epsilon))
 
-    # place one datapoint at each pole, it adds two datapoints removed before
-    theta, phi = np.insert(theta, 0, 0), np.insert(phi, 0, 0)
-    theta, phi = np.append(theta, 0), np.append(phi, np.pi)
+    # place one datapoint at each pole
+    azimuth = np.insert(azimuth, 0, 0)
+    polar_ang = np.insert(polar_ang, 0, 0)
+    azimuth = np.append(azimuth, 0)
+    polar_ang = np.append(polar_ang, np.pi)
 
-    # check options and apply
-    if degrees is False:
-        if hemisphere == 'upper':
-            azimuth, polar_ang = theta[phi <= np.pi/2] % (2*np.pi), phi[phi <= np.pi/2]
-        elif hemisphere == 'lower':
-            azimuth, polar_ang = theta[phi >= np.pi/2] % (2*np.pi), phi[phi >= np.pi/2]
-        else:
-            azimuth, polar_ang = theta % (2*np.pi), phi
+    # apply hemisphere filter
+    if hemisphere == "upper":
+        mask = polar_ang <= np.pi / 2
+    elif hemisphere == "lower":
+        mask = polar_ang >= np.pi / 2
     else:
-        if hemisphere == 'upper':
-            azimuth, polar_ang = np.rad2deg(theta[phi <= np.pi/2]) % 360, np.rad2deg(phi[phi <= np.pi/2])
-        elif hemisphere == 'lower':
-            azimuth, polar_ang = np.rad2deg(theta[phi >= np.pi/2]) % 360, np.rad2deg(phi[phi >= np.pi/2])
-        else:
-            azimuth, polar_ang = np.rad2deg(theta) % 360, np.rad2deg(phi)
-        
+        mask = np.ones(len(polar_ang), dtype=bool)
+
+    azimuth = azimuth[mask] % (2 * np.pi)
+    polar_ang = polar_ang[mask]
+
+    if degrees:
+        azimuth = np.rad2deg(azimuth)
+        polar_ang = np.rad2deg(polar_ang)
+
     # order angles according to polar angle, from 0 to 180 (degrees)
     azimuth = azimuth[np.argsort(polar_ang)]
     polar_ang = np.sort(polar_ang)
@@ -181,40 +217,47 @@ def equispaced_S2_grid(
     return azimuth, polar_ang
 
 
-def equispaced_S2_grid_eap(num_points: int) -> np.ndarray:
+def equispaced_S2_grid_fsa(num_points: int) -> np.ndarray:
     """
     Generate evenly distributed points on a unit sphere using
-    the Equal-Area Partitioning method.
+    the Fibonacci sphere algorithm (sunflower mapping).
 
-    This method, also known as the Spherical Fibonacci mapping,
-    creates a spiral-like distribution of points from the south
-    pole to the north pole of a unit sphere.
+    The algorithm distributes points using the golden angle as the
+    azimuthal increment and equal z-spacing (via arccos) to approximate
+    a uniform distribution from the south pole to the north pole.
 
     Parameters
     ----------
     num_points : int
         The number of points to generate on the sphere surface.
-    
-    type : str
-        Either in cartesian or spherical coordinates
 
     Returns
     -------
     np.ndarray
         An array of shape (num_points, 3) containing the (x, y, z)
-        coordinates of the generated points on the unit sphere.
+        coordinates of the generated points on the unit sphere (r=1).
+
+    Raises
+    ------
+    ValueError
+        If num_points is not a positive integer.
 
     Notes
     -----
-    The algorithm uses the golden angle (phi) to determine the azimuthal angle
-    increment between points, resulting in an approximately uniform distribution.
+    The golden angle phi = pi*(3 - sqrt(5)) ensures azimuthal increments
+    that avoid radial clustering. All points lie on the unit sphere (r=1).
 
     References
     ----------
     Swinbank, R., & Purser, R.J. (2006). Fibonacci grids: A novel approach to
-    global modelling. Quarterly Journal of the Royal Meteorological Society, 
+    global modelling. Quarterly Journal of the Royal Meteorological Society,
     132(619), 1769-1793.
     """
+
+    if not isinstance(num_points, int) or num_points < 1:
+        raise ValueError(
+            f"num_points must be a positive integer, got {num_points!r}"
+        )
 
     # Generate indices from 1 to num_points
     indices = np.arange(1, num_points + 1)
@@ -227,7 +270,7 @@ def equispaced_S2_grid_eap(num_points: int) -> np.ndarray:
 
     # Calculate the azimuthal angle (longitude)
     azimuthal_angle = golden_angle * indices
-    
+
     # Convert spherical coordinates to Cartesian coordinates
     x, y, z = sph2cart(azimuthal_angle, polar_angle)
 
@@ -240,9 +283,8 @@ def equispaced_S2_grid_eap(num_points: int) -> np.ndarray:
 # =================================================================
 # Private helpers for internal use only
 
-def _set_epsilon(n):
-    """Internal method used by the funtion
-    equispaced_S2_grid.
+def _set_epsilon(n: int) -> float:
+    """Internal function used by equispaced_S2_grid.
     """
     if n >= 40_000:
         return 25
