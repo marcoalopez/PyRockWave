@@ -156,8 +156,10 @@ def reflectivity(
     between 2 orthorhombic media using the approach of Ruger (1998).
 
     This is Python reimplementation with improved readability and
-    documentation from srb toolbox (https://github.com/StanfordRockPhysics/SRBToolbox)
-    In particular, a reimplementation of the  Rorsym.m file) originally
+    documentation from srb toolbox:
+    (https://github.com/StanfordRockPhysics/SRBToolbox)
+    
+    In particular, a reimplementation of the  Rorsym.m file originally
     written by Diana Sava
 
     Parameters
