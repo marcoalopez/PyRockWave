@@ -1,0 +1,16 @@
+[workspace]
+authors = ["Marco A. Lopez-Sanchez <marcoalopez@protonmail.com>"]
+channels = ["conda-forge"]
+name = "pyrockwave"
+platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = "3.13.9.*"
+numpy = ">=2.4.6,<3"
+scipy = ">=1.17.1,<2"
+pandas = ">=3.0.3,<4"
+matplotlib = ">=3.10.9,<4"
+jupyterlab = ">=4.5.7,<5"
