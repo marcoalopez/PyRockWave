@@ -7,7 +7,7 @@
 # in solids based on the Christoffel equation.                                #
 #                                                                             #
 # SPDX-License-Identifier: GPL-3.0-or-later                                   #
-# Copyright (c) 2023-2025, Marco A. Lopez-Sanchez. All rights reserved.       #
+# Copyright (c) 2023-present, Marco A. Lopez-Sanchez. All rights reserved.    #
 #                                                                             #
 # PyRockWave is free software: you can redistribute it and/or modify          #
 # it under the terms of the GNU General Public License as published by        #
@@ -36,7 +36,6 @@ from coordinates import sph2cart
 
 
 # Function definitions
-
 def phase_seismic_properties(
     Cij: np.ndarray,
     density_gcm3: float,
