@@ -1,12 +1,12 @@
-###############################################################################
+# =========================================================================== #
 # PyRockWave: A Python Module for modelling elastic properties                #
 # of Earth materials.                                                         #
 #                                                                             #
 # Filename: anisotropic_models.py                                             #
-# Description: This module calculates TODO                                    #
+# Description: This module contains different anisotropic models.             #
 #                                                                             #
 # SPDX-License-Identifier: GPL-3.0-or-later                                   #
-# Copyright (c) 2023-2025, Marco A. Lopez-Sanchez. All rights reserved.       #
+# Copyright (c) 2023-present, Marco A. Lopez-Sanchez. All rights reserved.    #
 #                                                                             #
 # PyRockWave is free software: you can redistribute it and/or modify          #
 # it under the terms of the GNU General Public License as published by        #
@@ -26,9 +26,11 @@
 # Email: lopezmarco [to be found at] uniovi dot es                            #
 # Website: https://marcoalopez.github.io/PyRockWave/                          #
 # Repository: https://github.com/marcoalopez/PyRockWave                       #
-###############################################################################
+# =========================================================================== #
 
 # Import statements
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
@@ -38,7 +40,7 @@ def weak_polar_anisotropy(
     cij: np.ndarray,
     density_gcm3: float,
     wavevectors_rad: np.ndarray
-):
+) -> pd.DataFrame:
     """
     Calculate the velocity of body waves in a material as a function
     of the direction of propagation, assuming that the elastic properties
@@ -105,7 +107,7 @@ def polar_anisotropy(
     cij: np.ndarray,
     density_gcm3: float,
     wavevectors_rad: np.ndarray
-):
+) -> pd.DataFrame:
     """
     Calculate the velocity of body waves in a material as a function
     of the direction of propagation, assuming that the elastic properties
@@ -186,7 +188,7 @@ def orthotropic_azimuthal_anisotropy(
     cij: np.ndarray,
     density_gcm3: float,
     wavevectors_rad: np.ndarray
-):
+) -> pd.DataFrame:
     """
     Calculate the velocity of body P-waves in a material as a function
     of the direction of propagation, assuming that the elastic properties
@@ -241,7 +243,10 @@ def orthotropic_azimuthal_anisotropy(
 
 ###############################################################################
 # functions that compute model parameters
-def Thomsen_params(cij: np.ndarray, density_gcm3: float):
+def Thomsen_params(
+    cij: np.ndarray,
+    density_gcm3: float
+) -> tuple[float, float, float, float, float]:
     """Estimate the Thomsen parameters for
     weak polar anisotropy.
 
@@ -351,7 +356,10 @@ def tsvankin_params(
     return Vp0, Vs0, epsilon1, delta1, epsilon2, delta2, gamma1, gamma2, delta3
 
 
-def HaoStovas_params(cij: np.ndarray, density_gcm3: float):
+def HaoStovas_params(
+    cij: np.ndarray,
+    density_gcm3: float
+) -> tuple[float, float, float, float, float, float]:
     """Estimate the Hao and Stovas (2016) parameters modified
     from Alkhalifah (2003) for azimuthal orthotropic anisotropy.
 
