@@ -33,6 +33,7 @@ import numpy as np
 import pandas as pd
 from tensor_tools import _rearrange_tensor
 from coordinates import sph2cart
+from validation import validate_cij
 
 
 # Function definitions
@@ -49,7 +50,8 @@ def phase_seismic_properties(
     Parameters
     ----------
     Cij : numpy.ndarray
-        The 6x6 elastic tensor in Voigt notation.
+        The 6x6 elastic tensor in Voigt notation, in GPa. Together
+        with the density in g/cm^3 this yields velocities in km/s.
 
     density_gcm3 : float
         Density in g/cm^3.
@@ -66,7 +68,9 @@ def phase_seismic_properties(
         df : pd.DataFrame
             One row per direction, with columns for input angles,
             wavevector components, phase velocities (Vs2, Vs1, Vp) in km/s,
-            Vp/Vs ratios, and shear-wave splitting percentage.
+            Vp/Vs ratios, shear-wave splitting percentage, and percentage
+            deviations of each phase velocity from the isotropic
+            Voigt-Reuss-Hill average (dVs2_perc, dVs1_perc, dVp_perc).
         eigenvectors : numpy.ndarray of shape (n, 3, 3)
             Polarization eigenvectors for each direction, indexed
             as (direction, mode, cart).
@@ -77,6 +81,9 @@ def phase_seismic_properties(
 
     # shear wave splitting
     sws = (phase_vel[:, 1] - phase_vel[:, 0]) / ((phase_vel[:, 1] + phase_vel[:, 0]) / 2)
+
+    # isotropic (Voigt-Reuss-Hill) reference velocities
+    vp_iso, vs_iso = _isotropic_vrh_velocities(Cij, density_gcm3)
 
     df = pd.DataFrame(
         {
@@ -95,7 +102,9 @@ def phase_seismic_properties(
             # polarization anisotropy (shear-wave splitting)
             "SWS_perc": 100 * sws,
             # deviation from the isotropic average
-            # TODO
+            "dVs2_perc": 100 * (phase_vel[:, 0] - vs_iso) / vs_iso,
+            "dVs1_perc": 100 * (phase_vel[:, 1] - vs_iso) / vs_iso,
+            "dVp_perc": 100 * (phase_vel[:, 2] - vp_iso) / vp_iso,
         }
     )
 
@@ -115,7 +124,8 @@ def full_seismic_properties(
     Parameters
     ----------
     Cij : numpy.ndarray
-        The 6x6 elastic tensor in Voigt notation.
+        The 6x6 elastic tensor in Voigt notation, in GPa. Together
+        with the density in g/cm^3 this yields velocities in km/s.
 
     density_gcm3 : float
         Density in g/cm^3.
@@ -138,6 +148,13 @@ def full_seismic_properties(
         eigenvectors : numpy.ndarray of shape (n, 3, 3)
             Polarization eigenvectors for each direction, indexed
             as (direction, mode, cart).
+
+    Notes
+    -----
+    Along and near acoustic axes (directions where the S-wave
+    velocities Vs1 and Vs2 become degenerate) the eigenvalue Hessian
+    is ill-defined, so the S-wave enhancement factors are unreliable
+    there. See _get_hessian_eigen for details.
     """
     azimuths_deg, polar_deg, q, Cijkl_norm, eigenvalues, phase_vel, eigenvectors = (
         _build_christoffel_eigensystem(Cij, density_gcm3, azimuths_deg, polar_deg)
@@ -243,6 +260,55 @@ def _validate_seismic_inputs(
         raise ValueError("density_gcm3 must be a positive finite float.")
 
     return azimuths_deg, polar_deg
+
+
+def _isotropic_vrh_velocities(
+    Cij: np.ndarray,
+    density_gcm3: float,
+) -> tuple[float, float]:
+    """
+    Isotropic reference velocities from the Voigt-Reuss-Hill average.
+
+    The Hill bulk (K) and shear (G) moduli are the arithmetic means
+    of the Voigt and Reuss bounds, computed from the stiffness matrix
+    and its inverse (compliance), respectively. The same formulas are
+    used in ElasticClass.ElasticProps.
+
+    Parameters
+    ----------
+    Cij : numpy.ndarray
+        The 6x6 elastic tensor in Voigt notation, in GPa.
+
+    density_gcm3 : float
+        Density in g/cm^3.
+
+    Returns
+    -------
+    tuple[float, float]
+        (vp_iso, vs_iso), the isotropic P- and S-wave velocities
+        in km/s.
+    """
+    Sij = np.linalg.inv(Cij)
+
+    c11, c22, c33, c44, c55, c66 = np.diag(Cij)
+    s11, s22, s33, s44, s55, s66 = np.diag(Sij)
+    c12, c13, c23 = Cij[0, 1], Cij[0, 2], Cij[1, 2]
+    s12, s13, s23 = Sij[0, 1], Sij[0, 2], Sij[1, 2]
+
+    K_voigt = 1 / 9 * ((c11 + c22 + c33) + 2 * (c12 + c23 + c13))
+    K_reuss = 1 / ((s11 + s22 + s33) + 2 * (s12 + s23 + s13))
+    K_hill = (K_voigt + K_reuss) / 2
+
+    G_voigt = 1 / 15 * ((c11 + c22 + c33) - (c12 + c23 + c13)
+                        + 3 * (c44 + c55 + c66))
+    G_reuss = 15 / (4 * (s11 + s22 + s33) - 4 * (s12 + s23 + s13)
+                    + 3 * (s44 + s55 + s66))
+    G_hill = (G_voigt + G_reuss) / 2
+
+    vp_iso = np.sqrt((K_hill + 4 / 3 * G_hill) / density_gcm3)
+    vs_iso = np.sqrt(G_hill / density_gcm3)
+
+    return float(vp_iso), float(vs_iso)
 
 
 def _build_christoffel_eigensystem(
@@ -362,6 +428,9 @@ def _calc_eigen(Mil: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         eigenvalues  : (n, 3) array sorted ascending per direction.
         eigenvectors : (n, 3, 3) array indexed as (direction, mode, cart).
     """
+    if Mil.ndim != 3 or Mil.shape[1:] != (3, 3):
+        raise ValueError("Mil must have shape (n, 3, 3).")
+
     eigenvalues, eigenvectors = np.linalg.eigh(Mil)  # columns are eigenvectors
     eigenvectors = np.swapaxes(eigenvectors, 1, 2)    # rows are eigenvectors (mode, cart)
 
@@ -388,21 +457,30 @@ def calc_phase_velocities(eigenvalues: np.ndarray) -> np.ndarray:
         Each triad contains the three wave velocities [Vs2, Vs1, Vp],
         where Vs2 < Vs1 < Vp.
 
+    Raises
+    ------
+    ValueError
+        If any eigenvalue is non-positive, which indicates a
+        mechanically unstable elastic tensor.
+
     Notes
     -----
     The function estimates the phase velocities of the material's
     sound waves from the eigenvalues of the Christoffel matrix (M).
     The eigenvalues represent the squared phase velocities, and by
     taking the square root, the actual phase velocities are obtained.
-    The output is a 1D NumPy array containing the three velocities,
-    Vs2, Vs1, and Vp, sorted in ascending order (Vs2 < Vs1 < Vp).
     Sound waves in nature are never purely monochromatic or planar.
     See calc_group_velocities.
     """
     if eigenvalues.ndim != 2 or eigenvalues.shape[1] != 3:
         raise ValueError("eigenvalues must have shape (n, 3).")
+    if np.any(eigenvalues <= 0):
+        raise ValueError(
+            "All Christoffel eigenvalues must be positive "
+            "(mechanically stable elastic tensor)."
+        )
 
-    return np.sign(eigenvalues) * np.sqrt(np.abs(eigenvalues))
+    return np.sqrt(eigenvalues)
 
 
 def _christoffel_gradient_matrix(
@@ -437,6 +515,11 @@ def _christoffel_gradient_matrix(
     vector component q_a is:
         ∂M_il/∂q_a = ∑m (C_iaml + C_imal) * q_m
     """
+    if wavevectors.ndim != 2 or wavevectors.shape[1] != 3:
+        raise ValueError("wavevectors must have shape (n, 3).")
+    if Cijkl.shape != (3, 3, 3, 3):
+        raise ValueError("Cijkl must have shape (3, 3, 3, 3).")
+
     q = wavevectors
     term1 = np.einsum("nm,iaml->nail", q, Cijkl)
     term2 = np.einsum("nm,imal->nail", q, Cijkl)
@@ -513,11 +596,12 @@ def calc_group_velocities(
     eigenvectors: np.ndarray,
     christoffel_gradient: np.ndarray,
     wave_vectors: np.ndarray,
-) -> dict:
+) -> dict[str, np.ndarray]:
     """
     Calculate group velocity vectors, magnitudes, directions, and power flow angles.
 
-    Matches Jaeken & Cottenier (2016) implementation logic.
+    Matches Jaeken & Cottenier (2016) implementation logic. The power
+    flow angles are computed with calc_power_flow_angles.
 
     Parameters
     ----------
@@ -532,14 +616,13 @@ def calc_group_velocities(
 
     Returns
     -------
-    dict with keys:
+    dict[str, numpy.ndarray] with keys:
         grad_eigenvalues  : (n, 3, 3)  dλ/dq per mode and direction
         group_velocity    : (n, 3, 3)  group velocity vectors (mode, cart)
         group_speed       : (n, 3)     magnitudes of group velocities
         group_dir         : (n, 3, 3)  unit group direction vectors
         group_polar_deg   : (n, 3)     polar angle θ of group direction
         group_azimuths_deg: (n, 3)     azimuth angle φ of group direction
-        cos_powerflow     : (n, 3)     cosine of power flow angles
         powerflow_deg     : (n, 3)     power flow angles in degrees
     """
     if phase_velocities.shape != (wave_vectors.shape[0], 3):
@@ -562,12 +645,10 @@ def calc_group_velocities(
     group_dir = group_vel / group_speed[:, :, None]
 
     # power flow angle between group direction and phase direction
-    cos_pf = np.einsum("nmi,ni->nm", group_dir, wave_vectors)
-    cos_pf = np.clip(cos_pf, -1.0, 1.0)
-    pf_deg = np.rad2deg(np.arccos(np.around(cos_pf, 10)))
+    pf_deg = calc_power_flow_angles(group_dir, wave_vectors)
 
     # group direction spherical angles
-    gpolar_deg,gazimuths_deg = calc_spherical_angles(group_dir)
+    gpolar_deg, gazimuths_deg = calc_spherical_angles(group_dir)
 
     return {
         "grad_eigenvalues": grad_lam,
@@ -576,7 +657,6 @@ def calc_group_velocities(
         "group_dir": group_dir,
         "group_polar_deg": gpolar_deg,
         "group_azimuths_deg": gazimuths_deg,
-        "cos_powerflow": cos_pf,
         "powerflow_deg": pf_deg,
     }
 
@@ -611,7 +691,7 @@ def _christoffel_matrix_hessian(Cijkl: np.ndarray) -> np.ndarray:
 def _get_hessian_eigen(
     eigenvalues: np.ndarray,
     eigenvectors: np.ndarray,
-    delta_Mij: np.ndarray,
+    gradient_matrix: np.ndarray,
     hess_matrix: np.ndarray,
     tol: float = 1e-10,
 ) -> np.ndarray:
@@ -632,7 +712,7 @@ def _get_hessian_eigen(
         The eigenvectors of the normalized Christoffel matrices,
         shape (n, 3, 3), indexed as (direction, mode, cart).
 
-    delta_Mij : numpy.ndarray
+    gradient_matrix : numpy.ndarray
         The derivatives of the Christoffel matrices, shape (n, 3, 3, 3),
         indexed as [n, a, i, j].
 
@@ -641,12 +721,24 @@ def _get_hessian_eigen(
         indexed as [a, b, i, j].
 
     tol : float, optional
-        Degeneracy tolerance for eigenvalue differences. Default is 1e-10.
+        Degeneracy tolerance for eigenvalue differences, in the same
+        (absolute) units as the eigenvalues, i.e. (km/s)^2. Default
+        is 1e-10.
 
     Returns
     -------
     numpy.ndarray of shape (n, 3, 3, 3)
         Hlam[n, mode, a, b] = ∂²λ_mode / ∂q_a ∂q_b
+
+    Notes
+    -----
+    Second-order perturbation terms are dropped whenever the
+    eigenvalue gap |λ_m - λ_i| is below `tol`. Eigenvalues are not
+    twice differentiable at degeneracies, so along and near acoustic
+    axes (where Vs1 = Vs2) the returned S-mode Hessians, and any
+    quantity derived from them such as the enhancement factor, are
+    unreliable. This matches the behaviour of the Jaeken & Cottenier
+    (2016) reference implementation.
     """
     n = eigenvalues.shape[0]
 
@@ -669,12 +761,44 @@ def _get_hessian_eigen(
     pinv = tmp @ V[:, None, :, :]          # (n, mode_target, cart, cart)
 
     # deriv_vec = gradM @ v  -> (n, mode, a, cart)
-    deriv = np.einsum("naij,nmj->nmai", delta_Mij, eigenvectors)
+    deriv = np.einsum("naij,nmj->nmai", gradient_matrix, eigenvectors)
 
     # Term 2: 2 * deriv * pinv * deriv^T  -> (n, mode, a, b)
     term2 = 2.0 * np.einsum("nmai,nmij,nmbj->nmab", deriv, pinv, deriv)
 
     return term1 + term2
+
+
+def _validate_calc_enhancement_factor(
+    hessian_eigenvalues: np.ndarray,
+    phase_velocities: np.ndarray,
+    group_velocity: np.ndarray,
+    group_speed: np.ndarray,
+    wave_vectors: np.ndarray,
+) -> None:
+    """
+    Validate the array shapes passed to calc_enhancement_factor.
+
+    Parameters
+    ----------
+    See calc_enhancement_factor.
+
+    Raises
+    ------
+    ValueError
+        If any array does not have the expected shape.
+    """
+    if wave_vectors.ndim != 2 or wave_vectors.shape[1] != 3:
+        raise ValueError("wave_vectors must have shape (n, 3).")
+    n = wave_vectors.shape[0]
+    if hessian_eigenvalues.shape != (n, 3, 3, 3):
+        raise ValueError("hessian_eigenvalues must have shape (n, 3, 3, 3).")
+    if phase_velocities.shape != (n, 3):
+        raise ValueError("phase_velocities must have shape (n, 3).")
+    if group_velocity.shape != (n, 3, 3):
+        raise ValueError("group_velocity must have shape (n, 3, 3).")
+    if group_speed.shape != (n, 3):
+        raise ValueError("group_speed must have shape (n, 3).")
 
 
 def calc_enhancement_factor(
@@ -707,16 +831,17 @@ def calc_enhancement_factor(
     -------
     numpy.ndarray of shape (n, 3)
         Enhancement factor per direction and wave mode.
+
+    Notes
+    -----
+    The S-mode enhancement factors are unreliable along and near
+    acoustic axes (degenerate Vs1 = Vs2 directions); see
+    _get_hessian_eigen. Directions at an exact caustic return inf.
     """
-    n = wave_vectors.shape[0]
-    if hessian_eigenvalues.shape != (n, 3, 3, 3):
-        raise ValueError("hessian_eigenvalues must have shape (n, 3, 3, 3).")
-    if phase_velocities.shape != (n, 3):
-        raise ValueError("phase_velocities must have shape (n, 3).")
-    if group_velocity.shape != (n, 3, 3):
-        raise ValueError("group_velocity must have shape (n, 3, 3).")
-    if group_speed.shape != (n, 3):
-        raise ValueError("group_speed must have shape (n, 3).")
+    _validate_calc_enhancement_factor(
+        hessian_eigenvalues, phase_velocities, group_velocity,
+        group_speed, wave_vectors,
+    )
 
     H = hessian_eigenvalues
     vp = phase_velocities
@@ -735,7 +860,9 @@ def calc_enhancement_factor(
     vec = np.einsum("nmij,nj->nmi", cof, q)             # (n, mode, 3)
 
     denom = np.linalg.norm(vec, axis=-1)
-    return np.where(denom > 0.0, 1.0 / denom, np.inf)
+    return np.divide(
+        1.0, denom, out=np.full_like(denom, np.inf), where=denom > 0.0
+    )
 
 
 def calc_power_flow_angles(
@@ -766,72 +893,11 @@ def calc_power_flow_angles(
     cosang = np.einsum("nmi,ni->nm", group_dir, wave_vectors)
     cosang = np.clip(cosang, -1.0, 1.0)
 
-    return np.rad2deg(np.arccos(np.around(cosang, 10)))
+    return np.rad2deg(np.arccos(cosang))
 
 
 # =================================================================
 # Private helpers for internal use only
-
-def validate_cij(Cij: np.ndarray) -> bool:
-    """
-    Validate a 6x6 Voigt stiffness matrix.
-
-    Parameters
-    ----------
-    Cij : numpy.ndarray
-        The elastic stiffness tensor in Voigt notation.
-
-    Returns
-    -------
-    bool
-        True if Cij passes all checks.
-
-    Raises
-    ------
-    ValueError
-        If Cij is not a 6x6 NumPy array or is not symmetric.
-    """
-    if not isinstance(Cij, np.ndarray) or Cij.shape != (6, 6):
-        raise ValueError("Cij should be a 6x6 NumPy array.")
-    if not np.allclose(Cij, Cij.T):
-        raise ValueError("Cij should be symmetric.")
-    return True
-
-
-def validate_wavevectors(wavevectors: np.ndarray) -> bool:
-    """
-    Validate a wavevector array.
-
-    Parameters
-    ----------
-    wavevectors : numpy.ndarray of shape (3,) or (n, 3)
-        The wavevector array to validate.
-
-    Returns
-    -------
-    bool
-        True if the array has an acceptable shape and type.
-
-    Raises
-    ------
-    ValueError
-        If the array is not a NumPy array or does not have shape
-        (3,) or (n, 3).
-    """
-    if not isinstance(wavevectors, np.ndarray):
-        raise ValueError("Input must be a NumPy array.")
-
-    if wavevectors.ndim not in [1, 2]:
-        raise ValueError("Input array must be 1-dimensional or 2-dimensional.")
-
-    if wavevectors.ndim == 1 and wavevectors.shape != (3,):
-        raise ValueError("1-dimensional array must have shape (3,).")
-
-    if wavevectors.ndim == 2 and wavevectors.shape[1] != 3:
-        raise ValueError("2-dimensional array must have shape (n, 3).")
-
-    return True
-
 
 def _cofactor_3x3(A: np.ndarray) -> np.ndarray:
     """
