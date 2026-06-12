@@ -29,10 +29,22 @@
 # =========================================================================== #
 
 # Import statements
+import warnings
+
 import numpy as np
 import pandas as pd
 from scipy.spatial.transform import Rotation as R
 from tensor_tools import _rearrange_tensor, _tensor_in_voigt
+
+
+# Scaling factors relating the Voigt-notation compliance matrix to the
+# 4th-rank compliance tensor: S_IJ = S_ijkl, 2*S_ijkl or 4*S_ijkl
+# depending on whether none, one or both of I, J are in {4, 5, 6}.
+# (No factors are needed for the stiffness tensor, where C_IJ = C_ijkl.)
+_VOIGT_COMPLIANCE_FACTORS = np.ones((6, 6))
+_VOIGT_COMPLIANCE_FACTORS[:3, 3:] = 2.0
+_VOIGT_COMPLIANCE_FACTORS[3:, :3] = 2.0
+_VOIGT_COMPLIANCE_FACTORS[3:, 3:] = 4.0
 
 
 # Function definitions
@@ -154,8 +166,9 @@ def voigt_CPO_weighted_average(
 
     C'_ijkl = R_ia R_jb R_kc R_ld C_abcd
 
-    using the Bunge zxz (extrinsic) Euler angle convention, then
-    mapped back to Voigt notation.
+    where R is the crystal-to-sample rotation derived from the
+    Bunge Euler angles (intrinsic ZXZ convention). The averaged
+    tensor is mapped back to Voigt notation.
 
     Parameters
     ----------
@@ -165,8 +178,9 @@ def voigt_CPO_weighted_average(
     ODF : pd.DataFrame
         Orientation Distribution Function. Must have at least
         four columns: the first three are the Euler angles
-        (phi1, Phi, phi2) in degrees using the Bunge zxz
-        extrinsic convention; the fourth is the volume fraction
+        (phi1, Phi, phi2) in degrees following the Bunge
+        convention (intrinsic ZXZ: rotations about the z, new x
+        and new z axes); the fourth is the volume fraction
         (or percentage) associated with each orientation.
 
     Returns
@@ -178,7 +192,10 @@ def voigt_CPO_weighted_average(
     weights = _validate_CPO_weighted_average(elastic_tensor, ODF)
 
     euler_angles = ODF.iloc[:, :3].to_numpy(dtype=float)
-    rot_matrices = R.from_euler('zxz', euler_angles, degrees=True).as_matrix()
+
+    # Intrinsic ZXZ with (phi1, Phi, phi2) gives g^T, the Bunge
+    # crystal-to-sample rotation
+    rot_matrices = R.from_euler('ZXZ', euler_angles, degrees=True).as_matrix()
 
     C_ijkl = _rearrange_tensor(elastic_tensor)
 
@@ -187,7 +204,8 @@ def voigt_CPO_weighted_average(
     C_rotated = np.einsum(
         'nia,njb,nkc,nld,abcd->nijkl',
         rot_matrices, rot_matrices, rot_matrices, rot_matrices,
-        C_ijkl
+        C_ijkl,
+        optimize=True
     )
 
     C_weighted = np.einsum('n,nijkl->ijkl', weights, C_rotated)
@@ -213,13 +231,18 @@ def reuss_CPO_weighted_average(
     where S_nij is the compliance tensor rotated to orientation n
     and ODF_n is the corresponding volume fraction. The Reuss
     average elastic tensor is then the inverse of S_ij_reuss.
-    Because rotation commutes with matrix inversion for orthogonal
-    matrices, the compliance tensor is rotated directly:
+    The compliance tensor of a rotated crystal equals the rotated
+    compliance tensor, so the single-crystal compliance is rotated
+    directly:
 
     S'_ijkl = R_ia R_jb R_kc R_ld S_abcd
 
-    using the Bunge zxz (extrinsic) Euler angle convention, then
-    mapped back to Voigt notation before inversion.
+    where R is the crystal-to-sample rotation derived from the
+    Bunge Euler angles (intrinsic ZXZ convention). Because the
+    Voigt-notation compliance matrix carries factors of 2 and 4
+    on its shear-related entries relative to the tensor
+    components, it is rescaled to true tensor components before
+    rotation and back afterwards.
 
     Parameters
     ----------
@@ -229,8 +252,9 @@ def reuss_CPO_weighted_average(
     ODF : pd.DataFrame
         Orientation Distribution Function. Must have at least
         four columns: the first three are the Euler angles
-        (phi1, Phi, phi2) in degrees using the Bunge zxz
-        extrinsic convention; the fourth is the volume fraction
+        (phi1, Phi, phi2) in degrees following the Bunge
+        convention (intrinsic ZXZ: rotations about the z, new x
+        and new z axes); the fourth is the volume fraction
         (or percentage) associated with each orientation.
 
     Returns
@@ -242,21 +266,31 @@ def reuss_CPO_weighted_average(
     weights = _validate_CPO_weighted_average(elastic_tensor, ODF)
 
     euler_angles = ODF.iloc[:, :3].to_numpy(dtype=float)
-    rot_matrices = R.from_euler('zxz', euler_angles, degrees=True).as_matrix()
 
-    S_ijkl = _rearrange_tensor(np.linalg.inv(elastic_tensor))
+    # Intrinsic ZXZ with (phi1, Phi, phi2) gives g^T, the Bunge
+    # crystal-to-sample rotation
+    rot_matrices = R.from_euler('ZXZ', euler_angles, degrees=True).as_matrix()
+
+    # Remove the Voigt factors so that S_ijkl holds true tensor
+    # components before applying the 4th-rank rotation law
+    S_voigt = np.linalg.inv(elastic_tensor)
+    S_ijkl = _rearrange_tensor(S_voigt / _VOIGT_COMPLIANCE_FACTORS)
 
     # Rotate single-crystal compliance tensor to all N orientations at once:
     # S'_nijkl = R_nia R_njb R_nkc R_nld S_abcd
     S_rotated = np.einsum(
         'nia,njb,nkc,nld,abcd->nijkl',
         rot_matrices, rot_matrices, rot_matrices, rot_matrices,
-        S_ijkl
+        S_ijkl,
+        optimize=True
     )
 
     S_weighted = np.einsum('n,nijkl->ijkl', weights, S_rotated)
 
-    return np.linalg.inv(_tensor_in_voigt(S_weighted))
+    # Restore the Voigt factors before inverting back to stiffness
+    Sij_reuss = _tensor_in_voigt(S_weighted) * _VOIGT_COMPLIANCE_FACTORS
+
+    return np.linalg.inv(Sij_reuss)
 
 
 # =================================================================
@@ -273,8 +307,9 @@ def _validate_volume_weighted_average(
     Raises
     ------
     ValueError
-        If shapes are incompatible, any fraction is negative, or
-        elastic_tensors is not a 3-D array of (6, 6) matrices.
+        If shapes are incompatible, any fraction is negative, the
+        fractions sum to zero, or elastic_tensors is not a 3-D
+        array of (6, 6) matrices.
     """
     if elastic_tensors.ndim != 3 or elastic_tensors.shape[1:] != (6, 6):
         raise ValueError(
@@ -291,9 +326,12 @@ def _validate_volume_weighted_average(
         )
     if np.any(volume_fractions < 0):
         raise ValueError("All volume fractions must be non-negative")
-    if not np.isclose(volume_fractions.sum(), 1.0):
-        print("Volume fractions do not add up to 1, recalculating...")
-        volume_fractions = volume_fractions / volume_fractions.sum()
+    total = volume_fractions.sum()
+    if total <= 0:
+        raise ValueError("Volume fractions must sum to a positive value")
+    if not np.isclose(total, 1.0):
+        warnings.warn("Volume fractions do not add up to 1, normalising...")
+        volume_fractions = volume_fractions / total
     return volume_fractions
 
 
@@ -307,11 +345,16 @@ def _validate_CPO_weighted_average(
 
     Raises
     ------
+    TypeError
+        If elastic_tensor is not a NumPy array or ODF is not a
+        pandas DataFrame.
     ValueError
-        If elastic_tensor is not a (6, 6) array, ODF is not a DataFrame
-        with at least 4 columns, or any weight is negative.
+        If elastic_tensor is not (6, 6), ODF has fewer than 4
+        columns, any weight is negative, or the weights sum to zero.
     """
-    if not isinstance(elastic_tensor, np.ndarray) or elastic_tensor.shape != (6, 6):
+    if not isinstance(elastic_tensor, np.ndarray):
+        raise TypeError("elastic_tensor must be a NumPy array")
+    if elastic_tensor.shape != (6, 6):
         raise ValueError(
             f"elastic_tensor must have shape (6, 6), got {elastic_tensor.shape}"
         )
@@ -324,8 +367,11 @@ def _validate_CPO_weighted_average(
     weights = ODF.iloc[:, 3].to_numpy(dtype=float)
     if np.any(weights < 0):
         raise ValueError("All ODF volume fractions must be non-negative")
-    if not np.isclose(weights.sum(), 1.0):
-        weights = weights / weights.sum()
+    total = weights.sum()
+    if total <= 0:
+        raise ValueError("ODF volume fractions must sum to a positive value")
+    if not np.isclose(total, 1.0):
+        weights = weights / total
     return weights
 
 
