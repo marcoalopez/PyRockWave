@@ -88,9 +88,10 @@ def snell(
     p = np.sin(theta1) / vp_upper_layer
 
     # Calculate reflection and refraction angles using Snell's law
-    phi1 = np.arcsin(p * vs_upper_layer)
-    theta2 = np.arcsin(p * vp_lower_layer)
-    phi2 = np.arcsin(p * vs_lower_layer)
+    # (np.arcsin returns radians; convert back to degrees on output)
+    phi1 = np.rad2deg(np.arcsin(p * vs_upper_layer))
+    theta2 = np.rad2deg(np.arcsin(p * vp_lower_layer))
+    phi2 = np.rad2deg(np.arcsin(p * vs_lower_layer))
 
     return theta2, phi1, phi2, p
 
@@ -166,10 +167,12 @@ def reflectivity(
     ----------
     upper_layer_tsvankin_params : array-like of shape (9,)
         The Tsvankin params of the upper medium (output of
-        :func:`tsvankin_params`).
+        :func:`tsvankin_params`). At least the first 8 elements
+        (through gamma2) are required.
     lower_layer_tsvankin_params : array-like of shape (9,)
         The Tsvankin params of the lower medium (output of
-        :func:`tsvankin_params`).
+        :func:`tsvankin_params`). At least the first 8 elements
+        (through gamma2) are required.
     upper_density_gcm3 : float
         Density of the upper medium in g/cm³.
     lower_density_gcm3 : float
@@ -190,9 +193,13 @@ def reflectivity(
         orthorhombic medium (normal to y).
     delta2 (d2) : Delta in the second symmetry plane of the
         orthorhombic medium (normal to y).
-    gamma1 (g1) : Vertical shear wave splitting parameter of the medium.
-    gamma2, delta3 : Present in the array but not used in this
-        reflectivity calculation.
+    gamma1 (g1) : VTI gamma parameter in the yz symmetry plane,
+        (c66 - c55) / (2 * c55).
+    gamma2 (g2) : VTI gamma parameter in the xz symmetry plane,
+        (c66 - c44) / (2 * c44). Combined with gamma1 to recover the
+        vertical shear-wave splitting parameter used in the xz plane.
+    delta3 : Present in the array but not used in this reflectivity
+        calculation.
 
     Returns
     -------
@@ -208,31 +215,44 @@ def reflectivity(
     Vol 63, No 3, p935. https://doi.org/10.1190/1.1444405
     """
 
-    if (len(upper_layer_tsvankin_params) < 7
-            or len(lower_layer_tsvankin_params) < 7):
-        raise ValueError("Tsvankin parameter arrays must have at least 7 elements.")
+    if (len(upper_layer_tsvankin_params) < 8
+            or len(lower_layer_tsvankin_params) < 8):
+        raise ValueError("Tsvankin parameter arrays must have at least 8 elements.")
     if upper_density_gcm3 <= 0 or lower_density_gcm3 <= 0:
         raise ValueError("Densities must be positive.")
 
     # Extract Tsvankin params
     # Order: Vp0, Vs0, epsilon1, delta1, epsilon2, delta2, gamma1, gamma2, delta3
-    Vp0_up, Vs0_up, e1_up, d1_up, e2_up, d2_up, g1_up, *_ = upper_layer_tsvankin_params
-    Vp0_low, Vs0_low, e1_low, d1_low, e2_low, d2_low, g1_low, *_ = lower_layer_tsvankin_params
+    Vp0_up, Vs0_up, e1_up, d1_up, e2_up, d2_up, g1_up, g2_up, *_ = upper_layer_tsvankin_params
+    Vp0_low, Vs0_low, e1_low, d1_low, e2_low, d2_low, g1_low, g2_low, *_ = lower_layer_tsvankin_params
+
+    # Ruger's (1998) symmetry-plane equations (23)-(24) use a single shear
+    # reference: the vertical S-wave velocity polarised along x2, sqrt(c44/rho),
+    # together with the vertical shear-wave splitting parameter
+    # gamma_S = (c44 - c55) / (2 * c55) in the xz plane. Vs0 = sqrt(c55/rho)
+    # is the x1-polarised velocity, so reconstruct both from the Tsvankin
+    # parameters via gamma_S = (gamma1 - gamma2) / (1 + 2*gamma2) and
+    # sqrt(c44/rho) = Vs0 * sqrt(1 + 2*gamma_S).
+    gS_up = (g1_up - g2_up) / (1 + 2 * g2_up)
+    gS_low = (g1_low - g2_low) / (1 + 2 * g2_low)
+    Vs2_up = Vs0_up * np.sqrt(1 + 2 * gS_up)
+    Vs2_low = Vs0_low * np.sqrt(1 + 2 * gS_low)
 
     # Calculate impedance for both media
     Z1 = upper_density_gcm3 * Vp0_up
     Z2 = lower_density_gcm3 * Vp0_low
 
-    # Calculate shear modulus for both media and their average and difference
-    G1 = upper_density_gcm3 * Vs0_up**2
-    G2 = lower_density_gcm3 * Vs0_low**2
+    # Calculate shear modulus (G = rho * c44 = rho * Vs2**2) for both media
+    # and their average and difference
+    G1 = upper_density_gcm3 * Vs2_up**2
+    G2 = lower_density_gcm3 * Vs2_low**2
     G_avg = (G1 + G2) / 2.0
     G_diff = G2 - G1
 
     # Calculate average and difference for P-wave and S-wave velocities
     a_avg = (Vp0_up + Vp0_low) / 2.0
     a_diff = Vp0_low - Vp0_up
-    b_avg = (Vs0_up + Vs0_low) / 2.0
+    b_avg = (Vs2_up + Vs2_low) / 2.0
 
     # Calculate sin²(θ) and tan²(θ)
     sin_sq_theta = np.sin(incident_angles_rad)**2
@@ -241,12 +261,12 @@ def reflectivity(
     # Calculate factor f
     f = (2 * b_avg / a_avg)**2
 
-    # Calculate reflectivity in xz plane (Rxz) — Ruger (1998) Eq. 7
+    # Calculate reflectivity in xz plane (Rxz) — Ruger (1998) Eq. 23
     Rxz = ((Z2 - Z1) / (Z2 + Z1) +
-           0.5 * (a_diff / a_avg - f * (G_diff / G_avg + 2 * (g1_low - g1_up)) + d2_low - d2_up) * sin_sq_theta +
+           0.5 * (a_diff / a_avg - f * (G_diff / G_avg - 2 * (gS_low - gS_up)) + d2_low - d2_up) * sin_sq_theta +
            0.5 * (a_diff / a_avg + e2_low - e2_up) * sin_sq_theta * tan_sq_theta)
 
-    # Calculate reflectivity in yz plane (Ryz) — Ruger (1998) Eq. 7
+    # Calculate reflectivity in yz plane (Ryz) — Ruger (1998) Eq. 24
     Ryz = ((Z2 - Z1) / (Z2 + Z1) +
            0.5 * (a_diff / a_avg - f * G_diff / G_avg + d1_low - d1_up) * sin_sq_theta +
            0.5 * (a_diff / a_avg + e1_low - e1_up) * sin_sq_theta * tan_sq_theta)
@@ -301,6 +321,14 @@ def tsvankin_params(
     c11, c22, c33, c44, c55, c66 = np.diag(cij)
     c12, c13, c23 = cij[0, 1], cij[0, 2], cij[1, 2]
 
+    # The delta parameters are undefined for these degenerate cases
+    # (zero denominator -> division by zero)
+    if c33 == c44 or c33 == c55 or c11 == c66:
+        raise ValueError(
+            "Tsvankin delta parameters are undefined when c33 == c44, "
+            "c33 == c55, or c11 == c66 (division by zero)."
+        )
+
     # Estimate the vertically propagating speeds
     Vp0 = np.sqrt(c33 / density)
     Vs0 = np.sqrt(c55 / density)
@@ -350,7 +378,11 @@ def schoenberg_muir_layered_medium(
     effective_compliance : numpy.ndarray of shape (6, 6)
         Effective compliance tensor.
     effective_stiffness_from_compliance : numpy.ndarray of shape (6, 6)
-        Effective stiffness tensor computed from the effective compliance.
+        Effective stiffness tensor computed by inverting the effective
+        compliance. In exact arithmetic this is identical to
+        ``effective_stiffness``; it is returned as an independent
+        consistency check on the Schoenberg & Muir calculus, and the
+        two should agree to within numerical precision.
 
     References
     ----------
