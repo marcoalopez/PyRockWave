@@ -34,7 +34,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-from layered_media import tsvankin_params, reflectivity  # noqa: E402
+from pyrockwave.layered_media import tsvankin_params, reflectivity  # noqa: E402
 
 
 # --------------------------------------------------------------------------
