@@ -120,3 +120,6 @@ dmypy.json
 .pyre/
 src/.jupyter/desktop-workspaces/default-37a8.jupyterlab-workspace
 src/understanding_Christoffel.ipynb
+
+# Deprecated / archived code (kept locally, not part of the package)
+src/deprecated/
