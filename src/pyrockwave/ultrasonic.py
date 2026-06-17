@@ -7,7 +7,7 @@
 # and analysing pulse-echo ultrasonic signals.                                #
 #                                                                             #
 # SPDX-License-Identifier: GPL-3.0-or-later                                   #
-# Copyright (c) 2023-present, Marco A. Lopez-Sanchez. All rights reserved.    #
+# Copyright (c) 2026, Marco A. Lopez-Sanchez. All rights reserved.            #
 #                                                                             #
 # PyRockWave is free software: you can redistribute it and/or modify          #
 # it under the terms of the GNU General Public License as published by        #
@@ -31,18 +31,19 @@
 
 # Import statements
 import numpy as np
+import numpy.typing as npt
 from scipy.signal import butter, sosfiltfilt, detrend
 from scipy.fft import fft, fftfreq
 
 
 # Function definitions
 def process_signal(
-    raw_signal,
-    roi,
-    sampling_rate_hz,
-    auto_detrend=True,
-    apply_filter=None
-):
+    raw_signal: npt.ArrayLike,
+    roi_samples: tuple[int, int],
+    sampling_rate_hz: float,
+    auto_detrend: bool = True,
+    apply_filter: dict | None = None,
+) -> np.ndarray:
     """
     Pre-process pulse-echo ultrasound signal by cropping,
     detrending, and filtering.
@@ -51,31 +52,48 @@ def process_signal(
     ----------
     raw_signal : array-like
         The raw ultrasound signal data.
-    roi : tuple
-        A tuple (start, end) defining the region of
-        interest within the signal.
+    roi_samples : tuple of int
+        A tuple (start, end) of **sample indices** (not times) defining
+        the region of interest within the signal. Must satisfy
+        ``0 <= start < end <= len(raw_signal)``. To select a region by
+        time, convert seconds to samples first, e.g.
+        ``int(round(t_seconds * sampling_rate_hz))``.
     sampling_rate_hz : float
         The sampling rate of the signal in Hz.
     auto_detrend : bool, optional
-        If True, removes the linear trend from the signal,
-        by default True.
+        If True, removes a linear trend from the cropped signal. If
+        False, a constant detrend is still applied, i.e. the DC offset
+        (mean) is removed; detrending is not skipped entirely.
+        By default True.
     apply_filter : dict or None, optional, by default None
         If provided, should be a dictionary with keys:
         - 'lowcut': Lower frequency bound for the filter in Hz.
         - 'highcut': Upper frequency bound for the filter in Hz.
-        - 'order': The order of the filter.
+        - 'order': The order of the Butterworth filter (positive int).
 
     Returns
     -------
     np.ndarray
         The processed signal.
+
+    Raises
+    ------
+    ValueError
+        If the inputs are malformed or inconsistent (see
+        :func:`_validate_process_signal`), or if the region of interest
+        is too short for a zero-phase filter of the requested order.
     """
 
-    # Ensure the signal is a numpy array
-    signal = np.array(raw_signal)
+    # Ensure the signal is a numpy array (no copy if already an ndarray)
+    signal = np.asarray(raw_signal)
+
+    # Validate inputs
+    _validate_process_signal(
+        roi_samples, len(signal), sampling_rate_hz, apply_filter
+    )
 
     # Crop signal to region of interest
-    roi_signal = signal[roi[0] : roi[1]]
+    roi_signal = signal[roi_samples[0] : roi_samples[1]]
 
     # Apply detrending
     if auto_detrend:
@@ -84,15 +102,9 @@ def process_signal(
         roi_signal = detrend(roi_signal, type="constant")  # Only remove DC offset if not detrending linearly
 
     # Apply filter if specified
-    if apply_filter:
-        required_keys = {"lowcut", "highcut", "order"}
-        if not required_keys.issubset(apply_filter):
-            raise ValueError(f"apply_filter must contain {required_keys}")
-
+    if apply_filter is not None:
         # Calculate Nyquist frequency
         nyquist = 0.5 * sampling_rate_hz
-        if apply_filter["highcut"] >= nyquist:
-            raise ValueError(f"Selected filter highcut must be below Nyquist, i.e. <{nyquist/2}")
 
         # Normalize filter frequencies
         low_normalized = apply_filter["lowcut"] / nyquist
@@ -107,6 +119,18 @@ def process_signal(
             output="sos",
         )
 
+        # sosfiltfilt pads the signal by 3 * (2 * n_sections + 1) samples and
+        # requires the input to be longer than that padding. Check explicitly
+        # so a short ROI raises a clear message instead of a cryptic SciPy one.
+        padlen = 3 * (2 * sos.shape[0] + 1)
+        if roi_signal.shape[0] <= padlen:
+            raise ValueError(
+                f"Region of interest ({roi_signal.shape[0]} samples) is too "
+                f"short for a zero-phase Butterworth filter of order "
+                f"{apply_filter['order']}; it must exceed {padlen} samples. "
+                "Use a wider ROI or a lower filter order."
+            )
+
         # Apply zero-phase filtering (forward and backward)
         # this results in zero phase distortion, which is important
         # for preserving the timing and shape of the ultrasound pulses.
@@ -116,28 +140,58 @@ def process_signal(
 
 
 def estimate_bandpass(
-    signal,
-    sampling_rate_hz,
-    margin=0.2
+    signal: npt.ArrayLike,
+    sampling_rate_hz: float,
+    margin: float = 0.2,
 ) -> dict:
     """
-    _summary_
+    Estimate band-pass cut-off frequencies from a signal's amplitude
+    spectrum using a half-maximum (-6 dB) threshold.
 
     UNTESTED!
 
     Parameters
     ----------
-    signal : _type_
-        _description_
-    sampling_rate_hz : _type_
-        _description_
+    signal : array-like
+        The input signal, typically a cropped and detrended pulse.
+    sampling_rate_hz : float
+        The sampling rate of the signal in Hz.
     margin : float, optional
-        _description_, by default 0.2
+        Fractional padding added to each side of the detected band,
+        expressed as a fraction of the band width, by default 0.2.
 
     Returns
     -------
     dict
-        _description_
+        Dictionary with keys:
+
+        - 'lowcut' : float
+            Lower cut-off frequency in Hz. May be negative for
+            broadband or low-frequency signals; clip before use.
+        - 'highcut' : float
+            Upper cut-off frequency in Hz.
+        - 'order' : int
+            Suggested Butterworth filter order (fixed at 4).
+        - 'peak_frequency' : float
+            Frequency of the spectral peak in Hz.
+
+    Notes
+    -----
+    The band is defined by the contiguous range of frequencies whose
+    amplitude is at least 50% (-6 dB) of the spectral peak. The first
+    and last frequencies above this threshold set the raw band edges,
+    which are then widened by ``margin``. A single dominant band is
+    assumed.
+
+    Which to use
+    ------------
+    Prefer this estimator when you need the -6 dB bandwidth as an
+    explicit spec, or when the spectrum has a sharply defined passband
+    edge. Because the threshold is set by a single peak bin, it is more
+    sensitive to noise and assumes one contiguous band. For typical,
+    roughly symmetric narrowband ultrasonic pulses, the noise-robust
+    :func:`estimate_bandpass_centroid` is usually the better default.
+    The returned ``lowcut`` may be negative; clip it before use.
     """
 
     N = len(signal)
@@ -175,28 +229,57 @@ def estimate_bandpass(
 
 
 def estimate_bandpass_centroid(
-    signal,
-    sampling_rate_hz,
-    sigma_mult=2
+    signal: npt.ArrayLike,
+    sampling_rate_hz: float,
+    sigma_mult: float = 2,
 ) -> dict:
     """
-    _summary_
+    Estimate band-pass cut-off frequencies from the spectral centroid
+    and spectral spread of a signal.
 
     UNTESTED!
 
     Parameters
     ----------
-    signal : _type_
-        _description_
-    sampling_rate_hz : _type_
-        _description_
-    sigma_mult : int, optional
-        _description_, by default 2
+    signal : array-like
+        The input signal, typically a cropped and detrended pulse.
+    sampling_rate_hz : float
+        The sampling rate of the signal in Hz.
+    sigma_mult : float, optional
+        Number of spectral standard deviations on each side of the
+        centroid used to set the band edges, by default 2.
 
     Returns
     -------
     dict
-        _description_
+        Dictionary with keys:
+
+        - 'lowcut' : float
+            Lower cut-off frequency in Hz. May be negative; clip
+            before use.
+        - 'highcut' : float
+            Upper cut-off frequency in Hz.
+        - 'order' : int
+            Suggested Butterworth filter order (fixed at 4).
+        - 'center_frequency' : float
+            Amplitude-weighted spectral centroid in Hz.
+        - 'bandwidth_sigma' : float
+            Spectral standard deviation (spread) in Hz.
+
+    Notes
+    -----
+    A Hann window is applied before the FFT to reduce spectral
+    leakage. The centroid and spread are amplitude-weighted by the
+    magnitude spectrum |X(f)|.
+
+    Which to use
+    ------------
+    This is the recommended default for pulse-echo ultrasonic pulses:
+    it uses the whole weighted spectrum, so it is robust to noise and a
+    single spurious peak, and degrades gracefully. Use the -6 dB
+    :func:`estimate_bandpass` instead when you need the explicit -6 dB
+    bandwidth or the spectrum is asymmetric with a sharp passband edge.
+    The returned ``lowcut`` may be negative; clip it before use.
     """
 
     N = len(signal)
@@ -236,10 +319,10 @@ def estimate_bandpass_centroid(
 
 
 def trigger_sta_lta(
-    signal,
-    short_time_avg,
-    long_time_avg
-) -> np.array:
+    signal: npt.ArrayLike,
+    short_time_avg: int,
+    long_time_avg: int,
+) -> np.ndarray:
     """
     Computes the standard STA/LTA from a given signal.
     Adapted from obspy
@@ -255,8 +338,9 @@ def trigger_sta_lta(
 
     Returns
     -------
-    _type_
-        _description_
+    numpy.ndarray
+        The STA/LTA characteristic function, the same length as
+        ``signal``.
     """
 
     sta = np.cumsum(signal ** 2, dtype=np.float64)
@@ -277,6 +361,77 @@ def trigger_sta_lta(
     lta[idx] = dtiny
 
     return sta / lta
+
+
+def _validate_process_signal(
+    roi_samples: tuple[int, int],
+    signal_length: int,
+    sampling_rate_hz: float,
+    apply_filter: dict | None,
+) -> None:
+    """
+    Validate the inputs of :func:`process_signal`.
+
+    Parameters
+    ----------
+    roi_samples : tuple of int
+        A tuple (start, end) of sample indices defining the region of
+        interest.
+    signal_length : int
+        Number of samples in the (un-cropped) signal, used to bound the
+        region of interest.
+    sampling_rate_hz : float
+        The sampling rate of the signal in Hz.
+    apply_filter : dict or None
+        The band-pass filter specification, if any.
+
+    Raises
+    ------
+    ValueError
+        If any input is malformed or internally inconsistent.
+    """
+    if sampling_rate_hz <= 0:
+        raise ValueError("sampling_rate_hz must be a positive number.")
+
+    if len(roi_samples) != 2:
+        raise ValueError(
+            "roi_samples must be a (start, end) tuple of length 2."
+        )
+    start, end = roi_samples
+    if not (isinstance(start, (int, np.integer))
+            and isinstance(end, (int, np.integer))):
+        raise ValueError("roi_samples start and end must be integers.")
+    if start < 0 or end <= start:
+        raise ValueError("roi_samples must satisfy 0 <= start < end.")
+    if end > signal_length:
+        raise ValueError(
+            f"roi_samples end ({end}) exceeds the signal length "
+            f"({signal_length})."
+        )
+
+    if apply_filter is not None:
+        required_keys = {"lowcut", "highcut", "order"}
+        if not required_keys.issubset(apply_filter):
+            raise ValueError(f"apply_filter must contain {required_keys}")
+
+        order = apply_filter["order"]
+        if not isinstance(order, (int, np.integer)) or order < 1:
+            raise ValueError("apply_filter['order'] must be a positive integer.")
+
+        nyquist = 0.5 * sampling_rate_hz
+        lowcut = apply_filter["lowcut"]
+        highcut = apply_filter["highcut"]
+        if lowcut <= 0:
+            raise ValueError("apply_filter['lowcut'] must be greater than 0.")
+        if highcut <= lowcut:
+            raise ValueError(
+                "apply_filter['highcut'] must be greater than 'lowcut'."
+            )
+        if highcut >= nyquist:
+            raise ValueError(
+                "apply_filter['highcut'] must be below the Nyquist "
+                f"frequency, i.e. <{nyquist}"
+            )
 
 
 # End of file
