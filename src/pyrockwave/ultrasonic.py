@@ -32,7 +32,7 @@
 # Import statements
 import numpy as np
 import numpy.typing as npt
-from scipy.signal import butter, sosfiltfilt, detrend
+from scipy.signal import butter, sosfiltfilt, detrend, hilbert
 from scipy.fft import fft, fftfreq
 
 
@@ -137,6 +137,85 @@ def process_signal(
         roi_signal = sosfiltfilt(sos, roi_signal)
 
     return roi_signal
+
+
+def detect_roi(
+    signal: npt.ArrayLike,
+    threshold: float = 0.1,
+    pad_samples: int = 0,
+) -> tuple[int, int]:
+    """
+    Detect the region of interest of a pulse from its analytic-signal
+    envelope (Hilbert transform).
+
+    The envelope ``|hilbert(signal)|`` is a smooth measure of the
+    instantaneous amplitude. The region of interest is taken as the
+    first and last samples whose envelope reaches a given fraction of
+    the envelope peak, optionally widened by ``pad_samples``. The
+    returned tuple is directly usable as the ``roi_samples`` argument
+    of :func:`process_signal`.
+
+    Parameters
+    ----------
+    signal : array-like
+        The raw, full-length signal to search for a pulse.
+    threshold : float, optional
+        Onset level as a fraction of the envelope peak amplitude, in
+        the open interval (0, 1). The region of interest spans the
+        samples whose envelope is at least ``threshold`` times the
+        peak. By default 0.1 (10% of the peak).
+    pad_samples : int, optional
+        Number of samples added to each side of the detected region,
+        clipped to the signal bounds. Useful to include the pulse
+        rise/decay tails or to provide padding for a later zero-phase
+        filter. By default 0.
+
+    Returns
+    -------
+    tuple of int
+        The (start, end) sample indices of the region of interest, with
+        ``end`` exclusive, following the half-open slicing convention of
+        :func:`process_signal`.
+
+    Raises
+    ------
+    ValueError
+        If the inputs are malformed (see :func:`_validate_detect_roi`)
+        or if the envelope is identically zero (no pulse to detect).
+
+    Notes
+    -----
+    The fraction-of-peak threshold is robust for high signal-to-noise
+    pulse-echo records. For noisy data, pre-filtering the signal (or
+    using a noise-relative threshold) gives a more reliable onset.
+
+    See Also
+    --------
+    trigger_sta_lta : Energy-ratio onset detector for noisier traces.
+    process_signal : Consumer of the returned ``roi_samples``.
+    """
+
+    signal = np.asarray(signal)
+    _validate_detect_roi(signal, threshold, pad_samples)
+
+    # Instantaneous amplitude (envelope) via the analytic signal
+    envelope = np.abs(hilbert(signal))
+
+    peak = envelope.max()
+    if peak == 0:
+        raise ValueError(
+            "signal envelope is identically zero; no pulse to detect."
+        )
+
+    # Samples reaching the onset level relative to the envelope peak
+    level = threshold * peak
+    above = np.flatnonzero(envelope >= level)
+
+    # Half-open interval, widened and clipped to the signal bounds
+    start = max(0, int(above[0]) - pad_samples)
+    end = min(signal.shape[0], int(above[-1]) + 1 + pad_samples)
+
+    return start, end
 
 
 def estimate_bandpass(
@@ -390,6 +469,7 @@ def _validate_process_signal(
     ValueError
         If any input is malformed or internally inconsistent.
     """
+
     if sampling_rate_hz <= 0:
         raise ValueError("sampling_rate_hz must be a positive number.")
 
@@ -432,6 +512,39 @@ def _validate_process_signal(
                 "apply_filter['highcut'] must be below the Nyquist "
                 f"frequency, i.e. <{nyquist}"
             )
+
+
+def _validate_detect_roi(
+    signal: np.ndarray,
+    threshold: float,
+    pad_samples: int,
+) -> None:
+    """
+    Validate the inputs of :func:`detect_roi`.
+
+    Parameters
+    ----------
+    signal : numpy.ndarray
+        The signal to search, as an array.
+    threshold : float
+        Onset level as a fraction of the envelope peak.
+    pad_samples : int
+        Number of samples added to each side of the detected region.
+
+    Raises
+    ------
+    ValueError
+        If any input is malformed.
+    """
+
+    if signal.ndim != 1:
+        raise ValueError("signal must be one-dimensional.")
+    if signal.size == 0:
+        raise ValueError("signal must not be empty.")
+    if not 0 < threshold < 1:
+        raise ValueError("threshold must lie in the open interval (0, 1).")
+    if not isinstance(pad_samples, (int, np.integer)) or pad_samples < 0:
+        raise ValueError("pad_samples must be a non-negative integer.")
 
 
 # End of file
