@@ -34,8 +34,10 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from pyrockwave.ultrasonic import (  # noqa: E402
+    detect_roi,
     estimate_bandpass,
     estimate_bandpass_centroid,
+    process_signal,
 )
 
 
@@ -136,6 +138,77 @@ def test_carrier_shift_tracks_frequency():
     )
 
 
+def embed_burst(center_index, tau, f0, sampling_rate_hz, n_samples):
+    """A tone burst centred on ``center_index`` within a longer record of
+    near-silence (so the onset is well separated from the edges)."""
+    dt = 1.0 / sampling_rate_hz
+    t = np.arange(n_samples) * dt
+    t0 = center_index * dt
+    envelope = np.exp(-((t - t0) ** 2) / (2.0 * tau ** 2))
+    return envelope * np.cos(2.0 * np.pi * f0 * t)
+
+
+def test_detect_roi_brackets_pulse():
+    """The detected region brackets the burst and sits inside the record."""
+    n = 8192
+    center = 5000
+    signal = embed_burst(center, TAU, F0, SAMPLING_RATE_HZ, n)
+
+    start, end = detect_roi(signal)
+    assert 0 < start < center < end < n
+    # The envelope peak (the burst centre) must lie inside the region.
+    assert start <= np.argmax(np.abs(signal)) < end
+
+
+def test_detect_roi_threshold_and_padding():
+    """Lower threshold widens the region; padding widens it further."""
+    n = 8192
+    signal = embed_burst(5000, TAU, F0, SAMPLING_RATE_HZ, n)
+
+    tight = detect_roi(signal, threshold=0.5)
+    loose = detect_roi(signal, threshold=0.05)
+    assert (loose[1] - loose[0]) > (tight[1] - tight[0])
+
+    start, end = detect_roi(signal, threshold=0.5)
+    p_start, p_end = detect_roi(signal, threshold=0.5, pad_samples=200)
+    assert p_start == start - 200
+    assert p_end == end + 200
+
+
+def test_detect_roi_feeds_process_signal():
+    """The returned tuple is directly usable as process_signal's ROI."""
+    n = 8192
+    signal = embed_burst(5000, TAU, F0, SAMPLING_RATE_HZ, n)
+
+    roi = detect_roi(signal, pad_samples=100)
+    out = process_signal(signal, roi, SAMPLING_RATE_HZ)
+    assert out.shape[0] == roi[1] - roi[0]
+
+
+def test_detect_roi_rejects_bad_inputs():
+    """Malformed inputs and a flat signal raise ValueError."""
+    signal = embed_burst(5000, TAU, F0, SAMPLING_RATE_HZ, 8192)
+
+    for bad in (0.0, 1.0, -0.1):
+        try:
+            detect_roi(signal, threshold=bad)
+            raise AssertionError(f"threshold={bad} should have raised")
+        except ValueError:
+            pass
+
+    try:
+        detect_roi(signal, pad_samples=-1)
+        raise AssertionError("negative pad_samples should have raised")
+    except ValueError:
+        pass
+
+    try:
+        detect_roi(np.zeros(1000))
+        raise AssertionError("all-zero signal should have raised")
+    except ValueError:
+        pass
+
+
 # --------------------------------------------------------------------------
 # Standalone runner (mirrors the existing test style in this repo)
 # --------------------------------------------------------------------------
@@ -161,6 +234,14 @@ def main():
           test_band_widens_for_narrower_pulse)
     check("carrier shift tracks frequency",
           test_carrier_shift_tracks_frequency)
+    check("detect_roi brackets pulse",
+          test_detect_roi_brackets_pulse)
+    check("detect_roi threshold and padding",
+          test_detect_roi_threshold_and_padding)
+    check("detect_roi feeds process_signal",
+          test_detect_roi_feeds_process_signal)
+    check("detect_roi rejects bad inputs",
+          test_detect_roi_rejects_bad_inputs)
 
     print("\nALL CHECKS PASSED" if ok else "\nSOME CHECKS FAILED")
     return 0 if ok else 1
