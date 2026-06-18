@@ -4,7 +4,7 @@ This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.githu
 
 ## **What is PyRockWave?**
 
-**PyRockWave** is a free, open-source Python tool that reads single-crystal elasticity databases and calculates the elastic properties of Earth materials. Its submodules compute isotropic seismic properties, analytical anisotropy models, volume- and CPO-weighted averages, phase and group seismic properties from the Christoffel equation, reflectivity, effective stiffness/compliance tensors for layered media (Schoenberg & Muir approach), and ultrasonic signal processing. Further tools visualize seismic properties, convert between spherical and Cartesian coordinates, generate S2 grids, and simplify working with tensors.
+**PyRockWave** is a free, open-source Python tool that reads single-crystal elasticity databases and calculates the elastic properties of Earth materials. Its submodules can compute isotropic seismic properties,  volume- and CPO-weighted averages, phase and group seismic properties from the Christoffel equation, analytical anisotropy models, reflectivity and effective stiffness/compliance tensors for layered media (Schoenberg & Muir approach), and ultrasonic signal processing. Further tools visualize seismic properties, convert between spherical and Cartesian coordinates, generate S2 grids, and simplify working with tensors.
 
 PyRockWave is modular: it exposes plain Python functions so you can develop with it and integrate it into other tools. Worked examples in Jupyter notebooks keep workflows easy to follow and reproducible.
 
@@ -15,27 +15,30 @@ View repository on GitHub: https://github.com/marcoalopez/PyRockWave
 
 ## **Requirements & Python installation**
 
-Available soon 😊
+Available soon (I'm working on it! 😊)
 
-## **Documentation**
+## **PyRockWave wiki**
 
-Available soon 😊
+Available soon (I'm working on it! 😊)
 
-## **Jupyter notebook Examples**
+## **Jupyter Notebooks library**
 
-- [Interacting with the mineral elastic data](https://github.com/marcoalopez/PyRockWave/blob/main/notebooks/example_database.ipynb)
+Available soon (I'm working on it! 😊)
 
-- [The ElasticProps class explained](https://github.com/marcoalopez/PyRockWave/blob/main/notebooks/ElasticTensor_explained.ipynb)
+- Accessing elastic databases and estimating isotropic seismic properties with the ``elastic_tensor`` submodule
+
+- Demonstration of the functionality of the ``christoffel`` submodule
+
+- Demonstration of the functionality of the ``layered_media`` submodule
+
+- Demonstration of the functionality of the ``averaging _schemes`` submodule
+
+- Demonstration of the functionality of the ``anisotropic_models`` submodule
 
 - [Demonstration of the functionality of the ``coordinates`` module](https://github.com/marcoalopez/PyRockWave/blob/main/notebooks/example_coordinates.ipynb)
 
 - [Demonstration of the functionality of the ``tensor_tools`` module](https://github.com/marcoalopez/PyRockWave/blob/main/notebooks/example_tensor_tools.ipynb)
 
-- [Demonstration of the functionality of the ``anisotropic_models`` module](https://github.com/marcoalopez/PyRockWave/blob/main/notebooks/example_anisotropic_models.ipynb)
-
-- Demonstration of the functionality of the ``christoffel`` module (I'm working on it! 😊)
-
-- Demonstration of the functionality of the ``layered_media`` module (I'm working on it! 😊)
 
 ## **How to contribute to this project?**
 
@@ -43,8 +46,7 @@ The GitHub website hosting the project provides several options (you will need a
 
 - Open a [discussion](https://github.com/marcoalopez/PyRockWave/discussions): This is a place to:
   - Ask questions.
-  - Request features or share ideas.
-  - Interact with the developers (still just me).
+  - Request features or share ideas with the developers.
 - Open an [issue](https://github.com/marcoalopez/PyRockWave/issues): This is a place to report and track bugs.
 - Create a [pull request](https://github.com/marcoalopez/PyRockWave/pulls): Submit a fix or new feature for a notebook, and a developer will review it and merge it.
 
