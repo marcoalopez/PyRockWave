@@ -8,9 +8,9 @@ version = "0.1.0"
 [tasks]
 
 [dependencies]
-python = "3.13.9.*"
-numpy = ">=2.4.6,<3"
-scipy = ">=1.17.1,<2"
+python = "<3.14"
+numpy = ">=2.5.0,<3"
+scipy = ">=1.18.0,<2"
 pandas = ">=3.0.3,<4"
-matplotlib = ">=3.10.9,<4"
-jupyterlab = ">=4.5.8,<5"
+matplotlib = ">=3.11.0,<4"
+jupyterlab = ">=4.6.0,<5"
