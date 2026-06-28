@@ -11,7 +11,8 @@ PyRockWave/
 ├── src/
 │   ├── pyrockwave/                 # the installable package
 │   │   ├── __init__.py             # version + public API re-exports
-│   │   ├── elastic_tensor.py       # ElasticProps dataclass + tensor decomposition helpers
+│   │   ├── elastic_tensor.py       # ElasticProps dataclass
+│   │   ├── decomposition.py        # Browaeys & Chevrot symmetry-class tensor decomposition
 │   │   ├── anisotropic_models.py   # analytic anisotropy models (Thomsen, Tsvankin, ...)
 │   │   ├── averaging_schemes.py    # Voigt/Reuss volume- and CPO-weighted averages
 │   │   ├── christoffel.py          # Christoffel equation: phase/group seismic properties
@@ -47,6 +48,7 @@ and feature-based subpackages (`plotting/`, `utils/`).
 | Symbol | Source module |
 |---|---|
 | `ElasticProps` | `elastic_tensor` |
+| `decompose_Cij`, `calc_percentages` | `decomposition` |
 | `phase_seismic_properties`, `full_seismic_properties` | `christoffel` |
 | `calc_reflectivity`, `schoenberg_muir_layered_medium` | `layered_media` |
 | `weak_polar_anisotropy`, `polar_anisotropy`, `orthotropic_azimuthal_anisotropy` | `anisotropic_models` |
@@ -63,11 +65,13 @@ Public functions/classes only; names with a leading underscore are private helpe
 
 ### `elastic_tensor`
 - `ElasticProps` (class) — encapsulates the elastic properties of a crystalline material at a given pressure/temperature.
+
+### `decomposition`
 - `decompose_Cij` — decomposes an elastic tensor into its symmetry-class components (Browaeys & Chevrot formulation).
-- `tensor_to_vector` — converts a 6×6 Voigt tensor to the 21-component elastic vector.
-- `vector_to_tensor` — inverse of the above: rebuilds a 6×6 tensor from a 21-component vector.
-- `orthogonal_projector` — builds the 21-D projection matrix that isolates a given symmetry class.
 - `calc_percentages` — computes each symmetry class's percentage contribution to the decomposition.
+- `_tensor_to_vector` *(private)* — converts a 6×6 Voigt tensor to the 21-component elastic vector.
+- `_vector_to_tensor` *(private)* — inverse of the above: rebuilds a 6×6 tensor from a 21-component vector.
+- `_orthogonal_projector` *(private)* — builds the 21-D projection matrix that isolates a given symmetry class.
 
 ### `anisotropic_models`
 - `weak_polar_anisotropy` — body-wave velocities vs. direction under weak (Thomsen) polar anisotropy.
@@ -129,7 +133,7 @@ Arrows show "imports from". External deps (numpy, scipy, pandas, matplotlib)
 are omitted.
 
 ```
-__init__            → elastic_tensor, christoffel, layered_media,
+__init__            → elastic_tensor, decomposition, christoffel, layered_media,
                       anisotropic_models, utils.coordinates, utils.tensor_tools
 
 christoffel         → utils.tensor_tools (_rearrange_tensor)
@@ -140,7 +144,8 @@ averaging_schemes   → utils.tensor_tools (_rearrange_tensor, _tensor_in_voigt)
 
 layered_media       → anisotropic_models (tsvankin_params)
 
-elastic_tensor      → (no internal deps)
+elastic_tensor      → decomposition (decompose_Cij, calc_percentages)
+decomposition       → (no internal deps)
 anisotropic_models  → (no internal deps)
 ultrasonic          → (no internal deps)
 utils.coordinates   → (no internal deps)
@@ -150,7 +155,7 @@ plotting.plots      → (no internal deps)
 ```
 
 Dependency leaves (depend on nothing internal): `utils.coordinates`,
-`utils.tensor_tools`, `utils.validation`, `anisotropic_models`, `elastic_tensor`,
+`utils.tensor_tools`, `utils.validation`, `anisotropic_models`, `decomposition`,
 `ultrasonic`. No import cycles. `utils.*` is the shared foundation; `christoffel`
 is the most connected module.
 

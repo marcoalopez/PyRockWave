@@ -19,6 +19,7 @@ __version__ = "0.1.0"
 
 # Re-export the most commonly used functions at the package level.
 from .elastic_tensor import ElasticProps
+from .decomposition import decompose_Cij, calc_percentages
 from .christoffel import phase_seismic_properties, full_seismic_properties
 from .layered_media import calc_reflectivity, schoenberg_muir_layered_medium
 from .anisotropic_models import (
@@ -32,6 +33,8 @@ from .utils.tensor_tools import rotate_stiffness_tensor
 
 __all__ = [
     "ElasticProps",
+    "decompose_Cij",
+    "calc_percentages",
     "phase_seismic_properties",
     "full_seismic_properties",
     "calc_reflectivity",
