@@ -30,7 +30,10 @@ PyRockWave/
 │       ├── christoffel_old.py
 │       └── decompose.py
 ├── tests/
-│   └── test_reflectivity_vs_graebner.py
+│   ├── test_decomposition.py
+│   ├── test_reflectivity_vs_graebner.py
+│   ├── test_ultrasonic_bandpass.py
+│   └── test_zoeppritz_reflectivity.py
 ├── notebooks/                      # examples + exploratory/dev notebooks
 ├── img/
 ├── pyproject.toml                  # build metadata (setuptools, src-layout)
@@ -50,7 +53,7 @@ and feature-based subpackages (`plotting/`, `utils/`).
 | `ElasticProps` | `elastic_tensor` |
 | `decompose_Cij`, `calc_percentages` | `decomposition` |
 | `phase_seismic_properties`, `full_seismic_properties` | `christoffel` |
-| `calc_reflectivity`, `schoenberg_muir_layered_medium` | `layered_media` |
+| `calc_reflectivity`, `schoenberg_muir_layered_medium`, `zoeppritz_reflectivity` | `layered_media` |
 | `weak_polar_anisotropy`, `polar_anisotropy`, `orthotropic_azimuthal_anisotropy` | `anisotropic_models` |
 | `sph2cart`, `cart2sph`, `equispaced_S2_grid` | `utils.coordinates` |
 | `rotate_stiffness_tensor` | `utils.tensor_tools` |
@@ -99,7 +102,8 @@ Public functions/classes only; names with a leading underscore are private helpe
 ### `layered_media`
 - `snell` — refraction/reflection angles for an incident wave across an interface.
 - `calc_reflectivity` — convenience wrapper computing PP reflectivity in both symmetry planes.
-- `reflectivity` — symmetry-plane P-wave reflectivity for anisotropic interfaces (Rüger).
+- `reflectivity` — symmetry-plane P-wave reflectivity for anisotropic interfaces (Rüger, linearised).
+- `zoeppritz_reflectivity` — exact plane-wave reflection/transmission coefficients for an incident qP wave at a welded interface between two arbitrarily anisotropic media (Fryer & Frazer 1984; Schoenberg & Protazio 1992); the exact generalisation of `reflectivity`, valid for any anisotropy strength and beyond the critical angle.
 - `tsvankin_params` — re-exported from `anisotropic_models` (single canonical implementation); available here for backward compatibility.
 - `schoenberg_muir_layered_medium` — effective stiffness/compliance of a finely layered medium (Schoenberg–Muir).
 
