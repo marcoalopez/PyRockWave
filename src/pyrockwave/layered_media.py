@@ -30,8 +30,13 @@
 
 # Import statements
 import numpy as np
+import pandas as pd
 
 from .anisotropic_models import tsvankin_params
+from .christoffel import _calc_eigen, _christoffel_matrix
+from .utils.coordinates import sph2cart
+from .utils.tensor_tools import _rearrange_tensor
+from .utils.validation import validate_cij
 
 
 # Function definitions
@@ -276,6 +281,188 @@ def reflectivity(
     return Rxz, Ryz
 
 
+def zoeppritz_reflectivity(
+    cij_upper_layer: np.ndarray,
+    cij_lower_layer: np.ndarray,
+    upper_density_gcm3: float,
+    lower_density_gcm3: float,
+    azimuths_deg: float | np.ndarray,
+    polar_deg: float | np.ndarray,
+) -> pd.DataFrame:
+    """
+    Calculates the exact plane-wave reflection and transmission
+    coefficients for an incident qP wave at a planar welded interface
+    between two arbitrarily anisotropic media (up to triclinic).
+
+    This is the generalisation of the Zoeppritz equations to
+    anisotropic media (Fryer & Frazer, 1984; Schoenberg & Protazio,
+    1992). For each incidence direction the Christoffel equation is
+    solved for the six vertical slownesses compatible with the
+    horizontal slowness of the incident wave (Snell's law), the three
+    reflected and three transmitted waves are identified from their
+    vertical energy flux (or decay direction when evanescent), and the
+    welded-contact boundary conditions (continuity of displacement and
+    vertical traction) are solved as a 6x6 linear system. Unlike the
+    linearised approximation in :func:`reflectivity` (Ruger, 1998),
+    this solution is exact for any strength of anisotropy or interface
+    contrast, and remains valid beyond the critical angle(s), where
+    the coefficients become complex.
+
+    Geometry: the interface is the horizontal plane z=0 with the upper
+    medium occupying z>0, so both stiffness tensors must be given in a
+    reference frame whose z-axis is the interface normal (rotate them
+    beforehand for dipping interfaces). The incident wave propagates
+    downwards along (sin(polar)cos(azimuth), sin(polar)sin(azimuth),
+    -cos(polar)), i.e. ``polar_deg`` is the incidence angle measured
+    from the interface normal and ``azimuths_deg`` the azimuth of the
+    incidence plane (0 = xz plane, 90 = yz plane). A grid covering all
+    orientations can be generated with
+    :func:`pyrockwave.equispaced_S2_grid` (upper hemisphere, degrees),
+    discarding points with ``polar_deg == 90``.
+
+    Parameters
+    ----------
+    cij_upper_layer : numpy.ndarray
+        The 6x6 elastic stiffness tensor of the upper (incidence)
+        medium in GPa.
+    cij_lower_layer : numpy.ndarray
+        The 6x6 elastic stiffness tensor of the lower medium in GPa.
+    upper_density_gcm3 : float
+        Density of the upper medium in g/cm³.
+    lower_density_gcm3 : float
+        Density of the lower medium in g/cm³.
+    azimuths_deg : float or numpy.ndarray
+        Azimuth(s) of the incidence plane in degrees, same shape as
+        ``polar_deg``.
+    polar_deg : float or numpy.ndarray
+        Incidence angle(s) in degrees, measured from the interface
+        normal. Must be in [0, 90).
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per incidence direction with columns:
+
+        - ``azimuths_deg``, ``polar_deg`` : the input angles.
+        - ``Vp_incident_kms`` : qP phase velocity of the incident wave.
+        - ``<name>_mag``, ``<name>_phase_deg`` : magnitude and phase
+          (degrees) of each displacement-amplitude coefficient, where
+          ``<name>`` is Rpp, Rps1, Rps2 (reflected qP, fast qS, slow
+          qS) and Tpp, Tps1, Tps2 (transmitted counterparts).
+
+    Notes
+    -----
+    Coefficients are displacement-amplitude ratios with unit-length
+    polarization vectors. Below the critical angle(s) the phase is 0
+    or 180 degrees and the conventional signed coefficient is
+    recovered as ``mag * cos(radians(phase))``; the full complex value
+    is ``mag * exp(1j * radians(phase))``. At normal incidence between
+    isotropic media Rpp reduces to the impedance contrast
+    (Z2 - Z1) / (Z2 + Z1).
+
+    qP polarizations are oriented along the propagation direction; the
+    sign (phase) of the qS polarizations follows a deterministic but
+    arbitrary convention, so the phases of the converted-wave
+    coefficients are convention-dependent (their magnitudes are not).
+    The fast/slow shear labels S1/S2 are assigned by vertical slowness
+    and may swap across shear-wave degeneracies (acoustic axes).
+    Incidence angles falling exactly on a critical angle can make the
+    up/down classification ambiguous, raising a RuntimeError; perturb
+    the angle slightly in that case.
+
+    References
+    ----------
+    Fryer, G.J., & Frazer, L.N. (1984). Seismic waves in stratified
+    anisotropic media. Geophysical Journal of the Royal Astronomical
+    Society, 78(3), 691-710.
+    https://doi.org/10.1111/j.1365-246X.1984.tb05065.x
+
+    Schoenberg, M., & Protazio, J. (1992). 'Zoeppritz' rationalized
+    and generalized to anisotropy. Journal of Seismic Exploration,
+    1(2), 125-144.
+    """
+
+    azimuths_deg, polar_deg = _validate_zoeppritz_reflectivity(
+        cij_upper_layer,
+        cij_lower_layer,
+        upper_density_gcm3,
+        lower_density_gcm3,
+        azimuths_deg,
+        polar_deg,
+    )
+
+    # Build downward-pointing unit wavevectors from the incidence angles
+    x, y, z = sph2cart(np.deg2rad(azimuths_deg), np.deg2rad(polar_deg))
+    wavevectors = np.column_stack((x, y, -z))
+
+    # rearrange Cij → Cijkl; normalise with density
+    # Cijkl in GPa and ρ in g/cm^3 gives (km/s)^2
+    cijkl_upper = _rearrange_tensor(cij_upper_layer)
+    cijkl_lower = _rearrange_tensor(cij_lower_layer)
+    chat_upper = cijkl_upper / upper_density_gcm3
+    chat_lower = cijkl_lower / lower_density_gcm3
+
+    # Incident qP wave: phase velocity (fastest Christoffel mode) and
+    # polarization, oriented along the propagation direction. The
+    # slowness vector is s = n / v (s/km).
+    eigenvalues, eigenvectors = _calc_eigen(
+        _christoffel_matrix(wavevectors, chat_upper)
+    )
+    vp_incident = np.sqrt(eigenvalues[:, 2])
+    pol_incident = eigenvectors[:, 2, :]
+    sign = np.sign(np.einsum("ni,ni->n", pol_incident, wavevectors))
+    pol_incident = pol_incident * sign[:, np.newaxis]
+    slow_incident = wavevectors / vp_incident[:, np.newaxis]
+
+    # Snell's law: the horizontal slowness is shared by all scattered waves
+    slow_horizontal = slow_incident.copy()
+    slow_horizontal[:, 2] = 0.0
+
+    # Solve for the six vertical slowness branches in each medium and
+    # keep the three upgoing (reflected) waves in the upper medium and
+    # the three downgoing (transmitted) waves in the lower medium,
+    # each sorted as (qP, qS1, qS2).
+    q_up, pol_up, slow_up = _vertical_slowness_modes(chat_upper, slow_horizontal)
+    q_low, pol_low, slow_low = _vertical_slowness_modes(chat_lower, slow_horizontal)
+    upgoing = _upgoing_mask(chat_upper, q_up, pol_up, slow_up)
+    downgoing = ~_upgoing_mask(chat_lower, q_low, pol_low, slow_low)
+    pol_refl, slow_refl = _select_scattered_modes(
+        chat_upper, pol_up, slow_up, upgoing, "reflected"
+    )
+    pol_trans, slow_trans = _select_scattered_modes(
+        chat_lower, pol_low, slow_low, downgoing, "transmitted"
+    )
+
+    # Welded-contact boundary conditions: continuity of displacement
+    # and vertical traction across z=0 gives a 6x6 linear system per
+    # direction for the scattered displacement amplitudes.
+    b_incident = _displacement_traction_vectors(
+        cijkl_upper, pol_incident[:, np.newaxis, :], slow_incident[:, np.newaxis, :]
+    )[:, 0, :]
+    b_reflected = _displacement_traction_vectors(cijkl_upper, pol_refl, slow_refl)
+    b_transmitted = _displacement_traction_vectors(cijkl_lower, pol_trans, slow_trans)
+    system = np.swapaxes(
+        np.concatenate((b_reflected, -b_transmitted), axis=1), 1, 2
+    )
+    coefficients = np.linalg.solve(system, -b_incident[:, :, np.newaxis])[:, :, 0]
+
+    # Assemble DataFrame (magnitude and phase per coefficient)
+    df = pd.DataFrame(
+        {
+            "azimuths_deg": azimuths_deg,
+            "polar_deg": polar_deg,
+            "Vp_incident_kms": vp_incident,
+        }
+    )
+    for name, coefficient in zip(
+        ("Rpp", "Rps1", "Rps2", "Tpp", "Tps1", "Tps2"), coefficients.T
+    ):
+        df[f"{name}_mag"] = np.abs(coefficient)
+        df[f"{name}_phase_deg"] = np.degrees(np.angle(coefficient))
+
+    return df
+
+
 def schoenberg_muir_layered_medium(
     cij_layer1: np.ndarray,
     cij_layer2: np.ndarray,
@@ -425,6 +612,284 @@ def schoenberg_muir_layered_medium(
 
 # =================================================================
 # Private helpers for internal use only
+
+def _validate_zoeppritz_reflectivity(
+    cij_upper_layer: np.ndarray,
+    cij_lower_layer: np.ndarray,
+    upper_density_gcm3: float,
+    lower_density_gcm3: float,
+    azimuths_deg: float | np.ndarray,
+    polar_deg: float | np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Validate inputs for :func:`zoeppritz_reflectivity` and coerce
+    the angle inputs to 1D float64 arrays."""
+    validate_cij(cij_upper_layer)
+    validate_cij(cij_lower_layer)
+
+    if upper_density_gcm3 <= 0 or lower_density_gcm3 <= 0:
+        raise ValueError("Densities must be positive.")
+
+    azimuths_deg = np.atleast_1d(np.asarray(azimuths_deg, dtype=np.float64))
+    polar_deg = np.atleast_1d(np.asarray(polar_deg, dtype=np.float64))
+
+    if azimuths_deg.ndim != 1 or polar_deg.ndim != 1:
+        raise ValueError("azimuths_deg and polar_deg must be 1D arrays (or scalars).")
+
+    if azimuths_deg.shape != polar_deg.shape:
+        raise ValueError("azimuths_deg and polar_deg must have the same shape.")
+
+    if np.any(polar_deg < 0) or np.any(polar_deg >= 90):
+        raise ValueError("polar_deg (incidence angles) must be in [0, 90).")
+
+    return azimuths_deg, polar_deg
+
+
+def _vertical_slowness_modes(
+    chat: np.ndarray,
+    slow_horizontal: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Solve the Christoffel equation for the six vertical slowness
+    branches compatible with a fixed horizontal slowness.
+
+    Writing the slowness vector as s = (s1, s2, q) with (s1, s2)
+    fixed by Snell's law, the Christoffel equation
+    chat_ijkl s_j s_l a_k = a_i becomes a quadratic eigenvalue
+    problem in q, (A + q B + q² D) a = 0, with
+    A_ik = chat_ijkl s_j s_l - delta_ik (horizontal parts only),
+    B_ik = chat_ijk3 s_j + chat_i3kl s_l and D_ik = chat_i3k3.
+    It is linearised into a 6x6 companion eigenproblem (equivalent
+    to the Fryer & Frazer (1984) system matrix), whose eigenvectors
+    stack the polarization a on top of q*a.
+
+    Parameters
+    ----------
+    chat : numpy.ndarray of shape (3, 3, 3, 3)
+        Density-normalised elastic tensor in (km/s)².
+    slow_horizontal : numpy.ndarray of shape (n, 3)
+        Horizontal slowness vectors (s1, s2, 0) in s/km.
+
+    Returns
+    -------
+    q : numpy.ndarray of shape (n, 6), complex
+        Vertical slownesses (complex for evanescent branches).
+    pol : numpy.ndarray of shape (n, 6, 3), complex
+        Unit polarization vectors, indexed as (direction, mode, cart).
+    slow : numpy.ndarray of shape (n, 6, 3), complex
+        Full slowness vectors (s1, s2, q) per mode.
+    """
+    n = slow_horizontal.shape[0]
+
+    A = (
+        np.einsum("nj,ijkl,nl->nik", slow_horizontal, chat, slow_horizontal)
+        - np.eye(3)
+    )
+    B = (
+        np.einsum("nj,ijk->nik", slow_horizontal, chat[:, :, :, 2])
+        + np.einsum("nl,ikl->nik", slow_horizontal, chat[:, 2, :, :])
+    )
+    D_inv = np.linalg.inv(chat[:, 2, :, 2])
+
+    companion = np.zeros((n, 6, 6))
+    companion[:, :3, 3:] = np.eye(3)
+    companion[:, 3:, :3] = -D_inv @ A
+    companion[:, 3:, 3:] = -D_inv @ B
+
+    q, eigenvectors = np.linalg.eig(companion)
+
+    # top half of each eigenvector is the (unnormalised) polarization
+    pol = np.swapaxes(eigenvectors[:, :3, :], 1, 2)  # (direction, mode, cart)
+    pol = pol / np.linalg.norm(pol, axis=2, keepdims=True)
+
+    slow = np.repeat(
+        slow_horizontal[:, np.newaxis, :], 6, axis=1
+    ).astype(np.complex128)
+    slow[:, :, 2] = q
+
+    return q, pol, slow
+
+
+def _upgoing_mask(
+    chat: np.ndarray,
+    q: np.ndarray,
+    pol: np.ndarray,
+    slow: np.ndarray,
+) -> np.ndarray:
+    """
+    Classify the six slowness branches of each direction as upgoing
+    (True) or downgoing (False). Propagating waves are classified by
+    the sign of the vertical energy flux, <P_z> ∝ Re(chat_3jkl a*_j
+    a_k s_l) (the vertical group-velocity component); evanescent waves
+    by the sign of Im(q), i.e. by requiring decay away from the
+    interface (upgoing waves live in the upper medium, z > 0).
+    """
+    flux_z = np.real(
+        np.einsum("jkl,nmj,nmk,nml->nm", chat[2], np.conj(pol), pol, slow)
+    )
+    slowness_scale = np.sqrt(np.sum(np.abs(slow) ** 2, axis=2))
+    evanescent = np.abs(q.imag) > 1e-6 * slowness_scale
+
+    return np.where(evanescent, q.imag > 0, flux_z > 0)
+
+
+def _select_scattered_modes(
+    chat: np.ndarray,
+    pol: np.ndarray,
+    slow: np.ndarray,
+    keep: np.ndarray,
+    wave_kind: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Keep the three slowness branches flagged in ``keep`` and return
+    their polarizations and slownesses sorted as (qP, qS1, qS2) with
+    the polarization sign/phase conventions applied (see
+    :func:`_sort_and_orient_modes`).
+    """
+    counts = keep.sum(axis=1)
+    if not np.all(counts == 3):
+        bad = np.flatnonzero(counts != 3)
+        raise RuntimeError(
+            f"Could not identify exactly three {wave_kind} waves for "
+            f"direction indices {bad[:10]}. This can happen exactly at "
+            "a critical angle; perturb the incidence angle slightly."
+        )
+
+    order = np.argsort(~keep, axis=1, kind="stable")[:, :3]
+    pol = np.take_along_axis(pol, order[:, :, np.newaxis], axis=1)
+    slow = np.take_along_axis(slow, order[:, :, np.newaxis], axis=1)
+
+    return _sort_and_orient_modes(chat, pol, slow)
+
+
+def _sort_and_orient_modes(
+    chat: np.ndarray,
+    pol: np.ndarray,
+    slow: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Sort three scattered modes as (qP, qS1, qS2) and fix polarization
+    sign/phase conventions.
+
+    The qP mode is the one with the largest longitudinal polarization
+    component |a·s|/|s|; the two quasi-shear modes are ordered by
+    increasing |vertical slowness| (qS1 = fast). Degenerate shear
+    pairs are rebuilt into a flux-decoupled basis (see
+    :func:`_decouple_degenerate_shear`). The qP polarization phase is
+    rotated so that a·s is real and positive (which reduces to
+    'oriented along propagation' for propagating waves); each qS
+    polarization is rotated so its largest component is real positive.
+    """
+    n = pol.shape[0]
+
+    # identify qP: largest longitudinal component
+    slowness_norm = np.sqrt(np.sum(np.abs(slow) ** 2, axis=2))
+    longitudinality = np.abs(np.einsum("nmk,nmk->nm", pol, slow)) / slowness_norm
+    p_idx = np.argmax(longitudinality, axis=1)
+
+    # remaining two modes are quasi-shear; qS1 = smaller |q| (faster)
+    mode_idx = np.tile(np.arange(3), (n, 1))
+    shear_idx = mode_idx[mode_idx != p_idx[:, np.newaxis]].reshape(n, 2)
+    q_shear_abs = np.abs(np.take_along_axis(slow[:, :, 2], shear_idx, axis=1))
+    flip = q_shear_abs[:, 0] > q_shear_abs[:, 1]
+    shear_idx[flip] = shear_idx[flip, ::-1]
+
+    order = np.column_stack((p_idx, shear_idx))
+    pol = np.take_along_axis(pol, order[:, :, np.newaxis], axis=1)
+    slow = np.take_along_axis(slow, order[:, :, np.newaxis], axis=1)
+
+    # degenerate shear pairs (any direction in an isotropic medium,
+    # acoustic axes in anisotropic media): the eigensolver returns an
+    # arbitrary, generally non-orthogonal basis of the 2D shear
+    # eigenspace, whose members would exchange energy. Rebuild a
+    # flux-decoupled pair so the two shear coefficients are physically
+    # meaningful and their energy fluxes additive.
+    q_gap = np.abs(slow[:, 1, 2] - slow[:, 2, 2])
+    degenerate = q_gap < 1e-6 * slowness_norm[:, 1]
+    if np.any(degenerate):
+        pol[degenerate] = _decouple_degenerate_shear(
+            chat, pol[degenerate], slow[degenerate]
+        )
+
+    # qP phase convention: a·s real positive (along propagation)
+    zeta = np.einsum("nk,nk->n", pol[:, 0, :], slow[:, 0, :])
+    zeta = np.where(np.abs(zeta) == 0, 1.0, zeta)
+    pol[:, 0, :] = pol[:, 0, :] * (np.conj(zeta) / np.abs(zeta))[:, np.newaxis]
+
+    # qS phase convention: largest component real positive
+    for mode in (1, 2):
+        largest_idx = np.argmax(np.abs(pol[:, mode, :]), axis=1)
+        largest = np.take_along_axis(
+            pol[:, mode, :], largest_idx[:, np.newaxis], axis=1
+        )[:, 0]
+        pol[:, mode, :] = (
+            pol[:, mode, :] * (np.conj(largest) / np.abs(largest))[:, np.newaxis]
+        )
+
+    return pol, slow
+
+
+def _decouple_degenerate_shear(
+    chat: np.ndarray,
+    pol: np.ndarray,
+    slow: np.ndarray,
+) -> np.ndarray:
+    """
+    Rebuild the two quasi-shear polarizations of shear-degenerate
+    directions into an orthonormal, flux-decoupled pair.
+
+    Within a degenerate eigenspace any linear combination of the two
+    shear modes is a valid plane wave, so the pair returned by the
+    eigensolver is arbitrary and generally neither orthogonal nor
+    energetically independent. The pair is first orthonormalised
+    (Gram-Schmidt) and then rotated to diagonalise the 2x2 Hermitian
+    vertical energy-flux matrix H_mn = Re-part of a*_m,i chat_i3kl
+    a_n,k s_l, which decouples the vertical energy transport of the
+    two modes.
+
+    Parameters are the density-normalised tensor ``chat`` and the
+    (already sorted) polarizations (n, 3, 3) and slownesses (n, 3, 3)
+    of the shear-degenerate subset; modes 1 and 2 are the shear pair.
+    Returns the updated polarization array.
+    """
+    a1 = pol[:, 1, :]
+    a2 = pol[:, 2, :]
+
+    # orthonormalise the pair (Hermitian Gram-Schmidt)
+    overlap = np.einsum("nk,nk->n", np.conj(a1), a2)
+    a2 = a2 - overlap[:, np.newaxis] * a1
+    a2 = a2 / np.linalg.norm(a2, axis=1, keepdims=True)
+    pair = np.stack((a1, a2), axis=1)  # (n, 2, 3)
+
+    # 2x2 Hermitian vertical flux matrix within the eigenspace
+    traction = np.einsum(
+        "ikl,nmk,nml->nmi", chat[:, 2, :, :], pair, slow[:, 1:3, :]
+    )
+    M = np.einsum("nmi,noi->nmo", np.conj(pair), traction)
+    H = 0.5 * (M + np.conj(np.swapaxes(M, 1, 2)))
+
+    # rotate the pair by the unitary eigenbasis of H
+    _, U = np.linalg.eigh(H)
+    pol[:, 1:3, :] = np.einsum("nkm,nki->nmi", U, pair)
+
+    return pol
+
+
+def _displacement_traction_vectors(
+    cijkl: np.ndarray,
+    pol: np.ndarray,
+    slow: np.ndarray,
+) -> np.ndarray:
+    """
+    Build the 6-component displacement-traction vectors b = [a, t]
+    with t_i = c_i3kl a_k s_l, the traction exerted on horizontal
+    planes (the common factor iω is dropped as it cancels in the
+    boundary-condition system). ``pol`` and ``slow`` have shape
+    (n, m, 3); the result has shape (n, m, 6).
+    """
+    traction = np.einsum("ikl,nmk,nml->nmi", cijkl[:, 2, :, :], pol, slow)
+
+    return np.concatenate((pol, traction), axis=2)
+
 
 def _validate_schoenberg_muir_layered_medium(
     cij_layer1: np.ndarray,
