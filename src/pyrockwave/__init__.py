@@ -21,7 +21,11 @@ __version__ = "0.1.0"
 from .elastic_tensor import ElasticProps
 from .decomposition import decompose_Cij, calc_percentages
 from .christoffel import phase_seismic_properties, full_seismic_properties
-from .layered_media import calc_reflectivity, schoenberg_muir_layered_medium
+from .layered_media import (
+    calc_reflectivity,
+    schoenberg_muir_layered_medium,
+    zoeppritz_reflectivity,
+)
 from .anisotropic_models import (
     weak_polar_anisotropy,
     polar_anisotropy,
@@ -39,6 +43,7 @@ __all__ = [
     "full_seismic_properties",
     "calc_reflectivity",
     "schoenberg_muir_layered_medium",
+    "zoeppritz_reflectivity",
     "weak_polar_anisotropy",
     "polar_anisotropy",
     "orthotropic_azimuthal_anisotropy",
