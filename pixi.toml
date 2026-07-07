@@ -6,6 +6,9 @@ platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 version = "0.1.0"
 
 [tasks]
+test = "pytest tests/ -v"
+build = { cmd = "python -m build", description = "Build the sdist and wheel into dist/" }
+check-dist = { cmd = "twine check dist/*", description = "Validate the built distributions before uploading" }
 
 [dependencies]
 python = "<3.14"
@@ -14,3 +17,9 @@ scipy = ">=1.18.0,<2"
 pandas = ">=3.0.3,<4"
 matplotlib = ">=3.11.0,<4"
 jupyterlab = ">=4.6.0,<5"
+pytest = ">=8"
+python-build = ">=1"
+twine = ">=6"
+
+[pypi-dependencies]
+pyrockwave = { path = ".", editable = true }
