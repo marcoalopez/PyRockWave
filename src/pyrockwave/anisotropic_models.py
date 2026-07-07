@@ -228,8 +228,8 @@ def orthotropic_azimuthal_anisotropy(
     # polar (θ) and azimuth (φ) angles
     Vp = np.sqrt(
         0.5 * Vp0**2 * (np.cos(polar)**2 + alphaPhi * np.sin(polar)**2) +
-        0.5 * Vp0**2 * np.sqrt((np.cos(polar)**2 + alphaPhi * np.sin(polar))**2 +
-                               (4 * betaPhi * np.cos(polar)**2 * np.sin(polar**2)))
+        0.5 * Vp0**2 * np.sqrt((np.cos(polar)**2 + alphaPhi * np.sin(polar)**2)**2 +
+                               (4 * betaPhi * np.cos(polar)**2 * np.sin(polar)**2))
     )
 
     # reshape and store arrays
@@ -403,12 +403,33 @@ def HaoStovas_params(
 
 
 def _calc_alphaPhi(azimuths, ε1, ε2, ε3, r1, r2):
+    """Azimuth-dependent coefficient α(φ) of the orthotropic P-wave
+    phase-velocity approximation (Hao & Stovas 2016, as used by
+    Wang et al. 2023).
+
+    Note
+    ----
+    The equation as printed in Wang et al. (2023) has a PLUS sign
+    between the two terms squared under the square root, i.e.
+    (r2·ε2²·cos²φ + r1·ε1²·sin²φ)². That form violates required
+    symmetry limits: for an isotropic medium it gives α ≠ 1 away from
+    the coordinate axes, and for a VTI medium it introduces a spurious
+    azimuthal dependence. With a MINUS sign, α(φ) takes the standard
+    "largest eigenvalue of a 2x2 matrix" form
+        α = (A + B)/2 + sqrt((A - B)² + coupling)/2,
+    which satisfies the isotropic limit (α ≡ 1), is azimuth-independent
+    for VTI input, and recovers the exact horizontal velocities
+    sqrt(c11/ρ) and sqrt(c22/ρ) along the symmetry axes. We therefore
+    believe the printed sign is a typo and implement the minus sign
+    here. See tests/test_anisotropic_models.py for the checks.
+    """
     first_term = 0.5 * (
         (r2 * ε2**2 * np.cos(azimuths) ** 2) +
         (r1 * ε1**2 * np.sin(azimuths) ** 2)
     )
-    
-    a = (r2 * ε2**2 * np.cos(azimuths) ** 2) + \
+
+    # MINUS sign here on purpose, see docstring note
+    a = (r2 * ε2**2 * np.cos(azimuths) ** 2) - \
         (r1 * ε1**2 * np.sin(azimuths) ** 2)
     b = (1 / ε3**2) * r1 * r2 * ε1**2 * ε2**2 * np.sin(2 * azimuths) ** 2
     second_term = 0.5 * np.sqrt(a**2 + b)
