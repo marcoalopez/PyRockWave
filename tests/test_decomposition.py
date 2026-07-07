@@ -236,5 +236,10 @@ def main():
     return 0 if ok else 1
 
 
+def test_decomposition_invariants():
+    """Pytest entry point: the full standalone check suite must pass."""
+    assert main() == 0
+
+
 if __name__ == "__main__":
     sys.exit(main())
