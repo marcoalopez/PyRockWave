@@ -1,19 +1,25 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2026-06-18
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) - Last update: 2026-07-10
 
 ## **What is PyRockWave?**
 
 **PyRockWave** is a free, open-source Python tool that reads single-crystal elasticity databases and calculates the elastic properties of Earth materials. Its submodules can compute isotropic seismic properties,  volume- and CPO-weighted averages, phase and group seismic properties from the Christoffel equation, analytical anisotropy models, reflectivity and effective stiffness/compliance tensors for layered media (Schoenberg & Muir approach), and ultrasonic signal processing. Further tools visualize seismic properties, convert between spherical and Cartesian coordinates, generate S2 grids, and simplify working with tensors.
 
+**Why PyRockWave?**
+
+TODO
+
 PyRockWave is modular: it exposes plain Python functions so you can develop with it and integrate it into other tools. Worked examples in Jupyter notebooks keep workflows easy to follow and reproducible.
 
-View repository on GitHub: https://github.com/marcoalopez/PyRockWave
+
 
 > [!WARNING]
-> PyRockWave is still in the beta stage. Its functionality may change and break backward compatibility. Parts of the code are not well tested yet, and there is no installation guide or detailed documentation. However, the code will always be free and open source. You are welcome to explore and use it at your own risk.
+> PyRockWave is in the beta stage. Its functionality may change and break backward compatibility. Parts of the code are not well tested yet, and there is no installation guide or detailed documentation. However, the code will always be free and open source. You are welcome to explore and use it at your own risk. View repository on GitHub: https://github.com/marcoalopez/PyRockWave
 
 ## **Requirements & Python installation**
+
+PyRockWave requires **Python 3.10 or later** and depends on NumPy, SciPy, Pandas and Matplotlib, which are installed automatically. Please note that PyRockWave requires the NumPy 2 generation of the scientific Python stack (mid-2024 or later). We strongly recommend that you install PyRockWave in a dedicated environment or workspace to avoid compatibility issues with general-purpose Python environments. The installation instructions below are based on this assumption.
 
 Available soon (I'm working on it! 😊)
 
