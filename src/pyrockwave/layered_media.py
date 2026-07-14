@@ -317,7 +317,7 @@ def zoeppritz_reflectivity(
     from the interface normal and ``azimuths_deg`` the azimuth of the
     incidence plane (0 = xz plane, 90 = yz plane). A grid covering all
     orientations can be generated with
-    :func:`pyrockwave.equispaced_S2_grid` (upper hemisphere, degrees),
+    :func:`pyrockwave.equispaced_S2_grid_offset` (upper hemisphere, degrees),
     discarding points with ``polar_deg == 90``.
 
     Parameters

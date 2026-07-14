@@ -115,6 +115,124 @@ def cart2sph(
 
 
 def equispaced_S2_grid(
+    num_points: int = 41_253,
+    hemisphere: str | None = None,
+    include_axes: bool = False,
+) -> np.ndarray:
+    """
+    Generate an approximately equispaced grid of unit vectors on the
+    sphere using the Fibonacci sphere algorithm (sunflower mapping).
+
+    The algorithm distributes points using the golden angle as the
+    azimuthal increment and equal z-spacing (via arccos) to approximate
+    a uniform distribution from pole to pole. The mean angular spacing
+    between neighbouring points is approximately sqrt(4*pi/num_points)
+    radians; the default of 41,253 points gives ~1 degree.
+
+    This is the recommended function for generating wavevector grids
+    for the christoffel module: it returns Cartesian unit vectors of
+    shape (n, 3), which the christoffel functions consume directly,
+    and it has no under-sampled ring around the poles (compare
+    equispaced_S2_grid_offset).
+
+    Parameters
+    ----------
+    num_points : int, optional
+        The number of lattice points to generate, by default 41253
+        (~1 degree mean spacing). When a hemisphere is requested, the
+        returned grid contains num_points points on that hemisphere.
+    hemisphere : None, 'upper' or 'lower', optional
+        Whether to distribute the points over the full sphere (None,
+        the default), the upper hemisphere (z > 0), or the lower
+        hemisphere (z < 0).
+    include_axes : bool, optional
+        If True, prepend the coordinate-axis directions ±z, ±x, ±y
+        (those compatible with the requested hemisphere) to the grid.
+        The lattice never samples these directions exactly, yet they
+        often coincide with symmetry axes where seismic velocity
+        extrema occur. Defaults to False.
+
+    Returns
+    -------
+    np.ndarray
+        An array of shape (m, 3) containing the (x, y, z) coordinates
+        of the points on the unit sphere (r=1), where m equals
+        num_points plus, if include_axes=True, the number of prepended
+        axis directions (6 for the full sphere, 5 for a hemisphere).
+
+    Raises
+    ------
+    ValueError
+        If num_points is not a positive integer, or if hemisphere
+        is not one of None, 'upper', or 'lower'.
+
+    Notes
+    -----
+    The golden angle phi = pi*(3 - sqrt(5)) ensures azimuthal
+    increments that avoid radial clustering. Hemisphere selection
+    generates a full-sphere lattice of 2*num_points points and keeps
+    the exact half lying on the requested side (no lattice point falls
+    on the equator for an even number of points).
+
+    References
+    ----------
+    Swinbank, R., & Purser, R.J. (2006). Fibonacci grids: A novel approach to
+    global modelling. Quarterly Journal of the Royal Meteorological Society,
+    132(619), 1769-1793. https://doi.org/10.1256/qj.05.227
+    """
+
+    if not isinstance(num_points, int) or num_points < 1:
+        raise ValueError(
+            f"num_points must be a positive integer, got {num_points!r}"
+        )
+    if hemisphere not in (None, "upper", "lower"):
+        raise ValueError(
+            f"hemisphere must be None, 'upper', or 'lower', got {hemisphere!r}"
+        )
+
+    # Generate a full-sphere lattice; double it when a hemisphere is
+    # requested so the kept half contains num_points points.
+    n = num_points if hemisphere is None else 2 * num_points
+    indices = np.arange(1, n + 1)
+
+    # Calculate the golden angle in radians
+    golden_angle = np.pi * (3 - np.sqrt(5))
+
+    # Calculate the polar (latitude) and azimuthal (longitude) angles
+    polar_angle = np.arccos(1 - 2 * indices / (n + 1))
+    azimuthal_angle = golden_angle * indices
+
+    # Convert spherical coordinates to Cartesian coordinates
+    x, y, z = sph2cart(azimuthal_angle, polar_angle)
+    sphere_points = np.column_stack((x, y, z))
+
+    # apply hemisphere filter (z is never exactly 0, see Notes)
+    if hemisphere == "upper":
+        sphere_points = sphere_points[sphere_points[:, 2] > 0]
+    elif hemisphere == "lower":
+        sphere_points = sphere_points[sphere_points[:, 2] < 0]
+
+    if include_axes:
+        axes = np.array(
+            [
+                [0.0, 0.0, 1.0],
+                [0.0, 0.0, -1.0],
+                [1.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, -1.0, 0.0],
+            ]
+        )
+        if hemisphere == "upper":
+            axes = axes[axes[:, 2] >= 0]
+        elif hemisphere == "lower":
+            axes = axes[axes[:, 2] <= 0]
+        sphere_points = np.vstack((axes, sphere_points))
+
+    return sphere_points
+
+
+def equispaced_S2_grid_offset(
     num_points: int = 20809,
     degrees: bool = False,
     hemisphere: str | None = None
@@ -123,15 +241,16 @@ def equispaced_S2_grid(
     Returns an approximately equispaced spherical grid in
     spherical coordinates (azimuthal and polar angles) using
     a modified version of the offset Fibonacci lattice algorithm.
-    The Fibonacci Lattice algorithm is often considered one of the
-    best in terms of balancing uniformity, computational efficiency,
-    and ease of implementation. It's particularly good for large
-    numbers of points.
+    The offsets are tuned to maximise the minimum distance between
+    points (packing).
 
-    Note: Mathematically speaking, you cannot put more than 20
-    perfectly evenly spaced points on a sphere. However, there
-    are good-enough ways to approximately position evenly
-    spaced points on a sphere.
+    Note: the packing-oriented offsets leave an under-sampled ring
+    around each pole that grows relative to the mean point spacing
+    for large num_points. For sampling directions (e.g. wavevector
+    grids for the christoffel module), prefer equispaced_S2_grid,
+    which is free of this artefact and returns Cartesian unit
+    vectors directly. This function remains useful when spherical
+    angles (optionally in degrees) are needed.
 
     See also:
     https://arxiv.org/pdf/1607.04590.pdf
@@ -217,74 +336,11 @@ def equispaced_S2_grid(
     return azimuth, polar_ang
 
 
-def equispaced_S2_grid_fsa(num_points: int) -> np.ndarray:
-    """
-    Generate evenly distributed points on a unit sphere using
-    the Fibonacci sphere algorithm (sunflower mapping).
-
-    The algorithm distributes points using the golden angle as the
-    azimuthal increment and equal z-spacing (via arccos) to approximate
-    a uniform distribution from the south pole to the north pole.
-
-    Parameters
-    ----------
-    num_points : int
-        The number of points to generate on the sphere surface.
-
-    Returns
-    -------
-    np.ndarray
-        An array of shape (num_points, 3) containing the (x, y, z)
-        coordinates of the generated points on the unit sphere (r=1).
-
-    Raises
-    ------
-    ValueError
-        If num_points is not a positive integer.
-
-    Notes
-    -----
-    The golden angle phi = pi*(3 - sqrt(5)) ensures azimuthal increments
-    that avoid radial clustering. All points lie on the unit sphere (r=1).
-
-    References
-    ----------
-    Swinbank, R., & Purser, R.J. (2006). Fibonacci grids: A novel approach to
-    global modelling. Quarterly Journal of the Royal Meteorological Society,
-    132(619), 1769-1793.
-    """
-
-    if not isinstance(num_points, int) or num_points < 1:
-        raise ValueError(
-            f"num_points must be a positive integer, got {num_points!r}"
-        )
-
-    # Generate indices from 1 to num_points
-    indices = np.arange(1, num_points + 1)
-
-    # Calculate the golden angle in radians
-    golden_angle = np.pi * (3 - np.sqrt(5))
-
-    # Calculate the polar angle (latitude)
-    polar_angle = np.arccos(1 - 2 * indices / (num_points + 1))
-
-    # Calculate the azimuthal angle (longitude)
-    azimuthal_angle = golden_angle * indices
-
-    # Convert spherical coordinates to Cartesian coordinates
-    x, y, z = sph2cart(azimuthal_angle, polar_angle)
-
-    # Stack the coordinates into a single array
-    sphere_points = np.column_stack((x, y, z))
-
-    return sphere_points
-
-
 # =================================================================
 # Private helpers for internal use only
 
 def _set_epsilon(n: int) -> float:
-    """Internal function used by equispaced_S2_grid.
+    """Internal function used by equispaced_S2_grid_offset.
     """
     if n >= 40_000:
         return 25

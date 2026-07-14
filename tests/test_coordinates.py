@@ -6,9 +6,12 @@ and spherical grids:
   (1) sph2cart maps the canonical directions (poles, x/y axes) to the
       expected Cartesian unit vectors, and cart2sph inverts sph2cart for
       arbitrary angles (round trip, physics/ISO convention).
-  (2) equispaced_S2_grid returns the requested number of points, angles
-      inside their domains, hemisphere filtering, and the degrees flag.
-  (3) equispaced_S2_grid_fsa returns points on the unit sphere.
+  (2) equispaced_S2_grid (Fibonacci sphere / sunflower mapping) returns
+      the requested number of unit vectors, exact hemisphere halves, and
+      the optional coordinate-axis directions.
+  (3) equispaced_S2_grid_offset (offset Fibonacci lattice) returns the
+      requested number of points, angles inside their domains, hemisphere
+      filtering, and the degrees flag.
 
 Plus the documented input-validation behaviour (ValueError on malformed
 input).
@@ -25,7 +28,7 @@ from pyrockwave.utils.coordinates import (
     sph2cart,
     cart2sph,
     equispaced_S2_grid,
-    equispaced_S2_grid_fsa,
+    equispaced_S2_grid_offset,
 )
 
 
@@ -72,24 +75,50 @@ def test_cart2sph_angle_ranges():
     assert np.all((phi >= 0) & (phi < 2 * np.pi))
 
 
-def test_equispaced_S2_grid_full_sphere():
-    n = 1000
-    azimuth, polar = equispaced_S2_grid(num_points=n)
-    assert azimuth.shape == polar.shape == (n,)
-    assert np.all((azimuth >= 0) & (azimuth < 2 * np.pi))
-    assert np.all((polar >= 0) & (polar <= np.pi))
-    # sorted by polar angle, with one point at each pole
-    assert np.all(np.diff(polar) >= 0)
-    assert np.isclose(polar[0], 0) and np.isclose(polar[-1], np.pi)
+def test_equispaced_S2_grid_unit_sphere():
+    n = 250
+    points = equispaced_S2_grid(num_points=n)
+    assert points.shape == (n, 3)
+    assert np.allclose(np.linalg.norm(points, axis=1), 1.0)
 
 
-def test_equispaced_S2_grid_hemispheres_and_degrees():
-    azimuth, polar = equispaced_S2_grid(num_points=500, hemisphere="upper")
-    assert np.all(polar <= np.pi / 2 + 1e-12)
-    azimuth, polar = equispaced_S2_grid(num_points=500, hemisphere="lower")
-    assert np.all(polar >= np.pi / 2 - 1e-12)
-    azimuth, polar = equispaced_S2_grid(num_points=500, degrees=True)
-    assert np.all(polar <= 180.0) and np.all(azimuth < 360.0)
+def test_equispaced_S2_grid_default_size():
+    # default of 41,253 points -> sqrt(4*pi/N) ~ 1 degree mean spacing
+    points = equispaced_S2_grid()
+    assert points.shape == (41_253, 3)
+    mean_spacing_deg = np.rad2deg(np.sqrt(4 * np.pi / points.shape[0]))
+    assert abs(mean_spacing_deg - 1.0) < 0.01
+
+
+def test_equispaced_S2_grid_hemispheres():
+    n = 500
+    upper = equispaced_S2_grid(num_points=n, hemisphere="upper")
+    lower = equispaced_S2_grid(num_points=n, hemisphere="lower")
+    assert upper.shape == lower.shape == (n, 3)
+    assert np.all(upper[:, 2] > 0)
+    assert np.all(lower[:, 2] < 0)
+
+
+def test_equispaced_S2_grid_include_axes():
+    n = 100
+    axes = np.array(
+        [[0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]],
+        dtype=float,
+    )
+
+    points = equispaced_S2_grid(num_points=n, include_axes=True)
+    assert points.shape == (n + 6, 3)
+    assert np.allclose(points[:6], axes)
+
+    upper = equispaced_S2_grid(num_points=n, hemisphere="upper", include_axes=True)
+    assert upper.shape == (n + 5, 3)
+    assert np.all(upper[:, 2] >= 0)
+    assert not np.any(np.all(np.isclose(upper, [0, 0, -1]), axis=1))
+
+    lower = equispaced_S2_grid(num_points=n, hemisphere="lower", include_axes=True)
+    assert lower.shape == (n + 5, 3)
+    assert np.all(lower[:, 2] <= 0)
+    assert not np.any(np.all(np.isclose(lower, [0, 0, 1]), axis=1))
 
 
 def test_equispaced_S2_grid_rejects_bad_inputs():
@@ -98,12 +127,30 @@ def test_equispaced_S2_grid_rejects_bad_inputs():
     assert expect_value_error(equispaced_S2_grid, hemisphere="north")
 
 
-def test_equispaced_S2_grid_fsa_unit_sphere():
-    n = 250
-    points = equispaced_S2_grid_fsa(n)
-    assert points.shape == (n, 3)
-    assert np.allclose(np.linalg.norm(points, axis=1), 1.0)
-    assert expect_value_error(equispaced_S2_grid_fsa, 0)
+def test_equispaced_S2_grid_offset_full_sphere():
+    n = 1000
+    azimuth, polar = equispaced_S2_grid_offset(num_points=n)
+    assert azimuth.shape == polar.shape == (n,)
+    assert np.all((azimuth >= 0) & (azimuth < 2 * np.pi))
+    assert np.all((polar >= 0) & (polar <= np.pi))
+    # sorted by polar angle, with one point at each pole
+    assert np.all(np.diff(polar) >= 0)
+    assert np.isclose(polar[0], 0) and np.isclose(polar[-1], np.pi)
+
+
+def test_equispaced_S2_grid_offset_hemispheres_and_degrees():
+    azimuth, polar = equispaced_S2_grid_offset(num_points=500, hemisphere="upper")
+    assert np.all(polar <= np.pi / 2 + 1e-12)
+    azimuth, polar = equispaced_S2_grid_offset(num_points=500, hemisphere="lower")
+    assert np.all(polar >= np.pi / 2 - 1e-12)
+    azimuth, polar = equispaced_S2_grid_offset(num_points=500, degrees=True)
+    assert np.all(polar <= 180.0) and np.all(azimuth < 360.0)
+
+
+def test_equispaced_S2_grid_offset_rejects_bad_inputs():
+    assert expect_value_error(equispaced_S2_grid_offset, num_points=0)
+    assert expect_value_error(equispaced_S2_grid_offset, num_points=10.5)
+    assert expect_value_error(equispaced_S2_grid_offset, hemisphere="north")
 
 
 def main():
@@ -111,10 +158,14 @@ def main():
         test_sph2cart_canonical_directions,
         test_sph2cart_cart2sph_roundtrip,
         test_cart2sph_angle_ranges,
-        test_equispaced_S2_grid_full_sphere,
-        test_equispaced_S2_grid_hemispheres_and_degrees,
+        test_equispaced_S2_grid_unit_sphere,
+        test_equispaced_S2_grid_default_size,
+        test_equispaced_S2_grid_hemispheres,
+        test_equispaced_S2_grid_include_axes,
         test_equispaced_S2_grid_rejects_bad_inputs,
-        test_equispaced_S2_grid_fsa_unit_sphere,
+        test_equispaced_S2_grid_offset_full_sphere,
+        test_equispaced_S2_grid_offset_hemispheres_and_degrees,
+        test_equispaced_S2_grid_offset_rejects_bad_inputs,
     ]
     ok = True
     for check in checks:

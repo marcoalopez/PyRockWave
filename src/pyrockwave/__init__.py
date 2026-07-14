@@ -31,7 +31,12 @@ from .anisotropic_models import (
     polar_anisotropy,
     orthotropic_azimuthal_anisotropy,
 )
-from .utils.coordinates import sph2cart, cart2sph, equispaced_S2_grid
+from .utils.coordinates import (
+    sph2cart,
+    cart2sph,
+    equispaced_S2_grid,
+    equispaced_S2_grid_offset,
+)
 from .utils.tensor_tools import rotate_stiffness_tensor
 
 
@@ -50,6 +55,7 @@ __all__ = [
     "sph2cart",
     "cart2sph",
     "equispaced_S2_grid",
+    "equispaced_S2_grid_offset",
     "rotate_stiffness_tensor",
     "__version__",
 ]

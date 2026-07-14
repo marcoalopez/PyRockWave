@@ -43,7 +43,7 @@ from pyrockwave.layered_media import (  # noqa: E402
     _upgoing_mask,
     _vertical_slowness_modes,
 )
-from pyrockwave.utils.coordinates import equispaced_S2_grid  # noqa: E402
+from pyrockwave.utils.coordinates import equispaced_S2_grid_offset  # noqa: E402
 from pyrockwave.utils.tensor_tools import _rearrange_tensor  # noqa: E402
 from pyrockwave.christoffel import _calc_eigen, _christoffel_matrix  # noqa: E402
 from test_reflectivity_vs_graebner import vti_exact_rpp, vti_tensor  # noqa: E402
@@ -311,7 +311,7 @@ def main():
     check("energy conserved, olivine (<1e-8)", err_oli < 1e-8)
 
     print("\n=== (5) hemispheric orientation grid (smoke test) ===")
-    azimuths, polar = equispaced_S2_grid(
+    azimuths, polar = equispaced_S2_grid_offset(
         num_points=500, degrees=True, hemisphere="upper"
     )
     subhorizontal = polar < 90.0  # grazing incidence is not defined
