@@ -340,7 +340,8 @@ def equispaced_S2_grid_offset(
 # Private helpers for internal use only
 
 def _set_epsilon(n: int) -> float:
-    """Internal function used by equispaced_S2_grid_offset.
+    """
+    Internal function used by equispaced_S2_grid_offset.
     """
     if n >= 40_000:
         return 25
@@ -350,5 +351,49 @@ def _set_epsilon(n: int) -> float:
         return 3.33
     else:
         return 2.66
+
+def _calc_sample_size(ang_spacing_deg: float) -> int:
+    """
+    Estimate the number of approximately uniformly distributed points
+    on the unit sphere for a given mean angular spacing.
+
+    The estimate assumes
+
+        θ ≈ sqrt(4π / N),
+
+    where θ is the mean angular spacing (radians) and N is the number
+    of points. Rearranging gives
+
+        N ≈ 4π / θ².
+
+    Note: This expression assumes each point represents an equal spherical
+    area of approximately 4π / N steradians and that this area can be
+    approximated by θ². This is accurate for small angular spacings
+    (typically a few degrees or less) but becomes increasingly approximate
+    for coarse samplings
+
+    Parameters
+    ----------
+    ang_spacing_deg : float
+        Desired mean angular spacing between neighbouring points, in
+        degrees. Must be positive.
+
+    Returns
+    -------
+    int
+        Estimated number of sample points.
+
+    Examples
+    --------
+    A spacing of 1° corresponds to approximately 41,253 points.
+    """
+
+    if ang_spacing_deg <= 0:
+        raise ValueError("ang_spacing_deg must be positive.")
+
+    ang_spacing_rad = np.deg2rad(ang_spacing_deg)
+    sample_size = round(4 * np.pi / ang_spacing_rad**2)
+
+    return sample_size
 
 # End of file
