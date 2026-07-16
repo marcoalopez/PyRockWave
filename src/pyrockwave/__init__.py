@@ -22,6 +22,7 @@ from .elastic_tensor import ElasticProps
 from .decomposition import decompose_Cij, calc_percentages
 from .christoffel import phase_seismic_properties, full_seismic_properties
 from .layered_media import (
+    backus_average,
     calc_reflectivity,
     schoenberg_muir_layered_medium,
     zoeppritz_reflectivity,
@@ -46,6 +47,7 @@ __all__ = [
     "calc_percentages",
     "phase_seismic_properties",
     "full_seismic_properties",
+    "backus_average",
     "calc_reflectivity",
     "schoenberg_muir_layered_medium",
     "zoeppritz_reflectivity",

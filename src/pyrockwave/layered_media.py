@@ -610,6 +610,119 @@ def schoenberg_muir_layered_medium(
     return effective_stiffness, effective_compliance, effective_stiffness_from_compliance
 
 
+def backus_average(
+    vp_kms: np.ndarray,
+    vs_kms: np.ndarray,
+    densities_gcm3: np.ndarray,
+    volume_fractions: np.ndarray | None = None,
+) -> tuple[np.ndarray, float]:
+    """
+    Calculate the effective (long-wavelength) stiffness tensor of a
+    stack of thin isotropic layers using the Backus (1962) average.
+
+    A finely layered medium made of isotropic layers behaves, for
+    wavelengths much longer than the layer thicknesses (rule of thumb:
+    at least ~10x), as a homogeneous transversely isotropic (TI)
+    medium whose symmetry axis is normal to the layering (here the
+    z-axis). This function returns that effective TI stiffness and
+    the volume-averaged density.
+
+    This is the isotropic special case of the layering calculus in
+    :func:`schoenberg_muir_layered_medium` (which accepts arbitrarily
+    anisotropic layers but only two alternating constituents); the two
+    agree to numerical precision for isotropic inputs.
+
+    Parameters
+    ----------
+    vp_kms : numpy.ndarray of shape (n,)
+        P-wave velocity of each layer in km/s.
+    vs_kms : numpy.ndarray of shape (n,)
+        S-wave velocity of each layer in km/s. Fluid layers (vs=0)
+        are not supported.
+    densities_gcm3 : numpy.ndarray of shape (n,)
+        Density of each layer in g/cm³.
+    volume_fractions : numpy.ndarray of shape (n,), optional
+        Volume (thickness) fraction of each layer. Raw layer
+        thicknesses may be passed instead of fractions: the values
+        are normalised internally to sum to one. If None (default),
+        all layers are weighted equally (e.g. regularly sampled
+        well-log data).
+
+    Returns
+    -------
+    effective_stiffness : numpy.ndarray of shape (6, 6)
+        Effective TI stiffness tensor in GPa (Voigt notation,
+        symmetry axis along z).
+    effective_density : float
+        Volume-averaged density in g/cm³.
+
+    Raises
+    ------
+    ValueError
+        If the input arrays are empty, of unequal length, or contain
+        non-finite or non-positive values; if a volume fraction is not
+        positive; or if any layer violates elastic stability
+        (requires vp/vs > sqrt(4/3), i.e. positive bulk modulus).
+
+    References
+    ----------
+    Backus, G.E. (1962). Long-wave elastic anisotropy produced by
+    horizontal layering. Journal of Geophysical Research, 67(11),
+    4427-4440. https://doi.org/10.1029/JZ067i011p04427
+
+    Mavko, G., Mukerji, T., & Dvorkin, J. (2020). The Rock Physics
+    Handbook (3rd ed.), section 4.13. Cambridge University Press.
+    https://doi.org/10.1017/9781108333016
+
+    Notes
+    -----
+    Python reimplementation, with input validation and improved
+    documentation, of the bkusc.m file from the srb toolbox
+    originally written by Gary Mavko in 1999. The averaging formulas
+    were verified against Backus (1962) as summarised in The Rock
+    Physics Handbook, and the implementation is cross-checked against
+    :func:`schoenberg_muir_layered_medium` in the test suite.
+
+    With velocities in km/s and densities in g/cm³ the products
+    rho*v**2 are in GPa, so no unit conversion factors appear.
+    """
+
+    vp, vs, rho, f = _validate_backus_average(
+        vp_kms, vs_kms, densities_gcm3, volume_fractions
+    )
+
+    # Isotropic Lamé parameters of each layer (GPa)
+    mu = rho * vs**2
+    lam = rho * vp**2 - 2 * mu
+    p_modulus = lam + 2 * mu
+
+    # Backus (1962) volume-fraction-weighted averages. In the notation
+    # of the general TI-layer form: c33 = <1/C33>^-1, c13 = <C13/C33>*c33,
+    # c44 = <1/C44>^-1, c66 = <C66>, and the <C11 - C13^2/C33> term of
+    # c11 reduces to 4*mu*(lam + mu)/(lam + 2*mu) for isotropic layers.
+    c33 = 1.0 / np.sum(f / p_modulus)
+    c13 = c33 * np.sum(f * lam / p_modulus)
+    c11 = np.sum(f * 4 * mu * (lam + mu) / p_modulus) + c13**2 / c33
+    c12 = np.sum(f * 2 * mu * lam / p_modulus) + c13**2 / c33
+    c44 = 1.0 / np.sum(f / mu)
+    c66 = np.sum(f * mu)  # equals (c11 - c12)/2 (TI constraint)
+
+    effective_stiffness = np.array(
+        [
+            [c11, c12, c13, 0.0, 0.0, 0.0],
+            [c12, c11, c13, 0.0, 0.0, 0.0],
+            [c13, c13, c33, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, c44, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, c44, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, c66],
+        ]
+    )
+
+    effective_density = float(np.sum(f * rho))
+
+    return effective_stiffness, effective_density
+
+
 # =================================================================
 # Private helpers for internal use only
 
@@ -918,6 +1031,61 @@ def _validate_schoenberg_muir_layered_medium(
 
     if not np.isclose(vfrac1 + vfrac2, 1, rtol=1e-03):
         raise ValueError("Volume fractions must sum (approximately) to 1.")
+
+
+def _validate_backus_average(
+    vp_kms: np.ndarray,
+    vs_kms: np.ndarray,
+    densities_gcm3: np.ndarray,
+    volume_fractions: np.ndarray | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Validate inputs for :func:`backus_average`. Coerces the inputs
+    to 1-D float64 arrays and returns (vp, vs, rho, fractions) with the
+    fractions normalised to sum to one."""
+    vp = np.atleast_1d(np.asarray(vp_kms, dtype=np.float64))
+    vs = np.atleast_1d(np.asarray(vs_kms, dtype=np.float64))
+    rho = np.atleast_1d(np.asarray(densities_gcm3, dtype=np.float64))
+
+    if vp.ndim != 1 or vs.ndim != 1 or rho.ndim != 1:
+        raise ValueError("vp_kms, vs_kms and densities_gcm3 must be 1-D arrays.")
+    if not (vp.shape == vs.shape == rho.shape):
+        raise ValueError(
+            "vp_kms, vs_kms and densities_gcm3 must have the same length."
+        )
+    if vp.size == 0:
+        raise ValueError("input arrays must contain at least one layer.")
+    if not (np.all(np.isfinite(vp)) and np.all(np.isfinite(vs))
+            and np.all(np.isfinite(rho))):
+        raise ValueError(
+            "velocities and densities must be finite (check for NaNs "
+            "in well-log data)."
+        )
+    if np.any(vp <= 0) or np.any(vs <= 0) or np.any(rho <= 0):
+        raise ValueError(
+            "velocities and densities must be positive; fluid layers "
+            "(vs=0) are not supported."
+        )
+    # Elastic stability (positive bulk modulus) requires vp/vs > sqrt(4/3)
+    if np.any(vp / vs <= np.sqrt(4.0 / 3.0)):
+        raise ValueError(
+            "each layer must satisfy vp/vs > sqrt(4/3) ~ 1.155 "
+            "(positive bulk modulus)."
+        )
+
+    if volume_fractions is None:
+        fractions = np.full(vp.shape, 1.0 / vp.size)
+    else:
+        fractions = np.atleast_1d(np.asarray(volume_fractions, dtype=np.float64))
+        if fractions.shape != vp.shape:
+            raise ValueError(
+                "volume_fractions must have the same length as the "
+                "velocity and density arrays."
+            )
+        if not np.all(np.isfinite(fractions)) or np.any(fractions <= 0):
+            raise ValueError("volume fractions must be finite and positive.")
+        fractions = fractions / fractions.sum()
+
+    return vp, vs, rho, fractions
 
 
 # End of file

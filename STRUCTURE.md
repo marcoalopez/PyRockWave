@@ -53,7 +53,7 @@ and feature-based subpackages (`plotting/`, `utils/`).
 | `ElasticProps` | `elastic_tensor` |
 | `decompose_Cij`, `calc_percentages` | `decomposition` |
 | `phase_seismic_properties`, `full_seismic_properties` | `christoffel` |
-| `calc_reflectivity`, `schoenberg_muir_layered_medium`, `zoeppritz_reflectivity` | `layered_media` |
+| `backus_average`, `calc_reflectivity`, `schoenberg_muir_layered_medium`, `zoeppritz_reflectivity` | `layered_media` |
 | `weak_polar_anisotropy`, `polar_anisotropy`, `orthotropic_azimuthal_anisotropy` | `anisotropic_models` |
 | `sph2cart`, `cart2sph`, `equispaced_S2_grid`, `equispaced_S2_grid_offset` | `utils.coordinates` |
 | `rotate_stiffness_tensor` | `utils.tensor_tools` |
@@ -106,6 +106,7 @@ Public functions/classes only; names with a leading underscore are private helpe
 - `zoeppritz_reflectivity` — exact plane-wave reflection/transmission coefficients for an incident qP wave at a welded interface between two arbitrarily anisotropic media (Fryer & Frazer 1984; Schoenberg & Protazio 1992); the exact generalisation of `reflectivity`, valid for any anisotropy strength and beyond the critical angle.
 - `tsvankin_params` — re-exported from `anisotropic_models` (single canonical implementation); available here for backward compatibility.
 - `schoenberg_muir_layered_medium` — effective stiffness/compliance of a finely layered medium (Schoenberg–Muir).
+- `backus_average` — effective TI stiffness and density of a stack of thin isotropic layers from Vp/Vs/density/fraction data (Backus 1962); the isotropic N-layer special case of the Schoenberg–Muir calculus.
 
 ### `ultrasonic`
 - `process_signal` — pre-processes a pulse-echo ultrasound signal (crop, detrend, filter).
