@@ -312,7 +312,7 @@ def main():
 
     print("\n=== (5) hemispheric orientation grid (smoke test) ===")
     azimuths, polar = equispaced_S2_grid_offset(
-        num_points=500, degrees=True, hemisphere="upper"
+        ang_spacing_deg=6.0, degrees=True, hemisphere="upper"
     )
     subhorizontal = polar < 90.0  # grazing incidence is not defined
     df = zoeppritz_reflectivity(

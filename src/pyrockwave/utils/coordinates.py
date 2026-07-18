@@ -115,7 +115,7 @@ def cart2sph(
 
 
 def equispaced_S2_grid(
-    num_points: int = 41_253,
+    ang_spacing_deg: float = 1.0,
     hemisphere: str | None = None,
     include_axes: bool = False,
 ) -> np.ndarray:
@@ -125,9 +125,10 @@ def equispaced_S2_grid(
 
     The algorithm distributes points using the golden angle as the
     azimuthal increment and equal z-spacing (via arccos) to approximate
-    a uniform distribution from pole to pole. The mean angular spacing
-    between neighbouring points is approximately sqrt(4*pi/num_points)
-    radians; the default of 41,253 points gives ~1 degree.
+    a uniform distribution from pole to pole. The number of lattice
+    points is estimated from the requested mean angular spacing as
+    N ~ 4*pi / theta^2 (see _calc_sample_size); the default spacing of
+    1 degree corresponds to 41,253 points on the full sphere.
 
     This is the recommended function for generating wavevector grids
     for the christoffel module: it returns Cartesian unit vectors of
@@ -137,14 +138,15 @@ def equispaced_S2_grid(
 
     Parameters
     ----------
-    num_points : int, optional
-        The number of lattice points to generate, by default 41253
-        (~1 degree mean spacing). When a hemisphere is requested, the
-        returned grid contains num_points points on that hemisphere.
+    ang_spacing_deg : float, optional
+        Desired mean angular spacing between neighbouring points, in
+        degrees, by default 1.0. The spacing sets the point density;
+        a hemisphere therefore contains about half as many points as
+        the full sphere.
     hemisphere : None, 'upper' or 'lower', optional
         Whether to distribute the points over the full sphere (None,
-        the default), the upper hemisphere (z > 0), or the lower
-        hemisphere (z < 0).
+        the default), the upper hemisphere (z >= 0), or the lower
+        hemisphere (z <= 0).
     include_axes : bool, optional
         If True, prepend the coordinate-axis directions ±z, ±x, ±y
         (those compatible with the requested hemisphere) to the grid.
@@ -156,23 +158,26 @@ def equispaced_S2_grid(
     -------
     np.ndarray
         An array of shape (m, 3) containing the (x, y, z) coordinates
-        of the points on the unit sphere (r=1), where m equals
-        num_points plus, if include_axes=True, the number of prepended
-        axis directions (6 for the full sphere, 5 for a hemisphere).
+        of the points on the unit sphere (r=1), where m is the
+        estimated sample size for the requested spacing (about half of
+        it for a hemisphere) plus, if include_axes=True, the number of
+        prepended axis directions (6 for the full sphere, 5 for a
+        hemisphere).
 
     Raises
     ------
     ValueError
-        If num_points is not a positive integer, or if hemisphere
+        If ang_spacing_deg is not a positive number, or if hemisphere
         is not one of None, 'upper', or 'lower'.
 
     Notes
     -----
     The golden angle phi = pi*(3 - sqrt(5)) ensures azimuthal
     increments that avoid radial clustering. Hemisphere selection
-    generates a full-sphere lattice of 2*num_points points and keeps
-    the exact half lying on the requested side (no lattice point falls
-    on the equator for an even number of points).
+    keeps the lattice points lying on the requested side at the same
+    density; a lattice point falls exactly on the equator only when
+    the estimated sample size is odd, in which case it belongs to
+    both hemispheres.
 
     References
     ----------
@@ -181,18 +186,18 @@ def equispaced_S2_grid(
     132(619), 1769-1793. https://doi.org/10.1256/qj.05.227
     """
 
-    if not isinstance(num_points, int) or num_points < 1:
+    if not isinstance(ang_spacing_deg, (int, float)):
         raise ValueError(
-            f"num_points must be a positive integer, got {num_points!r}"
+            f"ang_spacing_deg must be a positive number, got {ang_spacing_deg!r}"
         )
     if hemisphere not in (None, "upper", "lower"):
         raise ValueError(
             f"hemisphere must be None, 'upper', or 'lower', got {hemisphere!r}"
         )
 
-    # Generate a full-sphere lattice; double it when a hemisphere is
-    # requested so the kept half contains num_points points.
-    n = num_points if hemisphere is None else 2 * num_points
+    # Estimate the full-sphere lattice size for the requested mean
+    # spacing (raises ValueError if ang_spacing_deg is not positive)
+    n = _calc_sample_size(ang_spacing_deg)
     indices = np.arange(1, n + 1)
 
     # Calculate the golden angle in radians
@@ -206,11 +211,12 @@ def equispaced_S2_grid(
     x, y, z = sph2cart(azimuthal_angle, polar_angle)
     sphere_points = np.column_stack((x, y, z))
 
-    # apply hemisphere filter (z is never exactly 0, see Notes)
+    # apply hemisphere filter, keeping the same point density (an
+    # equator point, present only for odd n, belongs to both sides)
     if hemisphere == "upper":
-        sphere_points = sphere_points[sphere_points[:, 2] > 0]
+        sphere_points = sphere_points[sphere_points[:, 2] >= 0]
     elif hemisphere == "lower":
-        sphere_points = sphere_points[sphere_points[:, 2] < 0]
+        sphere_points = sphere_points[sphere_points[:, 2] <= 0]
 
     if include_axes:
         axes = np.array(
@@ -233,7 +239,7 @@ def equispaced_S2_grid(
 
 
 def equispaced_S2_grid_offset(
-    num_points: int = 20809,
+    ang_spacing_deg: float = 1.0,
     degrees: bool = False,
     hemisphere: str | None = None
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -242,11 +248,13 @@ def equispaced_S2_grid_offset(
     spherical coordinates (azimuthal and polar angles) using
     a modified version of the offset Fibonacci lattice algorithm.
     The offsets are tuned to maximise the minimum distance between
-    points (packing).
+    points (packing). The number of points is estimated from the
+    requested mean angular spacing as N ~ 4*pi / theta^2 (see
+    _calc_sample_size).
 
     Note: the packing-oriented offsets leave an under-sampled ring
     around each pole that grows relative to the mean point spacing
-    for large num_points. For sampling directions (e.g. wavevector
+    for fine spacings. For sampling directions (e.g. wavevector
     grids for the christoffel module), prefer equispaced_S2_grid,
     which is free of this artefact and returns Cartesian unit
     vectors directly. This function remains useful when spherical
@@ -258,8 +266,11 @@ def equispaced_S2_grid_offset(
 
     Parameters
     ----------
-    num_points : int, optional
-        The number of points, by default 20809.
+    ang_spacing_deg : float, optional
+        Desired mean angular spacing between neighbouring points, in
+        degrees, by default 1.0. The spacing sets the point density;
+        a hemisphere therefore contains about half as many points as
+        the full sphere.
     degrees : bool, optional
         Whether you want angles in degrees or radians,
         by default False (=radians).
@@ -280,24 +291,31 @@ def equispaced_S2_grid_offset(
     Raises
     ------
     ValueError
-        If num_points is not a positive integer, or if hemisphere
-        is not one of None, 'upper', or 'lower'.
+        If ang_spacing_deg is not a positive number or is too coarse
+        (fewer than four estimated points), or if hemisphere is not
+        one of None, 'upper', or 'lower'.
     """
 
-    if not isinstance(num_points, int) or num_points < 1:
-        raise ValueError(f"num_points must be a positive integer, got {num_points!r}")
+    if not isinstance(ang_spacing_deg, (int, float)):
+        raise ValueError(
+            f"ang_spacing_deg must be a positive number, got {ang_spacing_deg!r}"
+        )
     if hemisphere not in (None, "upper", "lower"):
         raise ValueError(
             f"hemisphere must be None, 'upper', or 'lower', got {hemisphere!r}"
         )
 
+    # Estimate the full-sphere sample size for the requested mean
+    # spacing (raises ValueError if ang_spacing_deg is not positive)
+    num_points = _calc_sample_size(ang_spacing_deg)
+    if num_points < 4:
+        raise ValueError(
+            f"ang_spacing_deg={ang_spacing_deg!r} is too coarse; use a "
+            "spacing that yields at least four points (< ~102 degrees)."
+        )
+
     # Subtract 2 to account for the two pole points added manually below.
-    # When filtering to a hemisphere, double first so the filtered half
-    # still contains the requested number of points.
-    if hemisphere is None:
-        n = num_points - 2
-    else:
-        n = (num_points * 2) - 2
+    n = num_points - 2
 
     epsilon = _set_epsilon(n)
 

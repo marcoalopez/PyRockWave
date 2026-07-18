@@ -117,8 +117,9 @@ Public functions/classes only; names with a leading underscore are private helpe
 ### `utils.coordinates`
 - `sph2cart` — spherical/polar (magnitude, azimuth, polar) → Cartesian coordinates.
 - `cart2sph` — Cartesian → spherical coordinates.
-- `equispaced_S2_grid` — approximately equispaced grid of unit vectors on the sphere (Fibonacci sphere / sunflower mapping); returns Cartesian (n, 3) points, with hemisphere and axis-direction options. **Default grid generator for the `christoffel` module.**
-- `equispaced_S2_grid_offset` — offset Fibonacci lattice variant; returns spherical angles (optionally in degrees). Under-samples a ring around the poles at large `num_points`.
+- `equispaced_S2_grid` — approximately equispaced grid of unit vectors on the sphere (Fibonacci sphere / sunflower mapping); input is the desired mean angular spacing in degrees (default 1°); returns Cartesian (n, 3) points, with hemisphere and axis-direction options. **Default grid generator for the `christoffel` module.**
+- `equispaced_S2_grid_offset` — offset Fibonacci lattice variant, same spacing-based input; returns spherical angles (optionally in degrees). Under-samples a ring around the poles at fine spacings.
+- `_calc_sample_size` *(private)* — estimates the sample size N ≈ 4π/θ² for a given mean angular spacing.
 
 ### `utils.tensor_tools`
 - `rotate_stiffness_tensor` — rotates a stiffness matrix (Voigt) or rank-4 tensor by a given rotation.
