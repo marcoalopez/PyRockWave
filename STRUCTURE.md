@@ -20,7 +20,7 @@ PyRockWave/
 │   │   ├── ultrasonic.py           # ultrasonic signal processing
 │   │   ├── plotting/               # subpackage — custom plots
 │   │   │   ├── __init__.py         # (empty)
-│   │   │   └── plots.py            # STUB: no functions yet
+│   │   │   └── plots.py            # 3D-plot helpers (visibility culling)
 │   │   └── utils/                  # subpackage — generic helpers
 │   │       ├── __init__.py         # (empty)
 │   │       ├── coordinates.py      # spherical/cartesian conversions, S2 grids
@@ -131,7 +131,8 @@ Public functions/classes only; names with a leading underscore are private helpe
 - `validate_wavevectors` — validates a wavevector array's shape/contents.
 
 ### `plotting.plots`
-- *(stub — no functions defined yet)*
+- `visible_mask` — boolean mask of unit vectors on the camera-facing hemisphere of a 3D axes (mplot3d has no depth buffer, so back-of-sphere artists must be culled manually).
+- `culled_quiver` — 3D quiver drawing only the arrows anchored on the visible hemisphere; re-culls after interactive rotations.
 
 ## Internal dependency graph
 
@@ -167,9 +168,6 @@ is the most connected module.
 
 ## Known structural issues (see review)
 
-- `plotting/plots.py` is still an empty stub (the `plotting/` subpackage is kept
-  as a placeholder; the misleading `__init__.py` comment advertising it has been
-  removed).
 - `tests/` imports via a `sys.path` hack rather than the installed package.
 - `ultrasonic.estimate_bandpass` / `estimate_bandpass_centroid` have placeholder
   (`_summary_`) docstrings.
