@@ -32,20 +32,25 @@
 import numpy as np
 import pandas as pd
 from .utils.tensor_tools import _rearrange_tensor
-from .utils.coordinates import sph2cart
-from .utils.validation import validate_cij
+from .utils.coordinates import sph2cart, cart2sph
+from .utils.validation import validate_cij, validate_wavevectors
 
 
 # Function definitions
 def phase_seismic_properties(
     Cij: np.ndarray,
     density_gcm3: float,
-    azimuths_deg: np.ndarray,
-    polar_deg: np.ndarray,
+    azimuths_deg: np.ndarray | None = None,
+    polar_deg: np.ndarray | None = None,
+    wavevectors: np.ndarray | None = None,
 ) -> tuple[pd.DataFrame, np.ndarray]:
     """
     Compute phase velocities and shear-wave splitting for an array
     of propagation directions.
+
+    The propagation directions can be given either as spherical
+    angles (azimuths_deg and polar_deg together) or as Cartesian
+    wavevectors — exactly one of the two forms.
 
     Parameters
     ----------
@@ -56,11 +61,18 @@ def phase_seismic_properties(
     density_gcm3 : float
         Density in g/cm^3.
 
-    azimuths_deg : numpy.ndarray
+    azimuths_deg : numpy.ndarray, optional
         1D array of azimuth angles in degrees.
 
-    polar_deg : numpy.ndarray
+    polar_deg : numpy.ndarray, optional
         1D array of polar angles in degrees, same shape as azimuths_deg.
+
+    wavevectors : numpy.ndarray, optional
+        Cartesian propagation directions of shape (n, 3) — or (3,)
+        for a single direction — e.g. as returned by
+        utils.coordinates.equispaced_S2_grid. Normalised to unit
+        vectors internally; the corresponding spherical angles are
+        derived for the output columns.
 
     Returns
     -------
@@ -76,7 +88,9 @@ def phase_seismic_properties(
             as (direction, mode, cart).
     """
     azimuths_deg, polar_deg, q, _, _, phase_vel, eigenvectors = (
-        _build_christoffel_eigensystem(Cij, density_gcm3, azimuths_deg, polar_deg)
+        _build_christoffel_eigensystem(
+            Cij, density_gcm3, azimuths_deg, polar_deg, wavevectors
+        )
     )
 
     # shear wave splitting
@@ -114,12 +128,17 @@ def phase_seismic_properties(
 def full_seismic_properties(
     Cij: np.ndarray,
     density_gcm3: float,
-    azimuths_deg: np.ndarray,
-    polar_deg: np.ndarray,
+    azimuths_deg: np.ndarray | None = None,
+    polar_deg: np.ndarray | None = None,
+    wavevectors: np.ndarray | None = None,
 ) -> tuple[pd.DataFrame, np.ndarray]:
     """
     Compute phase and group velocities, enhancement factors, and
     power flow angles for an array of propagation directions.
+
+    The propagation directions can be given either as spherical
+    angles (azimuths_deg and polar_deg together) or as Cartesian
+    wavevectors — exactly one of the two forms.
 
     Parameters
     ----------
@@ -130,11 +149,18 @@ def full_seismic_properties(
     density_gcm3 : float
         Density in g/cm^3.
 
-    azimuths_deg : numpy.ndarray
+    azimuths_deg : numpy.ndarray, optional
         1D array of azimuth angles in degrees.
 
-    polar_deg : numpy.ndarray
+    polar_deg : numpy.ndarray, optional
         1D array of polar angles in degrees, same shape as azimuths_deg.
+
+    wavevectors : numpy.ndarray, optional
+        Cartesian propagation directions of shape (n, 3) — or (3,)
+        for a single direction — e.g. as returned by
+        utils.coordinates.equispaced_S2_grid. Normalised to unit
+        vectors internally; the corresponding spherical angles are
+        derived for the output columns.
 
     Returns
     -------
@@ -157,7 +183,9 @@ def full_seismic_properties(
     there. See _get_hessian_eigen for details.
     """
     azimuths_deg, polar_deg, q, Cijkl_norm, eigenvalues, phase_vel, eigenvectors = (
-        _build_christoffel_eigensystem(Cij, density_gcm3, azimuths_deg, polar_deg)
+        _build_christoffel_eigensystem(
+            Cij, density_gcm3, azimuths_deg, polar_deg, wavevectors
+        )
     )
 
     # COMPUTE GROUP VELOCITIES
@@ -216,12 +244,14 @@ def full_seismic_properties(
 def _validate_seismic_inputs(
     Cij: np.ndarray,
     density_gcm3: float,
-    azimuths_deg: np.ndarray,
-    polar_deg: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
+    azimuths_deg: np.ndarray | None,
+    polar_deg: np.ndarray | None,
+    wavevectors: np.ndarray | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Validate and coerce the inputs shared by phase_seismic_properties
-    and full_seismic_properties.
+    and full_seismic_properties, accepting the propagation directions
+    either as spherical angles or as Cartesian wavevectors.
 
     Parameters
     ----------
@@ -231,24 +261,53 @@ def _validate_seismic_inputs(
     density_gcm3 : float
         Density in g/cm^3.
 
-    azimuths_deg : numpy.ndarray
+    azimuths_deg : numpy.ndarray or None
         Azimuth angles in degrees.
 
-    polar_deg : numpy.ndarray
+    polar_deg : numpy.ndarray or None
         Polar angles in degrees.
+
+    wavevectors : numpy.ndarray or None
+        Cartesian propagation directions of shape (n, 3) or (3,).
 
     Returns
     -------
-    tuple[numpy.ndarray, numpy.ndarray]
-        azimuths_deg and polar_deg coerced to float64 arrays.
+    tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]
+        azimuths_deg (n,), polar_deg (n,), and unit wavevectors q of
+        shape (n, 3), mutually consistent regardless of the input
+        form and coerced to float64.
 
     Raises
     ------
     ValueError
-        If any input fails its validation check.
+        If any input fails its validation check, or if the propagation
+        directions are given in both forms (or in neither).
     """
     validate_cij(Cij)
 
+    if not np.isfinite(density_gcm3) or density_gcm3 <= 0:
+        raise ValueError("density_gcm3 must be a positive finite float.")
+
+    if wavevectors is not None:
+        if azimuths_deg is not None or polar_deg is not None:
+            raise ValueError(
+                "pass the propagation directions either as azimuths_deg/"
+                "polar_deg or as wavevectors, not both."
+            )
+        validate_wavevectors(wavevectors)
+        q = np.atleast_2d(wavevectors).astype(float)
+        norms = np.linalg.norm(q, axis=1)
+        if not np.all(np.isfinite(q)) or np.any(norms == 0):
+            raise ValueError("wavevectors must be finite and non-zero.")
+        q = q / norms[:, np.newaxis]  # normalise to unit vectors
+        _, polar_rad, azimuths_rad = cart2sph(q[:, 0], q[:, 1], q[:, 2])
+        return np.rad2deg(azimuths_rad), np.rad2deg(polar_rad), q
+
+    if azimuths_deg is None or polar_deg is None:
+        raise ValueError(
+            "propagation directions are required: pass azimuths_deg and "
+            "polar_deg together, or wavevectors."
+        )
     azimuths_deg = np.asarray(azimuths_deg, dtype=float)
     polar_deg = np.asarray(polar_deg, dtype=float)
     if azimuths_deg.shape != polar_deg.shape:
@@ -256,10 +315,10 @@ def _validate_seismic_inputs(
     if azimuths_deg.ndim != 1:
         raise ValueError("azimuths_deg and polar_deg must be 1D arrays.")
 
-    if not np.isfinite(density_gcm3) or density_gcm3 <= 0:
-        raise ValueError("density_gcm3 must be a positive finite float.")
+    x, y, z = sph2cart(np.deg2rad(azimuths_deg), np.deg2rad(polar_deg))
+    q = np.column_stack((x, y, z))
 
-    return azimuths_deg, polar_deg
+    return azimuths_deg, polar_deg, q
 
 
 def _isotropic_vrh_velocities(
@@ -314,8 +373,9 @@ def _isotropic_vrh_velocities(
 def _build_christoffel_eigensystem(
     Cij: np.ndarray,
     density_gcm3: float,
-    azimuths_deg: np.ndarray,
-    polar_deg: np.ndarray,
+    azimuths_deg: np.ndarray | None,
+    polar_deg: np.ndarray | None,
+    wavevectors: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Validate inputs, build unit wavevectors, and compute the Christoffel
@@ -330,11 +390,15 @@ def _build_christoffel_eigensystem(
     density_gcm3 : float
         Density in g/cm^3.
 
-    azimuths_deg : numpy.ndarray
+    azimuths_deg : numpy.ndarray or None
         1D array of azimuth angles in degrees.
 
-    polar_deg : numpy.ndarray
+    polar_deg : numpy.ndarray or None
         1D array of polar angles in degrees.
+
+    wavevectors : numpy.ndarray or None, optional
+        Cartesian propagation directions of shape (n, 3) or (3,),
+        as the alternative to the spherical angles.
 
     Returns
     -------
@@ -347,14 +411,9 @@ def _build_christoffel_eigensystem(
         phase_vel    : (n, 3) phase velocities [Vs2, Vs1, Vp] in km/s
         eigenvectors : (n, 3, 3) polarization eigenvectors (mode, cart)
     """
-    azimuths_deg, polar_deg = _validate_seismic_inputs(
-        Cij, density_gcm3, azimuths_deg, polar_deg
+    azimuths_deg, polar_deg, q = _validate_seismic_inputs(
+        Cij, density_gcm3, azimuths_deg, polar_deg, wavevectors
     )
-
-    azimuths_rad = np.deg2rad(azimuths_deg)
-    polar_rad = np.deg2rad(polar_deg)
-    x, y, z = sph2cart(azimuths_rad, polar_rad)
-    q = np.column_stack((x, y, z))
 
     # rearrange Cij → Cijkl; normalise with density
     # Cijkl in GPa and ρ in g/cm^3 gives (km/s)^2

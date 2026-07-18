@@ -21,6 +21,9 @@ Anchored on analytic solutions rather than stored reference numbers:
       direction in an isotropic medium.
   (4) phase_seismic_properties and full_seismic_properties agree on
       their shared phase-velocity columns.
+  (5) Cartesian wavevector input is equivalent to the spherical-angle
+      input (identical outputs), scale-invariant (vectors normalised
+      internally), and accepts a single (3,) direction.
 
 Plus the documented input-validation behaviour.
 
@@ -162,9 +165,37 @@ def test_phase_and_full_agree_on_shared_columns():
         assert np.allclose(df_phase[col], df_full[col])
 
 
+def test_cartesian_input_matches_spherical():
+    rng = np.random.default_rng(2)
+    q = rng.normal(size=(30, 3))
+    q /= np.linalg.norm(q, axis=1, keepdims=True)
+
+    azimuths = np.rad2deg(np.arctan2(q[:, 1], q[:, 0]) % (2 * np.pi))
+    polar = np.rad2deg(np.arccos(q[:, 2]))
+
+    for fn in (phase_seismic_properties, full_seismic_properties):
+        df_sph, eig_sph = fn(OLIVINE, RHO_OLIVINE, azimuths, polar)
+        df_cart, eig_cart = fn(OLIVINE, RHO_OLIVINE, wavevectors=q)
+        assert np.allclose(df_sph.to_numpy(), df_cart.to_numpy())
+        assert np.allclose(eig_sph, eig_cart)
+
+    # non-unit vectors are normalised internally
+    df_unit, _ = phase_seismic_properties(OLIVINE, RHO_OLIVINE, wavevectors=q)
+    df_scaled, _ = phase_seismic_properties(OLIVINE, RHO_OLIVINE, wavevectors=3.7 * q)
+    assert np.allclose(df_unit.to_numpy(), df_scaled.to_numpy())
+
+    # a single direction can be passed as shape (3,)
+    df_one, _ = phase_seismic_properties(
+        OLIVINE, RHO_OLIVINE, wavevectors=np.array([0.0, 0.0, 1.0])
+    )
+    assert len(df_one) == 1
+    assert np.isclose(df_one["polar_deg"][0], 0.0)
+
+
 def test_rejects_bad_inputs():
     az = np.array([0.0, 45.0])
     po = np.array([90.0, 90.0])
+    q = np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
     # mismatched shapes
     assert expect_value_error(
         phase_seismic_properties, OLIVINE, RHO_OLIVINE, az, po[:1]
@@ -177,6 +208,32 @@ def test_rejects_bad_inputs():
     assert expect_value_error(phase_seismic_properties, OLIVINE, 0.0, az, po)
     # mechanically unstable tensor
     assert expect_value_error(phase_seismic_properties, np.eye(6) * -1, 3.3, az, po)
+    # directions in both forms, or in neither, or half a spherical pair
+    assert expect_value_error(
+        lambda: phase_seismic_properties(OLIVINE, RHO_OLIVINE, az, po, q)
+    )
+    assert expect_value_error(
+        lambda: phase_seismic_properties(OLIVINE, RHO_OLIVINE)
+    )
+    assert expect_value_error(
+        lambda: phase_seismic_properties(OLIVINE, RHO_OLIVINE, azimuths_deg=az)
+    )
+    # malformed wavevectors: wrong shape, zero-norm, non-array
+    assert expect_value_error(
+        lambda: phase_seismic_properties(
+            OLIVINE, RHO_OLIVINE, wavevectors=np.zeros((2, 2))
+        )
+    )
+    assert expect_value_error(
+        lambda: phase_seismic_properties(
+            OLIVINE, RHO_OLIVINE, wavevectors=np.array([[0.0, 0.0, 0.0]])
+        )
+    )
+    assert expect_value_error(
+        lambda: phase_seismic_properties(
+            OLIVINE, RHO_OLIVINE, wavevectors=[[0.0, 0.0, 1.0]]
+        )
+    )
 
 
 def main():
@@ -185,6 +242,7 @@ def main():
         test_isotropic_medium_velocities_and_group,
         test_polarizations_orthonormal_and_isotropic_P_longitudinal,
         test_phase_and_full_agree_on_shared_columns,
+        test_cartesian_input_matches_spherical,
         test_rejects_bad_inputs,
     ]
     ok = True
