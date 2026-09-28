@@ -11,15 +11,15 @@ build = { cmd = "python -m build", description = "Build the sdist and wheel into
 check-dist = { cmd = "twine check dist/*", description = "Validate the built distributions before uploading" }
 
 [dependencies]
-python = "<3.14"
-numpy = ">=2.5.0,<3"
-scipy = ">=1.18.0,<2"
-pandas = ">=3.0.3,<4"
-matplotlib = ">=3.11.0,<4"
-jupyterlab = ">=4.6.0,<5"
-pytest = ">=8"
-python-build = ">=1"
-twine = ">=6"
+python = ">=3.14.7,<3.15"
+numpy = ">=2.5.3,<3"
+scipy = ">=1.18.1,<2"
+pandas = ">=3.0.6,<4"
+matplotlib = ">=3.11.2,<4"
+jupyterlab = ">=4.6.4,<5"
+pytest = ">=9.1.1,<10"
+python-build = ">=1.6.1,<2"
+twine = ">=7.0.0,<8"
 
 [pypi-dependencies]
 pyrockwave = { path = ".", editable = true }
