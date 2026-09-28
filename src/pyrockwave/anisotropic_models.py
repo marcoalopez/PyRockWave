@@ -242,12 +242,14 @@ def orthotropic_azimuthal_anisotropy(
 
 
 ###############################################################################
-# functions that compute model parameters
+# functions that compute model parameters (for internal use only)
+
 def Thomsen_params(
     cij: np.ndarray,
     density_gcm3: float
 ) -> tuple[float, float, float, float, float]:
-    """Estimate the Thomsen parameters for
+    """
+    Estimate the Thomsen parameters for
     weak polar anisotropy.
 
     Thomsen parameters:
@@ -368,7 +370,8 @@ def HaoStovas_params(
     cij: np.ndarray,
     density_gcm3: float
 ) -> tuple[float, float, float, float, float, float]:
-    """Estimate the Hao and Stovas (2016) parameters modified
+    """
+    Estimate the Hao and Stovas (2016) parameters modified
     from Alkhalifah (2003) for azimuthal orthotropic anisotropy.
 
     Parameters
@@ -403,7 +406,8 @@ def HaoStovas_params(
 
 
 def _calc_alphaPhi(azimuths, ε1, ε2, ε3, r1, r2):
-    """Azimuth-dependent coefficient α(φ) of the orthotropic P-wave
+    """
+    Azimuth-dependent coefficient α(φ) of the orthotropic P-wave
     phase-velocity approximation (Hao & Stovas 2016, as used by
     Wang et al. 2023).
 
