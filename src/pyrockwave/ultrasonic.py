@@ -299,6 +299,10 @@ def estimate_bandpass(
     lowcut -= margin * bandwidth
     highcut += margin * bandwidth
 
+    # Warn if lowcut is negative
+    if lowcut < 0.:
+        print("Warning: lowcut is negative. Clip it before use.")
+
     return {
         "lowcut": lowcut,
         "highcut": highcut,
@@ -387,6 +391,10 @@ def estimate_bandpass_centroid(
     # Band limits
     lowcut = fc - sigma_mult * sigma
     highcut = fc + sigma_mult * sigma
+
+    # Warn if lowcut is negative
+    if lowcut < 0.:
+        print("Warning: lowcut is negative. Clip it before use.")
 
     return {
         "lowcut": lowcut,
