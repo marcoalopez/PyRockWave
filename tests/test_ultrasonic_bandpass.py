@@ -29,6 +29,7 @@ Run standalone (no pytest dependency):
 """
 import os
 import sys
+import warnings
 
 import numpy as np
 
@@ -87,7 +88,7 @@ def test_estimate_bandpass_recovers_carrier():
 
 
 def test_estimate_bandpass_centroid_recovers_carrier_and_sigma():
-    """Centroid ~ f0 and spread ~ analytic sigma_f."""
+    """Centroid ~ f0 and spread ~ analytic power-spectrum sigma."""
     signal, sigma_f = gaussian_tone_burst(F0, TAU, SAMPLING_RATE_HZ, N_SAMPLES)
     res = estimate_bandpass_centroid(signal, SAMPLING_RATE_HZ)
 
@@ -95,9 +96,9 @@ def test_estimate_bandpass_centroid_recovers_carrier_and_sigma():
     assert res["lowcut"] < F0 < res["highcut"]
     assert res["order"] == 4
 
-    # The Hann window convolves the spectrum, so the measured sigma is at least
-    # the analytic value and within a factor of a few of it.
-    assert sigma_f <= res["bandwidth_sigma"] < 4.0 * sigma_f
+    # The power spectrum |X|^2 of a Gaussian amplitude spectrum with standard
+    # deviation sigma_f is Gaussian with standard deviation sigma_f / sqrt(2).
+    assert np.isclose(res["bandwidth_sigma"], sigma_f / np.sqrt(2.0), rtol=0.1)
 
 
 def test_band_widens_for_narrower_pulse():
@@ -136,6 +137,147 @@ def test_carrier_shift_tracks_frequency():
         2.0 * estimate_bandpass_centroid(low, SAMPLING_RATE_HZ)["center_frequency"],
         rtol=0.02,
     )
+
+
+# Short-record settings (a typical cropped ROI): 1024 samples -> ~98 kHz bins,
+# a shorter pulse with a broader spectrum (sigma_f ~ 530 kHz).
+N_SHORT = 1024
+TAU_SHORT = 0.3e-6
+
+
+def add_white_noise(signal, snr_db, seed=0):
+    """Add Gaussian white noise at a given SNR (signal std / noise std)."""
+    rng = np.random.default_rng(seed)
+    noise_std = np.std(signal) / 10 ** (snr_db / 20)
+    return signal + rng.normal(0.0, noise_std, signal.shape[0])
+
+
+def test_estimate_bandpass_edges_match_analytic_minus6db():
+    """With margin=0 the interpolated edges match the analytic -6 dB points
+    to well within one FFT bin."""
+    signal, sigma_f = gaussian_tone_burst(
+        F0, TAU_SHORT, SAMPLING_RATE_HZ, N_SHORT
+    )
+    res = estimate_bandpass(signal, SAMPLING_RATE_HZ, margin=0.0)
+
+    half_width = sigma_f * np.sqrt(2.0 * np.log(2.0))
+    bin_width = SAMPLING_RATE_HZ / N_SHORT
+    assert abs(res["lowcut"] - (F0 - half_width)) < 0.1 * bin_width
+    assert abs(res["highcut"] - (F0 + half_width)) < 0.1 * bin_width
+
+
+def test_estimate_bandpass_ignores_secondary_peak():
+    """A separate spectral peak above -6 dB must not widen the band: only
+    the contiguous lobe around the main peak defines it."""
+    signal, _ = gaussian_tone_burst(F0, TAU_SHORT, SAMPLING_RATE_HZ, N_SHORT)
+    second, _ = gaussian_tone_burst(
+        3.0 * F0, TAU_SHORT, SAMPLING_RATE_HZ, N_SHORT
+    )
+    res = estimate_bandpass(signal + 0.6 * second, SAMPLING_RATE_HZ)
+
+    assert res["lowcut"] < F0 < res["highcut"] < 2.0 * F0
+
+
+def test_estimators_robust_to_white_noise():
+    """At 20 dB SNR both estimators stay close to their noise-free values.
+
+    Broadband noise used to dominate the whole-spectrum centroid moments
+    (centroid pulled towards Nyquist, spread inflated by ~20x).
+    """
+    clean, _ = gaussian_tone_burst(F0, TAU_SHORT, SAMPLING_RATE_HZ, N_SHORT)
+    noisy = add_white_noise(clean, snr_db=20.0)
+
+    bp_clean = estimate_bandpass(clean, SAMPLING_RATE_HZ)
+    bp_noisy = estimate_bandpass(noisy, SAMPLING_RATE_HZ)
+    assert np.isclose(bp_noisy["lowcut"], bp_clean["lowcut"], rtol=0.05)
+    assert np.isclose(bp_noisy["highcut"], bp_clean["highcut"], rtol=0.05)
+
+    ct_clean = estimate_bandpass_centroid(clean, SAMPLING_RATE_HZ)
+    ct_noisy = estimate_bandpass_centroid(noisy, SAMPLING_RATE_HZ)
+    assert np.isclose(ct_noisy["center_frequency"], F0, rtol=0.02)
+    assert np.isclose(
+        ct_noisy["bandwidth_sigma"], ct_clean["bandwidth_sigma"], rtol=0.1
+    )
+
+
+def test_estimators_clip_band_to_valid_range():
+    """A broadband pulse near DC gives a band that would extend below 0 Hz;
+    it is clipped to (0, Nyquist) with a warning, never returned negative."""
+    dt = 1.0 / SAMPLING_RATE_HZ
+    t = np.arange(N_SHORT) * dt
+    t0 = 0.5 * N_SHORT * dt
+    # Very short unmodulated Gaussian: spectrum peaks at the lowest bin.
+    signal = np.exp(-((t - t0) ** 2) / (2.0 * (0.02e-6) ** 2))
+    nyquist = 0.5 * SAMPLING_RATE_HZ
+
+    for estimator in (estimate_bandpass, estimate_bandpass_centroid):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            res = estimator(signal, SAMPLING_RATE_HZ)
+        assert 0.0 < res["lowcut"] < res["highcut"] < nyquist
+        assert any("lowcut" in str(w.message) for w in caught)
+
+
+def test_estimators_reject_bad_inputs():
+    """Malformed inputs and an all-zero signal raise ValueError."""
+    signal, _ = gaussian_tone_burst(F0, TAU_SHORT, SAMPLING_RATE_HZ, N_SHORT)
+    bad_calls = [
+        lambda: estimate_bandpass(signal, 0.0),
+        lambda: estimate_bandpass(signal.reshape(2, -1), SAMPLING_RATE_HZ),
+        lambda: estimate_bandpass(np.zeros(N_SHORT), SAMPLING_RATE_HZ),
+        lambda: estimate_bandpass(signal, SAMPLING_RATE_HZ, margin=-0.1),
+        lambda: estimate_bandpass_centroid(signal, -1.0),
+        lambda: estimate_bandpass_centroid(np.zeros(N_SHORT), SAMPLING_RATE_HZ),
+        lambda: estimate_bandpass_centroid(
+            signal, SAMPLING_RATE_HZ, floor_db=3.0
+        ),
+    ]
+    for call in bad_calls:
+        try:
+            call()
+            raise AssertionError("bad input should have raised")
+        except ValueError:
+            pass
+
+
+def test_process_signal_without_filter():
+    """apply_filter=False only crops and detrends; no filter params."""
+    signal, _ = gaussian_tone_burst(F0, TAU_SHORT, SAMPLING_RATE_HZ, N_SHORT)
+    shifted = signal + 3.0  # DC offset removed by the detrend
+
+    out, params = process_signal(
+        shifted,
+        (0, N_SHORT),
+        SAMPLING_RATE_HZ,
+        auto_detrend=False,
+        return_filter_params=True,
+    )
+    assert params is None
+    assert np.allclose(out, signal - signal.mean(), atol=1e-6)
+
+
+def test_process_signal_auto_filter_reduces_noise():
+    """apply_filter=True estimates the band from the ROI itself and removes
+    out-of-band noise while keeping the pulse (zero-phase: no time shift)."""
+    clean, _ = gaussian_tone_burst(F0, TAU_SHORT, SAMPLING_RATE_HZ, N_SHORT)
+    noisy = add_white_noise(clean, snr_db=10.0)
+
+    out, params = process_signal(
+        noisy,
+        (0, N_SHORT),
+        SAMPLING_RATE_HZ,
+        apply_filter=True,
+        return_filter_params=True,
+    )
+    assert params["lowcut"] < F0 < params["highcut"]
+    assert np.std(out - clean) < 0.5 * np.std(noisy - clean)
+    assert np.argmax(np.abs(out)) == np.argmax(np.abs(clean))
+
+    # Default return is the signal alone.
+    only_signal = process_signal(
+        noisy, (0, N_SHORT), SAMPLING_RATE_HZ, apply_filter=True
+    )
+    assert np.allclose(only_signal, out)
 
 
 def embed_burst(center_index, tau, f0, sampling_rate_hz, n_samples):
@@ -234,6 +376,20 @@ def main():
           test_band_widens_for_narrower_pulse)
     check("carrier shift tracks frequency",
           test_carrier_shift_tracks_frequency)
+    check("estimate_bandpass edges match analytic -6 dB",
+          test_estimate_bandpass_edges_match_analytic_minus6db)
+    check("estimate_bandpass ignores secondary peak",
+          test_estimate_bandpass_ignores_secondary_peak)
+    check("estimators robust to white noise",
+          test_estimators_robust_to_white_noise)
+    check("estimators clip band to valid range",
+          test_estimators_clip_band_to_valid_range)
+    check("estimators reject bad inputs",
+          test_estimators_reject_bad_inputs)
+    check("process_signal without filter",
+          test_process_signal_without_filter)
+    check("process_signal auto filter reduces noise",
+          test_process_signal_auto_filter_reduces_noise)
     check("detect_roi brackets pulse",
           test_detect_roi_brackets_pulse)
     check("detect_roi threshold and padding",
