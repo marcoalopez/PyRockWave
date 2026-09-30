@@ -109,9 +109,9 @@ Public functions/classes only; names with a leading underscore are private helpe
 - `backus_average` — effective TI stiffness and density of a stack of thin isotropic layers from Vp/Vs/density/fraction data (Backus 1962); the isotropic N-layer special case of the Schoenberg–Muir calculus.
 
 ### `ultrasonic`
-- `process_signal` — pre-processes a pulse-echo ultrasound signal (crop, detrend, filter).
-- `estimate_bandpass` — estimates band-pass corner frequencies from a signal's spectrum.
-- `estimate_bandpass_centroid` — estimates the band-pass band from the spectral centroid.
+- `process_signal` — pre-processes a pulse-echo ultrasound signal (crop, detrend, optional zero-phase band-pass filter with the band estimated automatically by `estimate_bandpass`).
+- `estimate_bandpass` — estimates band-pass corner frequencies from the -6 dB main lobe of a signal's amplitude spectrum (ASTM E1065 convention).
+- `estimate_bandpass_centroid` — estimates the band-pass band from the power-weighted spectral centroid and spread over the band above a -20 dB floor (Quan & Harris 1997).
 - `trigger_sta_lta` — computes the STA/LTA ratio for arrival-time picking.
 
 ### `utils.coordinates`
