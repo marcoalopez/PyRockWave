@@ -113,6 +113,8 @@ Public functions/classes only; names with a leading underscore are private helpe
 - `estimate_bandpass` — estimates band-pass corner frequencies from the -6 dB main lobe of a signal's amplitude spectrum (ASTM E1065 convention).
 - `estimate_bandpass_centroid` — estimates the band-pass band from the power-weighted spectral centroid and spread over the band above a -20 dB floor (Quan & Harris 1997).
 - `trigger_sta_lta` — computes the STA/LTA ratio for arrival-time picking.
+- `isolate_echoes` — sample bounds of the N most prominent echoes in a region of interest, from the Hilbert envelope (echoes split at the envelope valley; warns when they overlap).
+- `gate_echo` — isolates one echo with a Tukey window over its bounds, zeroing the rest and keeping the input length (ready for cross-correlation).
 
 ### `utils.coordinates`
 - `sph2cart` — spherical/polar (magnitude, azimuth, polar) → Cartesian coordinates.
