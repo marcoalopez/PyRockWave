@@ -34,10 +34,14 @@ import warnings
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+from scipy.signal import correlate, correlation_lags, hilbert  # noqa: E402
+
 from pyrockwave.ultrasonic import (  # noqa: E402
     detect_roi,
     estimate_bandpass,
     estimate_bandpass_centroid,
+    gate_echo,
+    isolate_echoes,
     process_signal,
 )
 
@@ -351,6 +355,170 @@ def test_detect_roi_rejects_bad_inputs():
         pass
 
 
+# Two-echo pulse-echo record: 1 GS/s digitizer, 50 MHz transducer. The second
+# echo is weaker and slightly down-shifted in frequency (attenuation), and the
+# true delay is a fractional number of samples.
+ECHO_FS = 1e9
+ECHO_F0 = 50e6
+ECHO_TAU = 25e-9
+ECHO_N = 3000
+ECHO_T1 = 0.6e-6
+ECHO_DELAY = 1.2373e-6
+
+
+def two_echo_record(delay=ECHO_DELAY, amplitude2=0.4, snr_db=None, seed=0):
+    """Return a two-echo record and the true sample centres of the echoes."""
+    t = np.arange(ECHO_N) / ECHO_FS
+
+    def echo(tc, amplitude, f):
+        envelope = np.exp(-((t - tc) ** 2) / (2.0 * ECHO_TAU ** 2))
+        return amplitude * envelope * np.cos(2.0 * np.pi * f * (t - tc))
+
+    t2 = ECHO_T1 + delay
+    signal = echo(ECHO_T1, 1.0, ECHO_F0) + echo(t2, amplitude2, 0.92 * ECHO_F0)
+    if snr_db is not None:
+        signal = add_white_noise(signal, snr_db, seed=seed)
+    return signal, (ECHO_T1 * ECHO_FS, t2 * ECHO_FS)
+
+
+def cross_correlation_delay(echo1, echo2, expected_lag):
+    """Sub-sample delay of echo2 relative to echo1 (in samples).
+
+    Picks the cross-correlation lobe under the envelope maximum near
+    ``expected_lag`` (avoids cycle skips), then refines with a 3-point
+    parabola on |cc|.
+    """
+    cc = correlate(echo2, echo1, mode="full")
+    lags = correlation_lags(echo2.shape[0], echo1.shape[0], mode="full")
+    period = ECHO_FS / ECHO_F0
+
+    near = np.flatnonzero(np.abs(lags - expected_lag) < 3 * period)
+    centre = near[np.argmax(np.abs(hilbert(cc))[near])]
+    lobe = np.flatnonzero(np.abs(lags - lags[centre]) <= period / 2)
+    i = lobe[np.argmax(np.abs(cc[lobe]))]
+
+    y0, y1, y2 = np.abs(cc[i - 1 : i + 2])
+    return lags[i] + 0.5 * (y0 - y2) / (y0 - 2.0 * y1 + y2), np.sign(cc[i])
+
+
+def test_isolate_echoes_brackets_each_echo():
+    """Two disjoint, time-ordered bounds, each containing its echo centre."""
+    signal, centres = two_echo_record()
+    filtered = process_signal(signal, (0, ECHO_N), ECHO_FS, apply_filter=True)
+
+    bounds = isolate_echoes(filtered)
+    assert len(bounds) == 2
+    (s1, e1), (s2, e2) = bounds
+    assert 0 <= s1 < centres[0] < e1 <= s2 < centres[1] < e2 <= ECHO_N
+    assert all(isinstance(i, int) for pair in bounds for i in pair)
+
+
+def test_isolate_echoes_padding_widens_bounds():
+    """pad=0 gives the bare threshold extent; padding widens each side."""
+    signal, _ = two_echo_record()
+    bare = isolate_echoes(signal, pad=0.0)
+    padded = isolate_echoes(signal, pad=0.2)
+    for (bs, be), (ps, pe) in zip(bare, padded):
+        assert ps < bs and pe > be
+
+
+def test_gate_echo_isolates_and_preserves_length():
+    """Output keeps the input length, is zero outside the bounds, and
+    leaves the echo centre untouched by the taper."""
+    signal, centres = two_echo_record()
+    bounds = isolate_echoes(signal)[0]
+    gated = gate_echo(signal, bounds)
+
+    start, end = bounds
+    assert gated.shape == signal.shape
+    assert np.all(gated[:start] == 0) and np.all(gated[end:] == 0)
+    centre = int(round(centres[0]))
+    assert np.isclose(gated[centre], signal[centre])
+
+
+def test_isolate_and_gate_recover_delay_by_cross_correlation():
+    """End-to-end: filter, isolate, gate, cross-correlate. The delay is
+    recovered to a small fraction of a sample, also with noise and with an
+    inverted second echo (polarity reported by the sign of the peak)."""
+    for amplitude2 in (0.4, -0.4):
+        for snr_db in (None, 20.0):
+            signal, _ = two_echo_record(amplitude2=amplitude2, snr_db=snr_db)
+            filtered = process_signal(
+                signal, (0, ECHO_N), ECHO_FS, apply_filter=True
+            )
+            first, second = isolate_echoes(filtered)
+            echo1 = gate_echo(filtered, first)
+            echo2 = gate_echo(filtered, second)
+
+            envelope = np.abs(hilbert(filtered))
+            peak1 = first[0] + np.argmax(envelope[first[0] : first[1]])
+            peak2 = second[0] + np.argmax(envelope[second[0] : second[1]])
+
+            lag, sign = cross_correlation_delay(echo1, echo2, peak2 - peak1)
+            assert abs(lag - ECHO_DELAY * ECHO_FS) < 0.1
+            assert sign == np.sign(amplitude2)
+
+
+def test_process_signal_band_robust_to_two_echo_interference():
+    """With two echoes in the ROI the whole-record spectrum has ripples
+    every 1/delay (~0.8 MHz here). The band must come from a single echo,
+    so it must not collapse to the ripple period, and the filtered record
+    must still show both echoes. Checked over many noise realisations at
+    10 dB SNR, where the whole-record estimate used to fail."""
+    for seed in range(20):
+        signal, _ = two_echo_record(snr_db=10.0, seed=seed)
+        filtered, params = process_signal(
+            signal,
+            (0, ECHO_N),
+            ECHO_FS,
+            apply_filter=True,
+            return_filter_params=True,
+        )
+        assert params["lowcut"] < ECHO_F0 < params["highcut"]
+        assert params["highcut"] - params["lowcut"] > 5e6
+        assert len(isolate_echoes(filtered)) == 2
+
+
+def test_isolate_echoes_warns_on_overlap():
+    """Echoes closer than their extent are flagged; well-separated ones
+    are not."""
+    signal, _ = two_echo_record(delay=3.0 * ECHO_TAU, amplitude2=0.9)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        isolate_echoes(signal)
+    assert any("overlap" in str(w.message) for w in caught)
+
+    signal, _ = two_echo_record()
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        isolate_echoes(signal)
+    assert not any("overlap" in str(w.message) for w in caught)
+
+
+def test_isolate_and_gate_reject_bad_inputs():
+    """Malformed inputs, a flat signal, or too few echoes raise ValueError."""
+    signal, _ = two_echo_record()
+    single, _ = gaussian_tone_burst(F0, TAU_SHORT, SAMPLING_RATE_HZ, N_SHORT)
+    bad_calls = [
+        lambda: isolate_echoes(signal, n_echoes=0),
+        lambda: isolate_echoes(signal, threshold=1.0),
+        lambda: isolate_echoes(signal, pad=-0.1),
+        lambda: isolate_echoes(signal.reshape(2, -1)),
+        lambda: isolate_echoes(np.zeros(100)),
+        lambda: isolate_echoes(single, n_echoes=2),
+        lambda: gate_echo(signal, (10, 5)),
+        lambda: gate_echo(signal, (0, ECHO_N + 1)),
+        lambda: gate_echo(signal, (0.0, 10.0)),
+        lambda: gate_echo(signal, (0, 10), tukey_alpha=1.5),
+    ]
+    for call in bad_calls:
+        try:
+            call()
+            raise AssertionError("bad input should have raised")
+        except ValueError:
+            pass
+
+
 # --------------------------------------------------------------------------
 # Standalone runner (mirrors the existing test style in this repo)
 # --------------------------------------------------------------------------
@@ -398,6 +566,20 @@ def main():
           test_detect_roi_feeds_process_signal)
     check("detect_roi rejects bad inputs",
           test_detect_roi_rejects_bad_inputs)
+    check("isolate_echoes brackets each echo",
+          test_isolate_echoes_brackets_each_echo)
+    check("isolate_echoes padding widens bounds",
+          test_isolate_echoes_padding_widens_bounds)
+    check("gate_echo isolates and preserves length",
+          test_gate_echo_isolates_and_preserves_length)
+    check("isolate + gate recover delay by cross-correlation",
+          test_isolate_and_gate_recover_delay_by_cross_correlation)
+    check("process_signal band robust to two-echo interference",
+          test_process_signal_band_robust_to_two_echo_interference)
+    check("isolate_echoes warns on overlap",
+          test_isolate_echoes_warns_on_overlap)
+    check("isolate_echoes / gate_echo reject bad inputs",
+          test_isolate_and_gate_reject_bad_inputs)
 
     print("\nALL CHECKS PASSED" if ok else "\nSOME CHECKS FAILED")
     return 0 if ok else 1
