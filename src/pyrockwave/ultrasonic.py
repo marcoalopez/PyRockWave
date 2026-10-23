@@ -40,6 +40,69 @@ from scipy.fft import rfft, rfftfreq
 
 
 # Function definitions
+def estimate_sampling_rate(
+    time_s: npt.ArrayLike,
+    rtol: float = 1e-3,
+) -> float:
+    """
+    Estimate the digitizer sampling rate from a column of sample times
+    and check that the samples are uniformly spaced.
+
+    Parameters
+    ----------
+    time_s : array-like
+        Sample times in seconds, one per sample, in acquisition order
+        (e.g. the time column of the raw data file).
+    rtol : float, optional
+        Maximum allowed relative deviation of any time step from the
+        mean time step, by default 1e-3. It absorbs the rounding of
+        times stored with a limited number of decimals; a larger
+        deviation indicates missing samples or a non-uniform time base.
+
+    Returns
+    -------
+    float
+        The sampling rate in Hz, i.e. ``1 / dt`` with ``dt`` the mean
+        time step. Use it as the ``sampling_rate_hz`` argument of
+        :func:`process_signal`.
+
+    Raises
+    ------
+    ValueError
+        If the inputs are malformed (see
+        :func:`_validate_estimate_sampling_rate`), the times are not
+        strictly increasing, or the spacing is not uniform within
+        ``rtol``.
+
+    Notes
+    -----
+    The time step is taken as the mean step,
+    ``(t[-1] - t[0]) / (n - 1)``, which averages out the rounding of
+    individual times. The uniformity check is relative only (no
+    absolute tolerance), because time steps are typically of the order
+    of nanoseconds, below the default absolute tolerance of
+    :func:`numpy.allclose`.
+    """
+
+    time_s = np.asarray(time_s, dtype=float)
+    _validate_estimate_sampling_rate(time_s, rtol)
+
+    steps = np.diff(time_s)
+    if np.any(steps <= 0):
+        raise ValueError("time_s must be strictly increasing.")
+
+    mean_step = (time_s[-1] - time_s[0]) / (time_s.shape[0] - 1)
+    max_deviation = np.max(np.abs(steps - mean_step)) / mean_step
+    if max_deviation > rtol:
+        raise ValueError(
+            f"time steps are not uniform: the largest relative deviation "
+            f"from the mean step ({mean_step:.6g} s) is "
+            f"{max_deviation:.3g}, above rtol={rtol:.3g}."
+        )
+
+    return float(1.0 / mean_step)
+
+
 def process_signal(
     raw_signal: npt.ArrayLike,
     roi_samples: tuple[int, int],
@@ -915,6 +978,36 @@ def _validate_bandpass_inputs(
         raise ValueError("signal must be one-dimensional.")
     if signal.shape[0] < 3:
         raise ValueError("signal must contain at least 3 samples.")
+
+
+def _validate_estimate_sampling_rate(
+    time_s: np.ndarray,
+    rtol: float,
+) -> None:
+    """
+    Validate the inputs of :func:`estimate_sampling_rate`.
+
+    Parameters
+    ----------
+    time_s : numpy.ndarray
+        Sample times in seconds, as an array.
+    rtol : float
+        Maximum allowed relative deviation of a time step.
+
+    Raises
+    ------
+    ValueError
+        If any input is malformed.
+    """
+
+    if time_s.ndim != 1:
+        raise ValueError("time_s must be one-dimensional.")
+    if time_s.shape[0] < 2:
+        raise ValueError("time_s must contain at least 2 samples.")
+    if not np.all(np.isfinite(time_s)):
+        raise ValueError("time_s must contain only finite values.")
+    if rtol < 0:
+        raise ValueError("rtol must be non-negative.")
 
 
 def _validate_process_signal(
