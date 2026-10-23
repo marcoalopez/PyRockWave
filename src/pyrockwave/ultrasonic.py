@@ -33,6 +33,7 @@
 import warnings
 
 import numpy as np
+from numpy.polynomial import Polynomial
 import numpy.typing as npt
 from scipy.signal import butter, sosfiltfilt, detrend, hilbert, find_peaks
 from scipy.signal.windows import tukey
@@ -240,6 +241,107 @@ def process_signal(
     if return_filter_params:
         return roi_signal, filter_params
     return roi_signal
+
+
+def estimate_travel_time(
+    signal: npt.ArrayLike,
+    sampling_rate_hz: float,
+    fit="polynomial",
+):
+    """
+    TODO
+
+    Parameters
+    ----------
+    signal : array-like
+        the ROI signal to search for a two pulse echoes and
+        estimate the time difference
+    sampling_rate_hz : float
+        The digitizer sampling rate in Hz, i.e. ``1 / dt`` where ``dt``
+        is the time step between consecutive samples (e.g.
+        ``1 / (t[1] - t[0])`` for a time column ``t`` in seconds).
+        This is a property of the acquisition, not of the transducer:
+        DO NOT pass the transducer's nominal centre frequency.
+    fit : str
+        continuous model to fit to estimate the position of the peaks
+    """
+
+    # 1. isolate the most prominent echo for crosscorrelation
+    echo_bounds = isolate_echoes(signal, n_echoes=1)[0]
+    template = signal[echo_bounds[0] : echo_bounds[1]]
+
+    # 2. crosscorrelate (TOD: maybe use Scipy's signal.correlate instead of Numpy's)
+    cc_signal = np.correlate(signal, template, mode="valid")
+
+    # 3. Extract the indexes of the two echoes' peaks
+    echo1_bounds, echo2_bounds = isolate_echoes(cc_signal, n_echoes=2, pad=0)
+    peak_indices, peak_props = find_peaks(cc_signal**2)
+
+    echo1_indices = peak_indices[(peak_indices >= echo1_bounds[0]) & (peak_indices <= echo1_bounds[1])]
+    echo2_indices = peak_indices[(peak_indices >= echo2_bounds[0]) & (peak_indices <= echo2_bounds[1])]
+    echo1_signal = cc_signal[echo1_indices]
+    echo2_signal = cc_signal[echo2_indices]
+
+    # 4. TODO: Fit a four degree polynomial or a cosine fit
+
+
+def estimate_peak(
+    poly: Polynomial,
+    x_domain: npt.ArrayLike
+) -> tuple[float | None, float | None]:
+    """
+    Estimate the peak (maximum) of a polynomial within a given domain.
+
+    Parameters
+    ----------
+    poly : Polynomial
+        The fitted polynomial object.
+    x_domain : np.ndarray
+        The original x data, used to restrict the peak to the valid domain.
+
+    Returns
+    -------
+    peak_x : float or None
+        The x-coordinate of the peak.
+    peak_y : float or None
+        The y-coordinate of the peak.
+    """
+    # 1. Find critical points (roots of the first derivative)
+    #    These are points where the slope of the curve is zero.
+    critical_points = poly.deriv(1).roots()
+
+    # 2. Filter for real roots only
+    #    Polynomials can have complex roots which do not correspond to physical peaks.
+    real_critical_points = critical_points[np.isreal(critical_points)].real
+
+    # 3. Restrict critical points to the domain of the original data
+    #    Polynomial extrapolation outside the data range is dangerous.
+    x_min, x_max = x_domain.min(), x_domain.max()
+    in_domain = real_critical_points[
+        (real_critical_points >= x_min) & (real_critical_points <= x_max)
+    ]
+
+    # 4. Second derivative test
+    #    A peak (local maximum) must have a negative second derivative (concave down).
+    if in_domain.size > 0:
+        second_deriv_values = poly.deriv(2)(in_domain)
+        local_maxima = in_domain[second_deriv_values < 0]
+    else:
+        local_maxima = np.array([])
+
+    # 5. Determine the Global Maximum
+    #    We must consider both the local maxima AND the boundaries of the domain
+    #    (Extreme Value Theorem), as the curve might be highest at the very edge.
+    candidates = np.concatenate((local_maxima, [x_min, x_max]))
+
+    if candidates.size == 0:
+        return None, None
+
+    # Evaluate polynomial at all candidates to find the absolute highest point
+    candidate_y_values = poly(candidates)
+    best_idx = np.argmax(candidate_y_values)
+
+    return float(candidates[best_idx]), float(candidate_y_values[best_idx])
 
 
 def detect_roi(
