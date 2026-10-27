@@ -35,7 +35,14 @@ import warnings
 import numpy as np
 from numpy.polynomial import Polynomial
 import numpy.typing as npt
-from scipy.signal import butter, sosfiltfilt, detrend, hilbert, find_peaks
+from scipy.signal import (
+    butter,
+    correlate,
+    detrend,
+    find_peaks,
+    hilbert,
+    sosfiltfilt,
+)
 from scipy.signal.windows import tukey
 from scipy.fft import rfft, rfftfreq
 
@@ -246,49 +253,157 @@ def process_signal(
 def estimate_travel_time(
     signal: npt.ArrayLike,
     sampling_rate_hz: float,
-    fit="polynomial",
-):
+    fit: str = "polynomial",
+) -> tuple[float, dict]:
     """
-    TODO
+    Estimate the time difference between two adjacent echoes (the
+    two-way travel time through the sample) by cross-correlating the
+    region of interest with its most prominent echo.
 
     Parameters
     ----------
     signal : array-like
-        the ROI signal to search for a two pulse echoes and
-        estimate the time difference
+        The region of interest containing the two echoes, typically the
+        output of :func:`process_signal` (cropped, detrended and
+        filtered).
     sampling_rate_hz : float
         The digitizer sampling rate in Hz, i.e. ``1 / dt`` where ``dt``
         is the time step between consecutive samples (e.g.
         ``1 / (t[1] - t[0])`` for a time column ``t`` in seconds).
         This is a property of the acquisition, not of the transducer:
         DO NOT pass the transducer's nominal centre frequency.
-    fit : str
-        continuous model to fit to estimate the position of the peaks
+    fit : {"polynomial", "cosine"}, optional
+        Continuous model used to locate each echo's peak in the
+        cross-correlation with sub-sample precision, by default
+        "polynomial":
+
+        - "polynomial": a 4th-degree polynomial fitted by least
+          squares to all samples of the central peak of each echo,
+          i.e. the cross-correlation lobe (between its zero crossings)
+          that contains the largest-magnitude sample (Pantea et al.,
+          2005). The peak is the maximum of the polynomial (see
+          :func:`estimate_peak`). The lobe must contain at least 5
+          samples, i.e. roughly 10 or more samples per carrier period.
+        - "cosine": a cosine fitted through the largest-magnitude
+          cross-correlation sample of each echo and its two neighbours
+          (cosine interpolation, Céspedes et al., 1995). Works down to
+          a few samples per carrier period.
+
+    Returns
+    -------
+    travel_time_us : float
+        Time difference between the two echo peaks in microseconds.
+    details : dict
+        Intermediate results, with keys:
+
+        - 'cross_correlation' : numpy.ndarray
+            Cross-correlation of ``signal`` with the template echo.
+            Index ``k`` corresponds to the template start placed at
+            sample ``k`` of ``signal``.
+        - 'template_bounds' : tuple of int
+            (start, end) of the template echo in ``signal``.
+        - 'echo1_bounds', 'echo2_bounds' : tuple of int
+            (start, end) of each echo in the cross-correlation.
+        - 'echo1_fit', 'echo2_fit' : Polynomial or dict
+            The polynomial fitted to the central peak, with the
+            echo polarity removed ("polynomial"), or the cosine
+            parameters 'amplitude', 'angular_frequency' (rad per sample)
+            and 'phase' ("cosine").
+        - 'peak1_xy', 'peak2_xy' : tuple of float
+            Sub-sample index and signed value of each echo peak in the
+            cross-correlation; a negative value means the echo is
+            inverted relative to the template.
+
+    Raises
+    ------
+    ValueError
+        If ``sampling_rate_hz`` is not positive, ``fit`` is not a
+        supported model, two echoes cannot be isolated, or an echo has
+        too few samples for the requested fit.
+
+    Warns
+    -----
+    UserWarning
+        If the fitted polynomial has no interior maximum on the central
+        peak (see :func:`estimate_peak`), so that the peak position is
+        unreliable.
+
+    Notes
+    -----
+    Both models refine the same feature: the central peak of each
+    cross-correlated echo, which carries the rf phase information and
+    is far more precise than the envelope maximum. The "polynomial"
+    fit uses every sample of the lobe, so it averages noise; the
+    "cosine" fit uses three samples only, but needs no oversampling.
+
+    The central peak of each echo is the lobe nearest the maximum of
+    the cross-correlation envelope, which prevents half-cycle skips at
+    coarse sampling. The cycle ambiguity itself remains: if attenuation
+    or dispersion distorts the second echo enough to move its envelope
+    maximum by more than half a carrier period, a neighbouring lobe is
+    chosen and the result shifts by one period. Pantea et al. (2005)
+    resolve this by repeating the measurement at several frequencies
+    and keeping the overlap whose delay does not depend on frequency.
+
+    References
+    ----------
+    Céspedes, I., Huang, Y., Ophir, J., & Spratt, S. (1995). Methods for
+    estimation of subsample time delays of digitized echo signals.
+    Ultrasonic Imaging, 17(2), 142-171.
+
+    Pantea, C., Rickel, D. G., Migliori, A., et al. (2005). Digital
+    ultrasonic pulse-echo overlap system and algorithm for unambiguous
+    determination of pulse transit time. Review of Scientific
+    Instruments, 76(11), 114902.
     """
 
-    # 1. isolate the most prominent echo for crosscorrelation
-    echo_bounds = isolate_echoes(signal, n_echoes=1)[0]
-    template = signal[echo_bounds[0] : echo_bounds[1]]
+    signal = np.asarray(signal, dtype=float)
+    if sampling_rate_hz <= 0:
+        raise ValueError("sampling_rate_hz must be a positive number.")
+    if fit not in ("polynomial", "cosine"):
+        raise ValueError("fit must be 'polynomial' or 'cosine'.")
 
-    # 2. crosscorrelate (TOD: maybe use Scipy's signal.correlate instead of Numpy's)
-    cc_signal = np.correlate(signal, template, mode="valid")
+    # 1. isolate the most prominent echo as the cross-correlation template,
+    #    tapered with a Tukey window so its cut edges add no artefacts
+    template_bounds = isolate_echoes(signal, n_echoes=1)[0]
+    template = gate_echo(signal, template_bounds)[
+        template_bounds[0] : template_bounds[1]
+    ]
 
-    # 3. Extract the indexes of the two echoes' peaks
-    echo1_bounds, echo2_bounds = isolate_echoes(cc_signal, n_echoes=2, pad=0)
-    peak_indices, peak_props = find_peaks(cc_signal**2)
+    # 2. cross-correlate the template with the whole ROI. In "valid" mode,
+    #    index k places the template start at sample k of the ROI, so
+    #    differences of indices are time differences in samples
+    cross_corr = correlate(signal, template, mode="valid")
 
-    echo1_indices = peak_indices[(peak_indices >= echo1_bounds[0]) & (peak_indices <= echo1_bounds[1])]
-    echo2_indices = peak_indices[(peak_indices >= echo2_bounds[0]) & (peak_indices <= echo2_bounds[1])]
-    echo1_signal = cc_signal[echo1_indices]
-    echo2_signal = cc_signal[echo2_indices]
+    # 3. locate the two echoes in the cross-correlation. The bounds are
+    #    only used to find each echo's largest sample, so no padding
+    echo1_bounds, echo2_bounds = isolate_echoes(cross_corr, n_echoes=2, pad=0)
 
-    # 4. TODO: Fit a four degree polynomial or a cosine fit
+    # 4-5. sub-sample peak of each echo from the chosen model
+    peak1_x, peak1_y, echo1_fit = _fit_echo_peak(cross_corr, echo1_bounds, fit)
+    peak2_x, peak2_y, echo2_fit = _fit_echo_peak(cross_corr, echo2_bounds, fit)
+
+    # 6. convert the peak separation from samples to microseconds
+    travel_time_us = abs(peak2_x - peak1_x) / sampling_rate_hz * 1e6
+
+    details = {
+        "cross_correlation": cross_corr,
+        "template_bounds": template_bounds,
+        "echo1_bounds": echo1_bounds,
+        "echo2_bounds": echo2_bounds,
+        "echo1_fit": echo1_fit,
+        "echo2_fit": echo2_fit,
+        "peak1_xy": (peak1_x, peak1_y),
+        "peak2_xy": (peak2_x, peak2_y),
+    }
+
+    return travel_time_us, details
 
 
 def estimate_peak(
     poly: Polynomial,
     x_domain: npt.ArrayLike
-) -> tuple[float | None, float | None]:
+) -> tuple[float | None, float | None, bool]:
     """
     Estimate the peak (maximum) of a polynomial within a given domain.
 
@@ -305,9 +420,13 @@ def estimate_peak(
         The x-coordinate of the peak.
     peak_y : float or None
         The y-coordinate of the peak.
+    at_boundary : bool
+        True if the maximum lies at an end of the domain rather than at
+        an interior local maximum, i.e. the polynomial has no interior
+        peak higher than its end values. For a peak-fitting
+        application this usually means the fit failed.
     """
     # 1. Find critical points (roots of the first derivative)
-    #    These are points where the slope of the curve is zero.
     critical_points = poly.deriv(1).roots()
 
     # 2. Filter for real roots only
@@ -335,13 +454,20 @@ def estimate_peak(
     candidates = np.concatenate((local_maxima, [x_min, x_max]))
 
     if candidates.size == 0:
-        return None, None
+        return None, None, False
 
     # Evaluate polynomial at all candidates to find the absolute highest point
     candidate_y_values = poly(candidates)
     best_idx = np.argmax(candidate_y_values)
 
-    return float(candidates[best_idx]), float(candidate_y_values[best_idx])
+    # The last two candidates are the domain ends
+    at_boundary = bool(best_idx >= local_maxima.size)
+
+    return (
+        float(candidates[best_idx]),
+        float(candidate_y_values[best_idx]),
+        at_boundary,
+    )
 
 
 def detect_roi(
@@ -935,7 +1061,9 @@ def _contiguous_band(
     Parameters
     ----------
     spectrum : numpy.ndarray
-        Non-negative spectrum (amplitude or power).
+        Spectrum (amplitude or power), or any sampled signal whose
+        run around ``peak_index`` is wanted (e.g. a cross-correlation
+        lobe, with ``threshold=0``).
     peak_index : int
         Index of the spectral peak.
     threshold : float
@@ -1011,6 +1139,160 @@ def _band_edges(
         )
 
     return float(lower_edge), float(upper_edge)
+
+
+def _fit_echo_peak(
+    cross_corr: np.ndarray,
+    echo_bounds: tuple[int, int],
+    fit: str,
+) -> tuple[float, float, Polynomial | dict]:
+    """
+    Sub-sample peak of one echo in the cross-correlation, for
+    :func:`estimate_travel_time`.
+
+    Both models refine the central peak: the lobe (of either sign)
+    whose extremum is nearest the maximum of the cross-correlation
+    envelope within ``echo_bounds``. Choosing it by the envelope rather
+    than by the largest sample avoids half-cycle skips when the signal
+    is coarsely sampled, where the largest sample can fall on the
+    opposite-sign lobe next to the true peak.
+
+    Parameters
+    ----------
+    cross_corr : numpy.ndarray
+        The cross-correlation.
+    echo_bounds : tuple of int
+        (start, end) of the echo in ``cross_corr``, ``end`` exclusive.
+    fit : {"polynomial", "cosine"}
+        The peak model.
+
+    Returns
+    -------
+    tuple
+        The peak index (float), the signed peak value and the fitted
+        model (a Polynomial, or a dict of cosine parameters).
+
+    Raises
+    ------
+    ValueError
+        If the echo has too few samples for the requested fit.
+
+    Warns
+    -----
+    UserWarning
+        If the fitted polynomial has no interior maximum.
+    """
+
+    start, end = echo_bounds
+
+    # Central peak: the lobe extremum (sample) nearest the envelope maximum
+    envelope = np.abs(hilbert(cross_corr))
+    envelope_peak = start + int(np.argmax(envelope[start:end]))
+    lobe_extrema = start + find_peaks(np.abs(cross_corr[start:end]))[0]
+    if lobe_extrema.size:
+        nearest = np.argmin(np.abs(lobe_extrema - envelope_peak))
+        peak_index = int(lobe_extrema[nearest])
+    else:
+        peak_index = start + int(np.argmax(np.abs(cross_corr[start:end])))
+
+    if fit == "polynomial":
+        # 4th-degree polynomial fitted to every sample of the central
+        # peak, as in Pantea et al. (2005). The lobe runs between the zero
+        # crossings around the peak; flipping the sign of an inverted
+        # echo makes it a maximum.
+        polarity = np.sign(cross_corr[peak_index])
+        oriented = polarity * cross_corr
+        low_index, high_index = _contiguous_band(oriented, peak_index, 0.0)
+        lobe_indices = np.arange(low_index, high_index + 1)
+        if lobe_indices.size < 5:
+            raise ValueError(
+                f"the central peak at sample {peak_index} has "
+                f"{lobe_indices.size} samples; a 4th-degree fit needs at "
+                "least 5 (about 10 samples per carrier period). Use "
+                "fit='cosine' for coarsely sampled signals."
+            )
+        peak_fit = Polynomial.fit(lobe_indices, oriented[lobe_indices], deg=4)
+        peak_x, peak_y, at_boundary = estimate_peak(peak_fit, lobe_indices)
+        if at_boundary:
+            warnings.warn(
+                f"the polynomial fitted to the central peak at sample "
+                f"{peak_index} has no interior maximum; the peak position "
+                "is unreliable.",
+                stacklevel=3,
+            )
+        return peak_x, polarity * peak_y, peak_fit
+
+    # cosine model through the largest sample and its two neighbours,
+    # as in Céspedes et al. (1995)
+    if peak_index == 0 or peak_index == cross_corr.shape[0] - 1:
+        raise ValueError(
+            "the cross-correlation maximum lies at the edge of the "
+            "record; the cosine fit needs a sample on each side."
+        )
+    return _cosine_peak(cross_corr, peak_index)
+
+
+def _cosine_peak(
+    samples: np.ndarray,
+    peak_index: int,
+) -> tuple[float, float, dict]:
+    """
+    Sub-sample peak by fitting ``y(k) = A cos(omega * k + phase)``
+    through the sample at ``peak_index`` and its two neighbours
+    (cosine interpolation, Céspedes et al., 1995).
+
+    With ``y0`` the peak sample and ``y_minus``, ``y_plus`` its
+    neighbours (sign-flipped if ``y0`` is negative)::
+
+        omega = arccos((y_minus + y_plus) / (2 * y0))
+        phase = arctan((y_minus - y_plus) / (2 * y0 * sin(omega)))
+        peak  = peak_index - phase / omega,   A = y0 / cos(phase)
+
+    Parameters
+    ----------
+    samples : numpy.ndarray
+        The sampled signal (e.g. a cross-correlation).
+    peak_index : int
+        Index of the largest-magnitude sample, not at either end of
+        ``samples``.
+
+    Returns
+    -------
+    tuple
+        The sub-sample peak index, the signed peak value, and a dict
+        with the fitted 'amplitude', 'angular_frequency' (rad per
+        sample) and 'phase'.
+
+    Raises
+    ------
+    ValueError
+        If the three samples do not define a cosine peak (flat top).
+    """
+
+    polarity = np.sign(samples[peak_index])
+    y_minus, y0, y_plus = polarity * samples[peak_index - 1 : peak_index + 2]
+
+    # |neighbours| <= y0 at a magnitude maximum, so the ratio is in [-1, 1]
+    cos_omega = np.clip((y_minus + y_plus) / (2.0 * y0), -1.0, 1.0)
+    omega = np.arccos(cos_omega)
+    if omega == 0:
+        raise ValueError(
+            "the cosine fit is undefined for a flat peak (the peak "
+            "sample equals both neighbours)."
+        )
+
+    phase = np.arctan((y_minus - y_plus) / (2.0 * y0 * np.sin(omega)))
+    amplitude = y0 / np.cos(phase)
+
+    peak_x = peak_index - phase / omega
+    peak_y = polarity * amplitude
+    cosine_fit = {
+        "amplitude": float(amplitude),
+        "angular_frequency": float(omega),
+        "phase": float(phase),
+    }
+
+    return float(peak_x), float(peak_y), cosine_fit
 
 
 def _clip_band(

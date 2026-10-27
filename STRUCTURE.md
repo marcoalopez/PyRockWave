@@ -115,6 +115,8 @@ Public functions/classes only; names with a leading underscore are private helpe
 - `estimate_bandpass_centroid` — estimates the band-pass band from the power-weighted spectral centroid and spread over the band above a -20 dB floor (Quan & Harris 1997).
 - `trigger_sta_lta` — computes the STA/LTA ratio for arrival-time picking.
 - `isolate_echoes` — sample bounds of the N most prominent echoes in a region of interest, from the Hilbert envelope (echoes split at the envelope valley; warns when they overlap).
+- `estimate_travel_time` — two-way travel time (µs) between two adjacent echoes from the cross-correlation of the ROI with its strongest echo; central peak (lobe nearest the envelope maximum) refined by a 4th-degree polynomial fit (Pantea et al. 2005) or 3-point cosine interpolation (Céspedes et al. 1995).
+- `estimate_peak` — maximum of a fitted polynomial within the data domain (interior critical points and domain edges), with a flag when the maximum lies at a domain edge.
 - `gate_echo` — isolates one echo with a Tukey window over its bounds, zeroing the rest and keeping the input length (ready for cross-correlation).
 
 ### `utils.coordinates`

@@ -32,6 +32,7 @@ import sys
 import warnings
 
 import numpy as np
+from numpy.polynomial import Polynomial
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from scipy.signal import correlate, correlation_lags, hilbert  # noqa: E402
@@ -40,6 +41,9 @@ from pyrockwave.ultrasonic import (  # noqa: E402
     detect_roi,
     estimate_bandpass,
     estimate_bandpass_centroid,
+    estimate_peak,
+    estimate_sampling_rate,
+    estimate_travel_time,
     gate_echo,
     isolate_echoes,
     process_signal,
@@ -479,6 +483,111 @@ def test_process_signal_band_robust_to_two_echo_interference():
         assert len(isolate_echoes(filtered)) == 2
 
 
+def test_estimate_sampling_rate_recovers_rate():
+    """A uniform 1 GS/s time column gives 1e9 Hz, also when the times are
+    rounded to picoseconds as in a text export."""
+    t = np.arange(ECHO_N) / ECHO_FS + 3.2e-6  # non-zero start time
+    assert np.isclose(estimate_sampling_rate(t), ECHO_FS, rtol=1e-12)
+    assert np.isclose(
+        estimate_sampling_rate(np.round(t, 12)), ECHO_FS, rtol=1e-6
+    )
+
+
+def test_estimate_sampling_rate_rejects_non_uniform_time():
+    """Missing samples, non-increasing times and bad inputs raise."""
+    t = np.arange(ECHO_N) / ECHO_FS
+    bad_calls = [
+        lambda: estimate_sampling_rate(np.delete(t, 1000)),  # missing sample
+        lambda: estimate_sampling_rate(t[::-1]),
+        lambda: estimate_sampling_rate(np.zeros(10)),
+        lambda: estimate_sampling_rate(t[:1]),
+        lambda: estimate_sampling_rate(t.reshape(2, -1)),
+        lambda: estimate_sampling_rate(np.append(t, np.nan)),
+        lambda: estimate_sampling_rate(t, rtol=-1.0),
+    ]
+    for call in bad_calls:
+        try:
+            call()
+            raise AssertionError("bad input should have raised")
+        except ValueError:
+            pass
+
+
+def test_estimate_peak_interior_and_edge_maximum():
+    """The maximum of a fitted quartic is found at its interior critical
+    point (domain mapping of Polynomial.fit handled), and at the domain
+    edge when the curve is monotonic there."""
+    x =np.arange(1200.0, 1300.0, 10.0)
+    peaked = Polynomial.fit(x, 5e3 - (x - 1237.3) ** 2, deg=4)
+    peak_x, peak_y, at_boundary = estimate_peak(peaked, x)
+    assert np.isclose(peak_x, 1237.3, atol=1e-6)
+    assert np.isclose(peak_y, 5e3, rtol=1e-9)
+    assert not at_boundary
+
+    # Monotonic curve: maximum at the edge, flagged as such
+    rising = Polynomial.fit(x, x - 1200.0, deg=4)
+    edge_x, _, at_boundary = estimate_peak(rising, x)
+    assert np.isclose(edge_x, x.max())
+    assert at_boundary
+
+
+def test_estimate_travel_time_recovers_delay():
+    """Both models refine the central peak of the cross-correlation and
+    recover the true two-way time (a fractional number of samples) to a
+    small fraction of a sample, also with an inverted second echo and with
+    noise; both report the polarity of the second echo."""
+    true_us = ECHO_DELAY * 1e6
+    sample_us = 1e6 / ECHO_FS
+    for amplitude2 in (0.4, -0.4):
+        for snr_db in (None, 20.0):
+            signal, _ = two_echo_record(amplitude2=amplitude2, snr_db=snr_db)
+            filtered = process_signal(
+                signal, (0, ECHO_N), ECHO_FS, apply_filter=True
+            )
+            for fit in ("polynomial", "cosine"):
+                time_us, details = estimate_travel_time(
+                    filtered, ECHO_FS, fit=fit
+                )
+                assert abs(time_us - true_us) < 0.1 * sample_us
+                assert np.sign(details["peak2_xy"][1]) == np.sign(amplitude2)
+
+
+def test_estimate_travel_time_coarse_sampling():
+    """At 4 samples per carrier period the central peak is too short for a
+    quartic, which raises; the 3-point cosine fit still works."""
+    signal, _ = two_echo_record()
+    filtered = process_signal(signal, (0, ECHO_N), ECHO_FS, apply_filter=True)
+    decimation = 5  # 1 GS/s -> 200 MS/s
+    coarse = filtered[::decimation]
+    coarse_fs = ECHO_FS / decimation
+
+    try:
+        estimate_travel_time(coarse, coarse_fs, fit="polynomial")
+        raise AssertionError("too few lobe samples should have raised")
+    except ValueError:
+        pass
+
+    time_us, _ = estimate_travel_time(coarse, coarse_fs, fit="cosine")
+    assert abs(time_us - ECHO_DELAY * 1e6) < 0.1 * (1e6 / coarse_fs)
+
+
+def test_estimate_travel_time_rejects_bad_inputs():
+    """Unknown model, non-positive rate, or a single echo raise."""
+    signal, _ = two_echo_record()
+    single, _ = gaussian_tone_burst(F0, TAU_SHORT, SAMPLING_RATE_HZ, N_SHORT)
+    bad_calls = [
+        lambda: estimate_travel_time(signal, ECHO_FS, fit="spline"),
+        lambda: estimate_travel_time(signal, 0.0),
+        lambda: estimate_travel_time(single, SAMPLING_RATE_HZ),
+    ]
+    for call in bad_calls:
+        try:
+            call()
+            raise AssertionError("bad input should have raised")
+        except ValueError:
+            pass
+
+
 def test_isolate_echoes_warns_on_overlap():
     """Echoes closer than their extent are flagged; well-separated ones
     are not."""
@@ -576,6 +685,18 @@ def main():
           test_isolate_and_gate_recover_delay_by_cross_correlation)
     check("process_signal band robust to two-echo interference",
           test_process_signal_band_robust_to_two_echo_interference)
+    check("estimate_sampling_rate recovers rate",
+          test_estimate_sampling_rate_recovers_rate)
+    check("estimate_sampling_rate rejects non-uniform time",
+          test_estimate_sampling_rate_rejects_non_uniform_time)
+    check("estimate_peak interior and edge maximum",
+          test_estimate_peak_interior_and_edge_maximum)
+    check("estimate_travel_time recovers delay",
+          test_estimate_travel_time_recovers_delay)
+    check("estimate_travel_time coarse sampling",
+          test_estimate_travel_time_coarse_sampling)
+    check("estimate_travel_time rejects bad inputs",
+          test_estimate_travel_time_rejects_bad_inputs)
     check("isolate_echoes warns on overlap",
           test_isolate_echoes_warns_on_overlap)
     check("isolate_echoes / gate_echo reject bad inputs",
