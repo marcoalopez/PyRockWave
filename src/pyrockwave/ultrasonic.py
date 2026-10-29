@@ -62,53 +62,103 @@ def estimate_sampling_rate(
         Sample times in seconds, one per sample, in acquisition order
         (e.g. the time column of the raw data file).
     rtol : float, optional
-        Maximum allowed relative deviation of any time step from the
-        mean time step, by default 1e-3. It absorbs the rounding of
-        times stored with a limited number of decimals; a larger
-        deviation indicates missing samples or a non-uniform time base.
+        Maximum allowed relative deviation of any time step from a
+        whole number of sampling intervals, by default 1e-3. It absorbs
+        the floating-point noise of times stored as decimal text; a
+        larger deviation indicates a non-uniform time base.
 
     Returns
     -------
     float
-        The sampling rate in Hz, i.e. ``1 / dt`` with ``dt`` the mean
-        time step. Use it as the ``sampling_rate_hz`` argument of
-        :func:`process_signal`.
+        The sampling rate in Hz, i.e. ``1 / dt`` with ``dt`` the
+        sampling interval. Use it as the ``sampling_rate_hz`` argument
+        of :func:`process_signal`.
 
     Raises
     ------
     ValueError
         If the inputs are malformed (see
-        :func:`_validate_estimate_sampling_rate`), the times are not
-        strictly increasing, or the spacing is not uniform within
-        ``rtol``.
+        :func:`_validate_estimate_sampling_rate`), the times decrease
+        or are all equal, a step is not a whole number of sampling
+        intervals within ``rtol``, or samples are missing (steps of two
+        or more intervals with no zero steps to balance them).
+
+    Warns
+    -----
+    UserWarning
+        If some consecutive times are equal (zero steps). The warning
+        reports how many there are, where the first ones are, and
+        whether they are balanced by double steps, which indicates
+        rounded timestamps, or not, which indicates duplicated rows.
 
     Notes
     -----
-    The time step is taken as the mean step,
-    ``(t[-1] - t[0]) / (n - 1)``, which averages out the rounding of
-    individual times. The uniformity check is relative only (no
-    absolute tolerance), because time steps are typically of the order
-    of nanoseconds, below the default absolute tolerance of
-    :func:`numpy.allclose`.
+    The digitizer clock is fixed, so the sample times should form a
+    uniform grid. Each time step is assigned a whole number of
+    sampling intervals ``k`` (0, 1, 2, ...) relative to the median
+    positive step, and the interval is ``(t[-1] - t[0]) / sum(k)``.
+    Using the total span averages out the rounding of individual times,
+    and counting intervals keeps the estimate unbiased when the time
+    column contains zero steps:
+
+    - **Rounded timestamps.** When the times are exported with a
+      resolution close to the sampling interval, a time that rounds
+      the "wrong" way gives a zero step next to a double step. The span
+      is unaffected and the record is uniform; only the timestamps are
+      imprecise.
+    - **Duplicated rows** (zero steps without double steps). Each zero
+      step adds a row but no time. The rate stays correct, but the
+      sample count no longer matches the time base: check whether the
+      signal rows at the reported indices are duplicated too, and
+      remove them if so.
+
+    Excluding the zero steps and averaging the remaining ones would be
+    biased in the first case, because the double steps next to them
+    would then be counted as single intervals.
+
+    The uniformity check is relative only (no absolute tolerance),
+    because time steps are typically of the order of nanoseconds, below
+    the default absolute tolerance of :func:`numpy.allclose`.
     """
 
     time_s = np.asarray(time_s, dtype=float)
     _validate_estimate_sampling_rate(time_s, rtol)
 
     steps = np.diff(time_s)
-    if np.any(steps <= 0):
-        raise ValueError("time_s must be strictly increasing.")
-
-    mean_step = (time_s[-1] - time_s[0]) / (time_s.shape[0] - 1)
-    max_deviation = np.max(np.abs(steps - mean_step)) / mean_step
-    if max_deviation > rtol:
+    if np.any(steps < 0):
         raise ValueError(
-            f"time steps are not uniform: the largest relative deviation "
-            f"from the mean step ({mean_step:.6g} s) is "
-            f"{max_deviation:.3g}, above rtol={rtol:.3g}."
+            "time_s must be non-decreasing; time goes backwards at index "
+            f"{int(np.flatnonzero(steps < 0)[0]) + 1}."
+        )
+    if not np.any(steps > 0):
+        raise ValueError("time_s values are all equal.")
+
+    # Whole number of sampling intervals spanned by each step
+    nominal_step = np.median(steps[steps > 0])
+    n_intervals = np.round(steps / nominal_step)
+    max_deviation = np.max(np.abs(steps - n_intervals * nominal_step))
+    if max_deviation > rtol * nominal_step:
+        raise ValueError(
+            f"time steps are not uniform: the largest deviation from a "
+            f"whole number of sampling intervals ({nominal_step:.6g} s) "
+            f"is {max_deviation / nominal_step:.3g} intervals, above "
+            f"rtol={rtol:.3g}."
         )
 
-    return float(1.0 / mean_step)
+    zero_steps = np.flatnonzero(n_intervals == 0)
+    n_long_steps = int(np.count_nonzero(n_intervals >= 2))
+    if n_long_steps and not zero_steps.size:
+        raise ValueError(
+            f"{n_long_steps} time step(s) span two or more sampling "
+            "intervals with no zero steps to balance them: samples are "
+            "missing from the record."
+        )
+    if zero_steps.size:
+        _warn_zero_time_steps(zero_steps, n_long_steps)
+
+    sampling_interval = (time_s[-1] - time_s[0]) / np.sum(n_intervals)
+
+    return float(1.0 / sampling_interval)
 
 
 def process_signal(
@@ -1362,6 +1412,50 @@ def _validate_bandpass_inputs(
         raise ValueError("signal must be one-dimensional.")
     if signal.shape[0] < 3:
         raise ValueError("signal must contain at least 3 samples.")
+
+
+def _warn_zero_time_steps(
+    zero_steps: np.ndarray,
+    n_long_steps: int,
+) -> None:
+    """
+    Warn about repeated times found by :func:`estimate_sampling_rate`,
+    with the likely cause.
+
+    Parameters
+    ----------
+    zero_steps : numpy.ndarray
+        Indices ``j`` of the zero steps, i.e. ``t[j + 1] == t[j]``.
+    n_long_steps : int
+        Number of steps spanning two or more sampling intervals.
+    """
+
+    repeated_rows = zero_steps + 1
+    shown = ", ".join(str(row) for row in repeated_rows[:5])
+    if repeated_rows.size > 5:
+        shown += ", ..."
+
+    if n_long_steps:
+        cause = (
+            f"They are balanced by {n_long_steps} step(s) of two or more "
+            "intervals, which indicates timestamps rounded to about the "
+            "sampling interval: the record is uniform and the sampling "
+            "rate is unaffected, but individual times are imprecise, so "
+            "compute times as t[0] + index / sampling_rate."
+        )
+    else:
+        cause = (
+            "No double steps balance them, which indicates duplicated "
+            "rows: check whether the signal values in those rows repeat "
+            "the previous row, and remove them if so."
+        )
+
+    warnings.warn(
+        f"time_s has {repeated_rows.size} repeated value(s) (zero time "
+        f"step) at row(s) {shown}. They are not counted as sampling "
+        f"intervals. {cause}",
+        stacklevel=3,
+    )
 
 
 def _validate_estimate_sampling_rate(

@@ -493,6 +493,38 @@ def test_estimate_sampling_rate_recovers_rate():
     )
 
 
+def test_estimate_sampling_rate_rounded_timestamps():
+    """Times exported on a 1 ns grid while sitting almost half-way between
+    grid points: a few round the other way, giving zero steps next to
+    double steps. The rate stays exact and a warning names the cause."""
+    rng = np.random.default_rng(0)
+    i = np.arange(5000)
+    t_true = 3e-6 + (i + 0.4997) / ECHO_FS + rng.normal(0.0, 1e-13, i.size)
+    t_exported = np.char.mod("%.3f", t_true * 1e6).astype(float) * 1e-6
+    assert np.any(np.diff(t_exported) == 0)  # the case being tested
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        rate = estimate_sampling_rate(t_exported)
+    assert np.isclose(rate, ECHO_FS, rtol=1e-9)
+    messages = [str(w.message) for w in caught]
+    assert any("rounded" in m for m in messages)
+
+
+def test_estimate_sampling_rate_duplicated_rows():
+    """Duplicated rows (zero steps with no double steps) are not counted
+    as intervals, so the rate stays exact; the warning reports the rows."""
+    t = np.arange(5000) / ECHO_FS
+    t_duplicated = np.insert(t, [1000, 3000], t[[999, 2999]])
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        rate = estimate_sampling_rate(t_duplicated)
+    assert np.isclose(rate, ECHO_FS, rtol=1e-12)
+    messages = [str(w.message) for w in caught]
+    assert any("duplicated rows" in m and "1000" in m for m in messages)
+
+
 def test_estimate_sampling_rate_rejects_non_uniform_time():
     """Missing samples, non-increasing times and bad inputs raise."""
     t = np.arange(ECHO_N) / ECHO_FS
@@ -687,6 +719,10 @@ def main():
           test_process_signal_band_robust_to_two_echo_interference)
     check("estimate_sampling_rate recovers rate",
           test_estimate_sampling_rate_recovers_rate)
+    check("estimate_sampling_rate rounded timestamps",
+          test_estimate_sampling_rate_rounded_timestamps)
+    check("estimate_sampling_rate duplicated rows",
+          test_estimate_sampling_rate_duplicated_rows)
     check("estimate_sampling_rate rejects non-uniform time",
           test_estimate_sampling_rate_rejects_non_uniform_time)
     check("estimate_peak interior and edge maximum",
