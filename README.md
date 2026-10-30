@@ -1,10 +1,10 @@
 ![header](https://raw.githubusercontent.com/marcoalopez/PyRockWave/main/img/header.jpg)
 
-This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) — Last updated: 12 July 2026
+This project is maintained by [Marco A. Lopez-Sanchez](https://marcoalopez.github.io/) — Last updated: 30 October 2026
 
 ## **What is PyRockWave?**
 
-**PyRockWave** is a free, open-source Python tool that reads single-crystal elasticity databases and calculates the elastic properties of Earth materials. Its submodules compute isotropic seismic properties, volume- and CPO-weighted averages, phase and group seismic properties from the Christoffel equation, seismic velocities from analytical anisotropy models, and reflectivity and effective stiffness/compliance tensors for layered media (Schoenberg & Muir approach); a dedicated submodule processes ultrasonic signals. Further tools visualise seismic properties, convert between spherical and Cartesian coordinates, generate S2 grids, and simplify working with tensors.
+**PyRockWave** is a free, open-source Python tool that reads single-crystal elasticity databases and calculates the elastic properties of Earth materials. Its submodules compute isotropic seismic properties, volume- and CPO-weighted averages, phase and group seismic properties from the Christoffel equation, seismic velocities from analytical anisotropy models, and reflectivity and effective stiffness/compliance tensors for layered media (Backus, Schoenberg & Muir) and a dedicated submodule to process ultrasonic signals. Further tools visualise seismic properties, convert between spherical and Cartesian coordinates, generate S2 grids, and simplify working with tensors.
 
 ## **Why PyRockWave?**
 
@@ -44,6 +44,8 @@ In preparation.
 - ``averaging_schemes`` — volume- and CPO-weighted averages
 
 - ``anisotropic_models`` — seismic velocities from analytical anisotropy models
+
+- ``ultrasonic signal processing`` - examples of ultrasonic signal processing procedures
 
 - [``coordinates`` — spherical/Cartesian conversions and S2 grids](https://github.com/marcoalopez/PyRockWave/blob/main/notebooks/example_coordinates.ipynb)
 
